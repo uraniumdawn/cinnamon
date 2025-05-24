@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "AdClick",
+  "namespace": "com.example.ad",
+  "fields": [
+    {"name": "click_id", "type": "string"},
+    {"name": "impression_id", "type": "string"},
+    {"name": "user_id", "type": "string"},
+    {"name": "event_timestamp", "type": "long"}
+  ]
+}

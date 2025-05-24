@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # Kafka for event streaming
+  kafka:
+    image: bitnami/kafka:4.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      # KRaft settings
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      # Listeners
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    networks:
+      - cinnamon-ntw
+
+  schema-registry:
+    image: bitnami/schema-registry:7.9
+    container_name: schema-registry
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+    environment:
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+      - SCHEMA_REGISTRY_KAFKA_BROKERS=PLAINTEXT://kafka:9092
+    networks:
+      - cinnamon-ntw
+  
+  # Topics initialization
+  topic-setup:
+    image: bitnami/kafka:4.0
+    container_name: kafka-setup
+    depends_on:
+      - kafka
+    volumes:
+      - ./topics/create.sh:/create.sh
+    command: bash /create.sh
+    networks:
+      - cinnamon-ntw
+
+  # AVRO schemas initialization
+  schema-setup:
+    image: alpine:latest
+    container_name: schema-setup
+    depends_on:
+      - schema-registry
+    volumes:
+      - ./schemas:/schemas
+    command: sh /schemas/register.sh
+    networks:
+      - cinnamon-ntw
+
+  # Data Generator
+  data-generator:
+    build:
+      context: ./data-generator
+      dockerfile: Dockerfile
+    container_name: data-generator
+    depends_on:
+      - topic-setup
+      - schema-setup
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - IMPRESSION_TOPIC=ad-impressions
+      - CLICK_TOPIC=ad-clicks
+      - EVENT_RATE=50  # Events per second
+      - CLICK_RATIO=0.1  # 10% of impressions get clicks
+    networks:
+      - cinnamon-ntw
+
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:latest
+    networks:
+      - cinnamon-ntw
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml && /app/console'
+    environment:
+      CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/tmp/config.yml}
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["kafka:9092"]
+          startup:
+            maxRetries: 5
+            retryInterval: 1s
+            maxRetryInterval: 60s
+            backoffMultiplier: 2
+        schemaRegistry:
+          enabled: true
+          urls: ["http://schema-registry:8081"]
+    restart: on-failure
+    ports:
+      - "20065:8080"
+    depends_on:
+      - topic-setup
+      - schema-setup
+
+networks:
+  cinnamon-ntw:
+    driver: bridge
+
+volumes:
+  kafka_data:
+    driver: local

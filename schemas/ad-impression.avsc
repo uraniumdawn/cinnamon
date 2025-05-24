@@ -1,0 +1,16 @@
+{
+    "type": "record",
+    "name": "AdImpression",
+    "namespace": "com.example.ad",
+    "fields": [
+      {"name": "impression_id", "type": "string"},
+      {"name": "user_id", "type": "string"},
+      {"name": "campaign_id", "type": "string"},
+      {"name": "ad_id", "type": "string"},
+      {"name": "device_type", "type": "string"},
+      {"name": "browser", "type": "string"},
+      {"name": "event_timestamp", "type": "long"},
+      {"name": "cost", "type": "float"}
+    ]
+  }
+  
