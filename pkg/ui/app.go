@@ -6,18 +6,19 @@ import (
 	"cinnamon/pkg/schemaregistry"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
-	"path/filepath"
-	"sort"
-	"time"
 )
 
-const timeout = 10 * time.Second
+const timeout = time.Second * 10
 const (
 	Main             = "Main"
 	Resources        = "Resources"
@@ -58,7 +59,7 @@ type KeySeries struct {
 
 func toClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
 	clusterMap := make(map[string]*config.ClusterConfig)
-	for _, cluster := range cfg.CC9s.Clusters {
+	for _, cluster := range cfg.Cinnamon.Clusters {
 		clusterMap[cluster.Name] = cluster
 	}
 	return clusterMap
@@ -66,7 +67,7 @@ func toClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
 
 func toSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryConfig {
 	srMap := make(map[string]*config.SchemaRegistryConfig)
-	for _, sr := range cfg.CC9s.SchemaRegistries {
+	for _, sr := range cfg.Cinnamon.SchemaRegistries {
 		srMap[sr.Name] = sr
 	}
 	return srMap

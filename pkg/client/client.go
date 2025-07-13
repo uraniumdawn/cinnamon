@@ -4,9 +4,10 @@ import (
 	"cinnamon/pkg/config"
 	"context"
 	"fmt"
-	"golang.org/x/exp/maps"
 	"sync"
 	"time"
+
+	"golang.org/x/exp/maps"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"

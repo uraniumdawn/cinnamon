@@ -4,12 +4,13 @@ import (
 	"cinnamon/pkg/client"
 	"context"
 	"fmt"
+	"sort"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gdamore/tcell/v2"
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
-	"sort"
 )
 
 func (app *App) ConsumerGroups(statusLineChannel chan string) {

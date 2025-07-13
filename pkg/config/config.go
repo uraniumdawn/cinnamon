@@ -2,14 +2,15 @@ package config
 
 import "C"
 import (
-	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	CC9s struct {
+	Cinnamon struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
 	} `yaml:"cinnamon"`
@@ -19,6 +20,7 @@ type ClusterConfig struct {
 	Name           string            `yaml:"name"`
 	Properties     map[string]string `yaml:"properties"`
 	SchemaRegistry string            `yaml:"schema.registry.name"`
+	Command        string            `yaml:"command"`
 }
 
 type SchemaRegistryConfig struct {

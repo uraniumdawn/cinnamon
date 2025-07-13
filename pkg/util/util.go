@@ -1,11 +1,36 @@
 package util
 
 import (
+	"bytes"
 	"encoding/csv"
-	"github.com/rivo/tview"
 	"os"
 	"strconv"
+	"strings"
+	"text/template"
+
+	"github.com/rivo/tview"
 )
+
+func ParseShellCommand(templateStr, topic string) ([]string, error) {
+	tmpl, err := template.New("cmd").Parse(templateStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, map[string]string{"topic": topic})
+	if err != nil {
+		return nil, err
+	}
+
+	expanded := buf.String()
+
+	// Split into args — use Fields to split on spaces
+	// If you need quotes preserved, use shellwords or shlex logic
+	args := strings.Fields(expanded)
+
+	return args, nil
+}
 
 func TableToCSV(fileName string, table *tview.Table) {
 	file, _ := os.Create(fileName)

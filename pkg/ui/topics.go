@@ -2,16 +2,19 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
+	"cinnamon/pkg/util"
+	"cinnamon/pkg/shell"
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/gdamore/tcell/v2"
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
-	"sort"
-	"strconv"
 )
 
 func (app *App) Topics(statusLineChannel chan string) {
@@ -58,12 +61,20 @@ func (app *App) Topics(statusLineChannel chan string) {
 							statusLineChannel <- "Consuming records..."
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
-							rc := make(chan Record)
+							rc := make(chan string)
 							sig := make(chan int, 1)
 
-							consumer, _ := NewConsumer(app.Selected.Cluster, app.Selected.SchemaRegistry)
+							// consumer, _ := NewConsumer(app.Selected.Cluster, app.Selected.SchemaRegistry)
+							// go consumer.Consume(ConsumingParameters, topicName, rc, statusLineChannel, sig)
 
-							go consumer.Consume(ConsumingParameters, topicName, rc, statusLineChannel, sig)
+							args, err := util.ParseShellCommand(app.Selected.Cluster.Command, topicName)
+							if err != nil {
+								log.Error().Msg("Failed to parse command")
+								statusLineChannel <- "[red]Failed to parse command: " + err.Error()
+								return event
+							}
+
+							go shell.Execute(args, rc, statusLineChannel, sig)
 
 							view := tview.NewTextView().
 								SetTextAlign(tview.AlignLeft).
@@ -96,8 +107,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 									case _ = <-sig:
 										run = false
 									case record := <-rc:
-										s := record.String()
-										_, _ = fmt.Fprintf(view, "%s\n\n", s)
+										_, _ = fmt.Fprintf(view, "%s\n\n", record)
 										app.QueueUpdateDraw(func() {
 											view.ScrollToEnd()
 										})
@@ -154,7 +164,7 @@ func (app *App) Topic(name string) {
 						}
 						return event
 					})
-					app.AddAndSwitch(fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, name), desc, ConsumingMenu)
+					app.AddAndSwitch(fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, name), desc, FinalPageMenu)
 					app.Main.ClearStatus()
 				})
 				cancel()

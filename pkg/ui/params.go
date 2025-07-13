@@ -4,9 +4,10 @@ import (
 	"cinnamon/pkg/util"
 	"encoding/json"
 	"fmt"
+	"sync"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"sync"
 )
 
 type Parameters struct {

@@ -3,8 +3,9 @@ package schemaregistry
 import (
 	"cinnamon/pkg/config"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 	"sort"
+
+	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 )
 
 type Client struct {

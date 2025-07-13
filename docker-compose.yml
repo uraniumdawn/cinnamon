@@ -15,11 +15,11 @@ services:
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
     networks:
       - cinnamon-ntw
 
@@ -32,7 +32,7 @@ services:
       - kafka
     environment:
       - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
-      - SCHEMA_REGISTRY_KAFKA_BROKERS=PLAINTEXT://kafka:9092
+      - SCHEMA_REGISTRY_KAFKA_BROKERS=PLAINTEXT://kafka:29092
     networks:
       - cinnamon-ntw
   
@@ -70,7 +70,7 @@ services:
       - topic-setup
       - schema-setup
     environment:
-      - KAFKA_BROKER=kafka:9092
+      - KAFKA_BROKER=kafka:29092
       - IMPRESSION_TOPIC=ad-impressions
       - CLICK_TOPIC=ad-clicks
       - EVENT_RATE=50  # Events per second
@@ -89,7 +89,7 @@ services:
       CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/tmp/config.yml}
       CONSOLE_CONFIG_FILE: |
         kafka:
-          brokers: ["kafka:9092"]
+          brokers: ["kafka:29092"]
           startup:
             maxRetries: 5
             retryInterval: 1s

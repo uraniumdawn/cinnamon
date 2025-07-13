@@ -2,12 +2,13 @@ package client
 
 import (
 	"fmt"
+	"strings"
+	"text/tabwriter"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"text/tabwriter"
 )
 
 func (r *ClusterResult) String() string {

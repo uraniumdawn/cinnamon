@@ -9,7 +9,7 @@ type Menu struct {
 }
 
 type Pair struct {
-	Key   			string
+	Key   string
 	Value string
 }
 
@@ -99,8 +99,8 @@ func NewMenu() *Menu {
 		Map: &map[string]*[]string{
 			MainPageMenu:           {"up", "dw", "select", "res", "forward", "backward", "opened"},
 			ClustersPageMenu:       {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc"},
-			NodesPageMenu:          {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc", "upd"},
-			TopicsPageMenu:         {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc", "filter", "upd", "rft", "params"},
+			NodesPageMenu:          {"up", "dw", "res", "forward", "backward", "opened", "dsc", "upd"},
+			TopicsPageMenu:         {"up", "dw", "res", "forward", "backward", "opened", "dsc", "filter", "upd"},
 			ConsumingMenu:          {"forward", "backward", "res", "params", "term"},
 			ConsumerGroupsPageMenu: {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc", "filter", "upd"},
 			SubjectsPageMenu:       {"up", "dw", "select", "res", "forward", "backward", "opened", "filter", "upd"},

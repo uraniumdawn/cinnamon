@@ -4,11 +4,12 @@ import (
 	"cinnamon/pkg/client"
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
-	"strconv"
 )
 
 func (app *App) Nodes(statusLineChannel chan string) {

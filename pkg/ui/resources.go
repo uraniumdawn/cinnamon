@@ -2,6 +2,7 @@ package ui
 
 import (
 	"cinnamon/pkg/util"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -29,6 +30,7 @@ func NewResourcesPage(commandCh chan<- string) *ResourcesPage {
 		if event.Key() == tcell.KeyEnter {
 			commandCh <- resource
 		}
+
 		return event
 	})
 

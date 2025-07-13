@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -13,6 +14,7 @@ type MainPage struct {
 	Filter           *tview.InputField
 	Content          *tview.Flex
 	Menu             *Menu
+	F                *tview.InputField
 }
 
 func NewPage() *MainPage {
@@ -57,6 +59,9 @@ func NewPage() *MainPage {
 			SetDirection(tview.FlexRow).
 			AddItem(header, 3, 0, false).
 			AddItem(pages, 0, 20, true),
+		F: tview.NewInputField().
+			SetLabel("Filter:").
+			SetFieldBackgroundColor(tcell.ColorDefault),
 	}
 }
 
