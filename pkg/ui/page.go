@@ -11,62 +11,62 @@ type MainPage struct {
 	Pages            *tview.Pages
 	StatusLine       *tview.TextView
 	selectedResource *tview.TextView
-	Filter           *tview.InputField
+	Search           *tview.InputField
 	Content          *tview.Flex
 	Menu             *Menu
-	F                *tview.InputField
+	Bottom           *tview.Pages
 }
 
 func NewPage() *MainPage {
 
 	pages := tview.NewPages()
-	input := tview.NewInputField().
-		SetLabel("Filter:").
-		SetFieldBackgroundColor(tcell.ColorDefault)
 
-	statusLine := tview.NewTextView()
-	statusLine.SetLabel("Status:")
-	statusLine.SetWrap(true).SetWordWrap(true)
-	statusLine.SetTextAlign(tview.AlignLeft).SetBorder(false)
-	statusLine.SetDynamicColors(true)
+	sl := tview.NewTextView()
+	sl.SetLabel("Status:")
+	sl.SetWrap(true).SetWordWrap(true)
+	sl.SetTextAlign(tview.AlignLeft).SetBorder(false)
+	sl.SetDynamicColors(true)
 
 	selected := tview.NewTextView()
-	selected.SetLabel("Selection:")
+	selected.SetLabel("Cluster:")
 
-	menu := NewMenu()
 	header := tview.NewFlex()
 	header.SetDirection(tview.FlexColumn)
 
 	info := tview.NewFlex()
 	info.SetBorder(false)
-	info.SetDirection(tview.FlexRow)
+	info.SetDirection(tview.FlexColumn)
 	info.AddItem(selected, 0, 1, false)
-	info.AddItem(input, 0, 1, false)
-	info.AddItem(statusLine, 0, 1, false)
+	info.AddItem(sl, 0, 1, false)
 
 	header.
-		AddItem(info, 0, 3, false).
-		AddItem(menu.Flex, 0, 5, false)
-	header.SetBorderPadding(0, 0, 1, 0)
+		AddItem(info, 0, 3, false)
+
+	bottom := tview.NewPages()
+	menu := NewMenu()
+	bottom.AddPage("menu", menu.Flex, true, true)
+	search := tview.NewInputField().
+		SetLabel("Search:").
+		SetFieldBackgroundColor(tcell.ColorDefault)
+	bottom.AddPage("search", search, true, false)
 
 	return &MainPage{
 		Pages:            pages,
-		StatusLine:       statusLine,
+		StatusLine:       sl,
 		selectedResource: selected,
-		Filter:           input,
+		Search:           search,
 		Menu:             menu,
+		Bottom:           bottom,
 		Content: tview.NewFlex().
 			SetDirection(tview.FlexRow).
-			AddItem(header, 3, 0, false).
-			AddItem(pages, 0, 20, true),
-		F: tview.NewInputField().
-			SetLabel("Filter:").
-			SetFieldBackgroundColor(tcell.ColorDefault),
+			AddItem(header, 1, 0, false).
+			AddItem(pages, 0, 1, true).
+			AddItem(bottom, 1, 0, false),
 	}
 }
 
 func (p *MainPage) SetSelected(cluster string, sr string) {
-	p.selectedResource.SetText(fmt.Sprintf("Cluster:[%s] Schema Registry:[%s]", cluster, sr))
+	p.selectedResource.SetText(fmt.Sprintf("[%s]", cluster))
 }
 
 func (p *MainPage) ClearStatus() {

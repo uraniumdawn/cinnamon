@@ -44,7 +44,7 @@ var keys = map[string]Pair{
 	},
 	"filter": {
 		Key:   "[blue]</>",
-		Value: "[grey]Filter",
+		Value: "[grey]Search",
 	},
 	"dsc": {
 		Key:   "[blue]<d>",
@@ -74,6 +74,7 @@ var keys = map[string]Pair{
 
 const (
 	MainPageMenu           = "MainPageMenu"
+	ResourcesPageMenu      = "ResourcesPageMenu"
 	ClustersPageMenu       = "ClustersPageMenu"
 	NodesPageMenu          = "NodesPageMenu"
 	TopicsPageMenu         = "TopicsPageMenu"
@@ -86,18 +87,18 @@ const (
 
 func NewMenu() *Menu {
 	table := tview.NewTable().
-		SetSelectable(false, false).
-		SetBorders(false)
+		SetSelectable(false, false)
 	table.SetBorderPadding(0, 0, 1, 0)
 
 	flex := tview.NewFlex().SetDirection(tview.FlexColumn)
-	flex.AddItem(table, 0, 10, true)
+	flex.AddItem(table, 0, 1, true)
 
 	return &Menu{
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
 			MainPageMenu:           {"up", "dw", "select", "res", "forward", "backward", "opened"},
+			ResourcesPageMenu:      {"up", "dw", "select"},
 			ClustersPageMenu:       {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc"},
 			NodesPageMenu:          {"up", "dw", "res", "forward", "backward", "opened", "dsc", "upd"},
 			TopicsPageMenu:         {"up", "dw", "res", "forward", "backward", "opened", "dsc", "filter", "upd"},
@@ -111,18 +112,17 @@ func NewMenu() *Menu {
 }
 
 func (m *Menu) SetMenu(menu string) {
-	row := 0
 	col := 0
 	m.Content.Clear()
 	if keyBindings, ok := (*m.Map)[menu]; ok {
-		for _, binding := range *keyBindings {
+		for i, binding := range *keyBindings {
 			if value, exists := keys[binding]; exists {
-				m.Content.SetCell(row, col, tview.NewTableCell(value.Key))
-				m.Content.SetCell(row, col+1, tview.NewTableCell(value.Value))
-				row++
-				if row > 3 {
+				m.Content.SetCell(0, col, tview.NewTableCell(value.Key))
+				m.Content.SetCell(0, col+1, tview.NewTableCell(value.Value))
 					col += 2
-					row = 0
+				if i < len(*keyBindings)-1 {
+					m.Content.SetCell(0, col, tview.NewTableCell(","))
+					col++
 				}
 			}
 		}

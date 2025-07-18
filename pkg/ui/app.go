@@ -257,13 +257,15 @@ func (app *App) Init() {
 
 	app.AddAndSwitch(Main, main, MainPageMenu)
 
-	app.Main.Filter.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	app.Main.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
+			app.Main.Bottom.SwitchToPage("menu")
 			app.Application.SetFocus(app.Main.Pages)
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.Main.Filter.SetText("")
+			app.Main.Search.SetText("")
+			app.Main.Bottom.SwitchToPage("menu")
 			app.Application.SetFocus(app.Main.Pages)
 		}
 		return event
@@ -271,12 +273,13 @@ func (app *App) Init() {
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
+			app.Main.Menu.SetMenu(ResourcesPageMenu)
 			app.Main.Pages.SwitchToPage(Resources)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			app.Main.Filter.SetText("")
-			app.SetFocus(app.Main.Filter)
+			app.Main.Bottom.SwitchToPage("search")
+			app.SetFocus(app.Main.Search)
 			app.Main.ClearStatus()
 			return nil
 		}
@@ -285,14 +288,14 @@ func (app *App) Init() {
 			app.Main.Pages.SwitchToPage(Opened)
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Main.Filter.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Main.Search.HasFocus() {
 			if app.Opened.ActivePage > 0 {
 				app.Opened.ActivePage--
 				app.NavigateTo(app.Opened.ActivePage)
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Main.Filter.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Main.Search.HasFocus() {
 			if app.Opened.ActivePage < app.Opened.Table.GetRowCount()-1 {
 				app.Opened.ActivePage++
 				app.NavigateTo(app.Opened.ActivePage)

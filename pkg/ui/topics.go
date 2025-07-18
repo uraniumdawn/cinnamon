@@ -2,8 +2,8 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
-	"cinnamon/pkg/util"
 	"cinnamon/pkg/shell"
+	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"sort"
@@ -40,10 +40,6 @@ func (app *App) Topics(statusLineChannel chan string) {
 						if event.Key() == tcell.KeyCtrlU {
 							app.Topics(statusLineChannel)
 						}
-
-						//if event.Key() == tcell.KeyCtrlT {
-						//	util.TableToCSV("topics.csv", table)
-						//}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
@@ -119,7 +115,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 						return event
 					})
 
-					app.Main.Filter.SetChangedFunc(func(text string) {
+					app.Main.Search.SetChangedFunc(func(text string) {
 						app.FilterTopicsTable(table, topics.Result, text)
 						table.ScrollToBeginning()
 					})

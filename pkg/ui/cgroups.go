@@ -45,7 +45,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 						return event
 					})
 
-					app.Main.Filter.SetChangedFunc(func(text string) {
+					app.Main.Search.SetChangedFunc(func(text string) {
 						app.FilterConsumerGroupsTable(table, groups.Valid, text)
 						table.ScrollToBeginning()
 					})
