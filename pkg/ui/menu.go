@@ -75,6 +75,7 @@ var keys = map[string]Pair{
 const (
 	MainPageMenu           = "MainPageMenu"
 	ResourcesPageMenu      = "ResourcesPageMenu"
+	OpenedPageMenu         = "OpenedPageMenu"
 	ClustersPageMenu       = "ClustersPageMenu"
 	NodesPageMenu          = "NodesPageMenu"
 	TopicsPageMenu         = "TopicsPageMenu"
@@ -97,16 +98,75 @@ func NewMenu() *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			MainPageMenu:           {"up", "dw", "select", "res", "forward", "backward", "opened"},
-			ResourcesPageMenu:      {"up", "dw", "select"},
-			ClustersPageMenu:       {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc"},
-			NodesPageMenu:          {"up", "dw", "res", "forward", "backward", "opened", "dsc", "upd"},
-			TopicsPageMenu:         {"up", "dw", "res", "forward", "backward", "opened", "dsc", "filter", "upd"},
-			ConsumingMenu:          {"forward", "backward", "res", "params", "term"},
-			ConsumerGroupsPageMenu: {"up", "dw", "select", "res", "forward", "backward", "opened", "dsc", "filter", "upd"},
-			SubjectsPageMenu:       {"up", "dw", "select", "res", "forward", "backward", "opened", "filter", "upd"},
-			VersionsPageMenu:       {"up", "dw", "res", "forward", "backward", "opened", "dsc", "upd"},
-			FinalPageMenu:          {"res", "forward", "backward", "opened", "upd"},
+			MainPageMenu:      {"up", "dw", "select", "res", "forward", "backward", "opened"},
+			ResourcesPageMenu: {"up", "dw", "select"},
+			OpenedPageMenu:    {"up", "dw", "select"},
+			ClustersPageMenu: {
+				"up",
+				"dw",
+				"select",
+				"res",
+				"forward",
+				"backward",
+				"opened",
+				"dsc",
+			},
+			NodesPageMenu: {
+				"up",
+				"dw",
+				"res",
+				"forward",
+				"backward",
+				"opened",
+				"dsc",
+				"upd",
+			},
+			TopicsPageMenu: {
+				"up",
+				"dw",
+				"res",
+				"forward",
+				"backward",
+				"opened",
+				"dsc",
+				"filter",
+				"upd",
+			},
+			ConsumingMenu: {"forward", "backward", "res", "params", "term"},
+			ConsumerGroupsPageMenu: {
+				"up",
+				"dw",
+				"select",
+				"res",
+				"forward",
+				"backward",
+				"opened",
+				"dsc",
+				"filter",
+				"upd",
+			},
+			SubjectsPageMenu: {
+				"up",
+				"dw",
+				"select",
+				"res",
+				"forward",
+				"backward",
+				"opened",
+				"filter",
+				"upd",
+			},
+			VersionsPageMenu: {
+				"up",
+				"dw",
+				"res",
+				"forward",
+				"backward",
+				"opened",
+				"dsc",
+				"upd",
+			},
+			FinalPageMenu: {"res", "forward", "backward", "opened", "upd"},
 		},
 	}
 }
@@ -119,7 +179,7 @@ func (m *Menu) SetMenu(menu string) {
 			if value, exists := keys[binding]; exists {
 				m.Content.SetCell(0, col, tview.NewTableCell(value.Key))
 				m.Content.SetCell(0, col+1, tview.NewTableCell(value.Value))
-					col += 2
+				col += 2
 				if i < len(*keyBindings)-1 {
 					m.Content.SetCell(0, col, tview.NewTableCell(","))
 					col++

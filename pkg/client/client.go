@@ -66,7 +66,6 @@ func NewClient(config *config.ClusterConfig) (*Client, error) {
 		_ = conf.SetKey(key, value)
 	}
 	adminClient, err := kafka.NewAdminClient(conf)
-
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create Admin client")
 		return nil, err
@@ -80,7 +79,10 @@ func (client *Client) DescribeCluster(resultChan chan<- *ClusterResult, errorCha
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		clusterDesc, err := client.AdminClient.DescribeCluster(ctx, kafka.SetAdminOptionIncludeAuthorizedOperations(true))
+		clusterDesc, err := client.AdminClient.DescribeCluster(
+			ctx,
+			kafka.SetAdminOptionIncludeAuthorizedOperations(true),
+		)
 		if err != nil {
 			errorChan <- err
 			return
@@ -91,7 +93,11 @@ func (client *Client) DescribeCluster(resultChan chan<- *ClusterResult, errorCha
 	}()
 }
 
-func (client *Client) DescribeNode(brokerId string, resultChan chan<- *ResourceResult, errorChan chan<- error) {
+func (client *Client) DescribeNode(
+	brokerId string,
+	resultChan chan<- *ResourceResult,
+	errorChan chan<- error,
+) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -102,8 +108,13 @@ func (client *Client) DescribeNode(brokerId string, resultChan chan<- *ResourceR
 			return
 		}
 
-		results, err := client.AdminClient.DescribeConfigs(ctx,
-			[]kafka.ConfigResource{{Type: resourceType, Name: brokerId}}, kafka.SetAdminRequestTimeout(timeout))
+		results, err := client.AdminClient.DescribeConfigs(
+			ctx,
+			[]kafka.ConfigResource{
+				{Type: resourceType, Name: brokerId},
+			},
+			kafka.SetAdminRequestTimeout(timeout),
+		)
 		if err != nil {
 			errorChan <- fmt.Errorf("failed to describe configs: %w", err)
 			return
@@ -138,7 +149,10 @@ func (client *Client) Topics(resultChan chan<- *TopicsResult, errorChan chan<- e
 	}()
 }
 
-func (client *Client) ConsumerGroups(resultChan chan<- *ConsumerGroupsResult, errorChan chan<- error) {
+func (client *Client) ConsumerGroups(
+	resultChan chan<- *ConsumerGroupsResult,
+	errorChan chan<- error,
+) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -154,7 +168,11 @@ func (client *Client) ConsumerGroups(resultChan chan<- *ConsumerGroupsResult, er
 	}()
 }
 
-func (client *Client) DescribeConsumerGroup(group string, resultChan chan<- *DescribeConsumerGroupResult, errorChan chan<- error) {
+func (client *Client) DescribeConsumerGroup(
+	group string,
+	resultChan chan<- *DescribeConsumerGroupResult,
+	errorChan chan<- error,
+) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -185,7 +203,12 @@ func (client *Client) DescribeConsumerGroup(group string, resultChan chan<- *Des
 	}()
 }
 
-func (client *Client) LogEndOffsets(tps []TopicPartition, ctx context.Context, errorChan chan<- error, result *DescribeConsumerGroupResult) {
+func (client *Client) LogEndOffsets(
+	tps []TopicPartition,
+	ctx context.Context,
+	errorChan chan<- error,
+	result *DescribeConsumerGroupResult,
+) {
 	endOffsets := make(map[kafka.TopicPartition]kafka.OffsetSpec)
 	for _, tp := range tps {
 		endOffsets[kafka.TopicPartition{
@@ -207,11 +230,19 @@ func (client *Client) LogEndOffsets(tps []TopicPartition, ctx context.Context, e
 	result.SetEndOffsets(r)
 }
 
-func (client *Client) CurrentOffsets(group string, ctx context.Context, errorChan chan<- error, result *DescribeConsumerGroupResult) {
+func (client *Client) CurrentOffsets(
+	group string,
+	ctx context.Context,
+	errorChan chan<- error,
+	result *DescribeConsumerGroupResult,
+) {
 	currentOffsets := kafka.ConsumerGroupTopicPartitions{
 		Group: group,
 	}
-	offsets, err := client.ListConsumerGroupOffsets(ctx, []kafka.ConsumerGroupTopicPartitions{currentOffsets})
+	offsets, err := client.ListConsumerGroupOffsets(
+		ctx,
+		[]kafka.ConsumerGroupTopicPartitions{currentOffsets},
+	)
 	if err != nil {
 		errorChan <- err
 		return
@@ -225,7 +256,10 @@ func (client *Client) CurrentOffsets(group string, ctx context.Context, errorCha
 	result.SetCurrentOffsets(r)
 }
 
-func (r *DescribeConsumerGroupResult) SetLag(current map[TopicPartition]kafka.Offset, end map[TopicPartition]kafka.Offset) {
+func (r *DescribeConsumerGroupResult) SetLag(
+	current map[TopicPartition]kafka.Offset,
+	end map[TopicPartition]kafka.Offset,
+) {
 	consumerLag := make(map[TopicPartition]kafka.Offset)
 	for tp, offsets := range current {
 		if endOffset, ok := end[tp]; ok {
@@ -271,14 +305,22 @@ func (r *TopicResult) SetTopicACLsResult(o kafka.DescribeACLsResult) {
 	r.DescribeACLsResult = o
 }
 
-func (client *Client) DescribeTopic(name string, resultChan chan<- *TopicResult, errorChan chan<- error) {
+func (client *Client) DescribeTopic(
+	name string,
+	resultChan chan<- *TopicResult,
+	errorChan chan<- error,
+) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
 		topicResult := &TopicResult{}
 		topics := kafka.NewTopicCollectionOfTopicNames(append([]string{}, name))
-		desc, err := client.AdminClient.DescribeTopics(ctx, topics, kafka.SetAdminOptionIncludeAuthorizedOperations(true))
+		desc, err := client.AdminClient.DescribeTopics(
+			ctx,
+			topics,
+			kafka.SetAdminOptionIncludeAuthorizedOperations(true),
+		)
 		if err != nil {
 			errorChan <- err
 			return
@@ -328,7 +370,6 @@ func (client *Client) DescribeTopic(name string, resultChan chan<- *TopicResult,
 			r := make(map[int32]kafka.Offset)
 			for tp, info := range result.ResultInfos {
 				r[tp.Partition] = info.Offset
-
 			}
 			return r
 		}
@@ -370,8 +411,13 @@ func (client *Client) DescribeTopicConfig(name string) (*[]kafka.ConfigResourceR
 		return nil, fmt.Errorf("failed to parse resource type: %w", err)
 	}
 
-	results, err := client.AdminClient.DescribeConfigs(ctx,
-		[]kafka.ConfigResource{{Type: resourceType, Name: name}}, kafka.SetAdminRequestTimeout(timeout))
+	results, err := client.AdminClient.DescribeConfigs(
+		ctx,
+		[]kafka.ConfigResource{
+			{Type: resourceType, Name: name},
+		},
+		kafka.SetAdminRequestTimeout(timeout),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe configs: %w", err)
 	}

@@ -39,9 +39,12 @@ func (app *App) Subjects(statusLineChannel chan string) {
 							row, _ := table.GetSelection()
 							subject := table.GetCell(row, 0).Text
 
-							app.Check(fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name), func() {
-								app.Versions(subject)
-							})
+							app.Check(
+								fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name),
+								func() {
+									app.Versions(subject)
+								},
+							)
 						}
 
 						return event
@@ -86,7 +89,11 @@ func (app *App) Versions(subject string) {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewVersionsTable(subject, versions)
-					app.AddAndSwitch(fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name), table, VersionsPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name),
+						table,
+						VersionsPageMenu,
+					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							app.Versions(subject)
@@ -97,9 +104,17 @@ func (app *App) Versions(subject string) {
 							version := table.GetCell(row, 0).Text
 							v, _ := strconv.Atoi(version)
 
-							app.Check(fmt.Sprintf("%s:%s:version:%s", app.Selected.SchemaRegistry.Name, subject, version), func() {
-								app.Schema(subject, v)
-							})
+							app.Check(
+								fmt.Sprintf(
+									"%s:%s:version:%s",
+									app.Selected.SchemaRegistry.Name,
+									subject,
+									version,
+								),
+								func() {
+									app.Schema(subject, v)
+								},
+							)
 						}
 
 						return event
@@ -137,7 +152,9 @@ func (app *App) Schema(subject string, version int) {
 			select {
 			case result := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" Subject: %s, Version: %d", subject, version))
+					desc := app.NewDescription(
+						fmt.Sprintf(" Subject: %s, Version: %d", subject, version),
+					)
 					var pretty bytes.Buffer
 					err := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
 					if err != nil {
@@ -145,7 +162,16 @@ func (app *App) Schema(subject string, version int) {
 						return
 					}
 					desc.SetText(pretty.String())
-					app.AddAndSwitch(fmt.Sprintf("%s:%s:version:%d", app.Selected.SchemaRegistry.Name, subject, version), desc, FinalPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf(
+							"%s:%s:version:%d",
+							app.Selected.SchemaRegistry.Name,
+							subject,
+							version,
+						),
+						desc,
+						FinalPageMenu,
+					)
 					app.Main.ClearStatus()
 				})
 				cancel()
@@ -169,7 +195,9 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf(" Subjects [%s] [%d]", app.Selected.SchemaRegistry.Name, len(subjects)))
+	table.SetTitle(
+		fmt.Sprintf(" Subjects [%s] [%d]", app.Selected.SchemaRegistry.Name, len(subjects)),
+	)
 
 	for i, subject := range subjects {
 		table.SetCell(i, 0, tview.NewTableCell(subject))

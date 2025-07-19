@@ -4,12 +4,13 @@ import (
 	"cinnamon/pkg/config"
 	"encoding/binary"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/goccy/go-json"
 	"github.com/riferrei/srclient"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
 type Consumer struct {
@@ -79,26 +80,37 @@ func (r *Record) ToJSON() string {
 	return string(marshal)
 }
 
-func NewConsumer(clusterConfig *config.ClusterConfig, registryConfig *config.SchemaRegistryConfig) (*Consumer, error) {
+func NewConsumer(
+	clusterConfig *config.ClusterConfig,
+	registryConfig *config.SchemaRegistryConfig,
+) (*Consumer, error) {
 	conf := &kafka.ConfigMap{}
 	for key, value := range clusterConfig.Properties {
 		_ = conf.SetKey(key, value)
 	}
 	consumer, err := kafka.NewConsumer(conf)
-
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create consumer")
 		return nil, err
 	}
 
 	client := srclient.NewSchemaRegistryClient(registryConfig.SchemaRegistryUrl)
-	client.SetCredentials(registryConfig.SchemaRegistryUsername, registryConfig.SchemaRegistryPassword)
+	client.SetCredentials(
+		registryConfig.SchemaRegistryUsername,
+		registryConfig.SchemaRegistryPassword,
+	)
 	client.CachingEnabled(true)
 
 	return &Consumer{consumer, client}, nil
 }
 
-func (c *Consumer) Consume(params *Parameters, topic string, resultCh chan Record, statusLineCh chan<- string, sigCh chan int) {
+func (c *Consumer) Consume(
+	params *Parameters,
+	topic string,
+	resultCh chan Record,
+	statusLineCh chan<- string,
+	sigCh chan int,
+) {
 	err := c.AssignPartitions(params, topic)
 	if err != nil {
 		log.Error().Err(err).Msg(err.Error())
@@ -182,7 +194,11 @@ func (c *Consumer) AssignPartitions(params *Parameters, topic string) error {
 	var topicPartitions []kafka.TopicPartition
 	if params.GetLastNRecords() > 0 {
 		for _, partition := range topicMetadata.Partitions {
-			low, high, err := c.KafkaConsumer.QueryWatermarkOffsets(topic, partition.ID, int(timeout.Milliseconds()))
+			low, high, err := c.KafkaConsumer.QueryWatermarkOffsets(
+				topic,
+				partition.ID,
+				int(timeout.Milliseconds()),
+			)
 			if err != nil {
 				return fmt.Errorf("error querying partition %d: %v", partition.ID, err)
 			}

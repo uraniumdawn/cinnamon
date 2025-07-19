@@ -21,7 +21,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 	statusLineChannel <- "Getting topics..."
 	resultCh := make(chan *client.TopicsResult)
 	errorCh := make(chan error)
-	//paramsCh := make(chan Parameters, 1)
+	// paramsCh := make(chan Parameters, 1)
 
 	c := app.getCurrentKafkaClient()
 	c.Topics(resultCh, errorCh)
@@ -33,7 +33,11 @@ func (app *App) Topics(statusLineChannel chan string) {
 			case topics := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewTopicsTable(topics)
-					app.AddAndSwitch(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics), table, TopicsPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
+						table,
+						TopicsPageMenu,
+					)
 
 					app.InitConsumingParams()
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -44,9 +48,17 @@ func (app *App) Topics(statusLineChannel chan string) {
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
-							app.Check(fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, topicName), func() {
-								app.Topic(topicName)
-							})
+							app.Check(
+								fmt.Sprintf(
+									"%s:%s:%s",
+									app.Selected.Cluster.Name,
+									Topic,
+									topicName,
+								),
+								func() {
+									app.Topic(topicName)
+								},
+							)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
@@ -63,7 +75,10 @@ func (app *App) Topics(statusLineChannel chan string) {
 							// consumer, _ := NewConsumer(app.Selected.Cluster, app.Selected.SchemaRegistry)
 							// go consumer.Consume(ConsumingParameters, topicName, rc, statusLineChannel, sig)
 
-							args, err := util.ParseShellCommand(app.Selected.Cluster.Command, topicName)
+							args, err := util.ParseShellCommand(
+								app.Selected.Cluster.Command,
+								topicName,
+							)
 							if err != nil {
 								log.Error().Msg("Failed to parse command")
 								statusLineChannel <- "[red]Failed to parse command: " + err.Error()
@@ -92,7 +107,16 @@ func (app *App) Topics(statusLineChannel chan string) {
 								return event
 							})
 
-							app.AddAndSwitch(fmt.Sprintf("%s:%s:%s:consume", app.Selected.Cluster.Name, Topic, topicName), view, ConsumingMenu)
+							app.AddAndSwitch(
+								fmt.Sprintf(
+									"%s:%s:%s:consume",
+									app.Selected.Cluster.Name,
+									Topic,
+									topicName,
+								),
+								view,
+								ConsumingMenu,
+							)
 							run := true
 							go func() {
 								defer func() {
@@ -160,7 +184,11 @@ func (app *App) Topic(name string) {
 						}
 						return event
 					})
-					app.AddAndSwitch(fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, name), desc, FinalPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, name),
+						desc,
+						FinalPageMenu,
+					)
 					app.Main.ClearStatus()
 				})
 				cancel()
@@ -215,7 +243,11 @@ func populateTable(table *tview.Table, row int, t string, partitions int, replic
 	table.SetCell(row, 2, tview.NewTableCell("R: "+strconv.Itoa(replicas)))
 }
 
-func (app *App) FilterTopicsTable(table *tview.Table, metadata map[string]*kafka.TopicMetadata, filter string) {
+func (app *App) FilterTopicsTable(
+	table *tview.Table,
+	metadata map[string]*kafka.TopicMetadata,
+	filter string,
+) {
 	table.Clear()
 
 	var topics []string

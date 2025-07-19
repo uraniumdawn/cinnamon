@@ -34,15 +34,22 @@ func (app *App) Nodes(statusLineChannel chan string) {
 							nodeId := table.GetCell(row, 0).Text
 							url := table.GetCell(row, 1).Text
 
-							app.Check(fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, nodeId), func() {
-								app.Node(nodeId, url)
-							})
+							app.Check(
+								fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, nodeId),
+								func() {
+									app.Node(nodeId, url)
+								},
+							)
 						}
 
 						return event
 					})
 
-					app.AddAndSwitch(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes), table, NodesPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
+						table,
+						NodesPageMenu,
+					)
 					app.Main.ClearStatus()
 				})
 				cancel()
@@ -77,7 +84,11 @@ func (app *App) Node(id string, url string) {
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(fmt.Sprintf(" ID: %s URL: %s ", id, url))
 					desc.SetText(description.String())
-					app.AddAndSwitch(fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, id), desc, FinalPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, id),
+						desc,
+						FinalPageMenu,
+					)
 					app.Main.ClearStatus()
 				})
 				cancel()

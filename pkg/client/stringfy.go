@@ -43,11 +43,18 @@ func (r *ResourceResult) String() string {
 
 		sorted.Each(func(key, value any) {
 			e := value.(kafka.ConfigEntryResult)
-			_, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\n", e.Name, e.Value, e.Source, e.IsReadOnly, e.IsReadOnly)
+			_, err := fmt.Fprintf(
+				w,
+				"%s\t%s\t%s\t%v\t%v\n",
+				e.Name,
+				e.Value,
+				e.Source,
+				e.IsReadOnly,
+				e.IsReadOnly,
+			)
 			if err != nil {
 				log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
 			}
-
 		})
 
 		err = w.Flush()
@@ -99,11 +106,18 @@ func (r *TopicResult) String() string {
 
 		sorted.Each(func(key, value any) {
 			e := value.(kafka.ConfigEntryResult)
-			_, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\n", e.Name, e.Value, e.Source, e.IsReadOnly, e.IsReadOnly)
+			_, err := fmt.Fprintf(
+				w,
+				"%s\t%s\t%s\t%v\t%v\n",
+				e.Name,
+				e.Value,
+				e.Source,
+				e.IsReadOnly,
+				e.IsReadOnly,
+			)
 			if err != nil {
 				log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
 			}
-
 		})
 
 		err = w.Flush()
@@ -132,7 +146,10 @@ func (r *DescribeConsumerGroupResult) String() string {
 	}
 
 	w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
-	_, err := fmt.Fprintln(w, "Topic\tPartition\tCurrent-Offset\tLog-End-Offset\tLag\tConsumer-ID\tHost")
+	_, err := fmt.Fprintln(
+		w,
+		"Topic\tPartition\tCurrent-Offset\tLog-End-Offset\tLag\tConsumer-ID\tHost",
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
 	}
@@ -165,7 +182,17 @@ func (r *DescribeConsumerGroupResult) String() string {
 			consumerId = member.ConsumerID
 			host = member.Host
 		}
-		_, err := fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\t%s\t%s\n", tp.Topic, tp.Partition, offsets, r.logEndOffsets[tp], r.lag[tp], consumerId, host)
+		_, err := fmt.Fprintf(
+			w,
+			"%s\t%d\t%d\t%d\t%d\t%s\t%s\n",
+			tp.Topic,
+			tp.Partition,
+			offsets,
+			r.logEndOffsets[tp],
+			r.lag[tp],
+			consumerId,
+			host,
+		)
 		if err != nil {
 			log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
 			return

@@ -31,15 +31,9 @@ func (app *App) NewOpenedPages() *OpenedPages {
 		return event
 	})
 
-	t := tview.NewTable()
-	t.SetCell(0, 0, tview.NewTableCell("[blue]<j, ↓> [grey]Down"))
-	t.SetCell(0, 1, tview.NewTableCell("[blue]<k, ↑> [grey]Up"))
-	t.SetCell(0, 2, tview.NewTableCell("[blue]<Enter> [grey]Select"))
-
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(table, 0, 1, true).
-		AddItem(t, 1, 0, false)
+		AddItem(table, 0, 1, true)
 	flex.SetTitle(" Pages ")
 	flex.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)

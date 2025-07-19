@@ -105,11 +105,11 @@ func initLogger() {
 
 	logFilePath := filepath.Join(os.Getenv("HOME"), ".cinnamon", "cinnamon.log")
 	logDir := filepath.Dir(logFilePath)
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		fmt.Printf("failed to create log directory, %s\n", err.Error())
 	}
 
-	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 	if err != nil {
 		fmt.Printf("failed to open log file, %s\n", err.Error())
 		os.Exit(1)
@@ -120,8 +120,10 @@ func initLogger() {
 	log.Logger = log.Output(file)
 }
 
-var statusLineChannel = make(chan string, 10)
-var commandChannel = make(chan string)
+var (
+	statusLineChannel = make(chan string, 10)
+	commandChannel    = make(chan string)
+)
 
 func (app *App) CommandHandler(ctx context.Context, in chan string) {
 	go func() {
@@ -151,9 +153,12 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
 						continue
 					}
-					app.Check(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups), func() {
-						app.ConsumerGroups(statusLineChannel)
-					})
+					app.Check(
+						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
+						func() {
+							app.ConsumerGroups(statusLineChannel)
+						},
+					)
 				case "nds", Nodes:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
@@ -285,6 +290,7 @@ func (app *App) Init() {
 		}
 
 		if event.Key() == tcell.KeyCtrlP {
+			app.Main.Menu.SetMenu(ResourcesPageMenu)
 			app.Main.Pages.SwitchToPage(Opened)
 		}
 

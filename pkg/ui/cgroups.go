@@ -28,7 +28,11 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 			case groups := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewGroupsTable(groups)
-					app.AddAndSwitch(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups), table, ConsumerGroupsPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
+						table,
+						ConsumerGroupsPageMenu,
+					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							app.ConsumerGroups(statusLineChannel)
@@ -38,9 +42,17 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 							row, _ := table.GetSelection()
 							groupName := table.GetCell(row, 0).Text
 
-							app.Check(fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, ConsumerGroup, groupName), func() {
-								app.ConsumerGroup(groupName)
-							})
+							app.Check(
+								fmt.Sprintf(
+									"%s:%s:%s",
+									app.Selected.Cluster.Name,
+									ConsumerGroup,
+									groupName,
+								),
+								func() {
+									app.ConsumerGroup(groupName)
+								},
+							)
 						}
 						return event
 					})
@@ -90,7 +102,11 @@ func (app *App) ConsumerGroup(name string) {
 						}
 						return event
 					})
-					app.AddAndSwitch(fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, ConsumerGroup, name), desc, FinalPageMenu)
+					app.AddAndSwitch(
+						fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, ConsumerGroup, name),
+						desc,
+						FinalPageMenu,
+					)
 					app.Main.ClearStatus()
 				})
 				cancel()
@@ -111,7 +127,9 @@ func (app *App) ConsumerGroup(name string) {
 
 func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(fmt.Sprintf(" Consumer groups [%s] [%d]", app.Selected.Cluster.Name, len(groups.Valid)))
+	table.SetTitle(
+		fmt.Sprintf(" Consumer groups [%s] [%d]", app.Selected.Cluster.Name, len(groups.Valid)),
+	)
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -123,7 +141,11 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 	return table
 }
 
-func (app *App) FilterConsumerGroupsTable(table *tview.Table, groupListing []kafka.ConsumerGroupListing, filter string) {
+func (app *App) FilterConsumerGroupsTable(
+	table *tview.Table,
+	groupListing []kafka.ConsumerGroupListing,
+	filter string,
+) {
 	table.Clear()
 
 	var groups []string
@@ -139,7 +161,11 @@ func (app *App) FilterConsumerGroupsTable(table *tview.Table, groupListing []kaf
 	row := 1
 	for _, rank := range ranks {
 		table.SetCell(row, 0, tview.NewTableCell(rank.Target))
-		table.SetCell(row, 1, tview.NewTableCell("STATE: "+groupListing[rank.OriginalIndex].State.String()))
+		table.SetCell(
+			row,
+			1,
+			tview.NewTableCell("STATE: "+groupListing[rank.OriginalIndex].State.String()),
+		)
 		row++
 	}
 }

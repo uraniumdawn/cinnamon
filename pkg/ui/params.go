@@ -93,7 +93,11 @@ func (app *App) InitConsumingParams() {
 		SetFieldBackgroundColor(tcell.ColorDefault)
 
 	selection := tview.NewTable()
-	selection.SetCell(0, 0, tview.NewTableCell("Consume latest records:").SetAlign(tview.AlignRight))
+	selection.SetCell(
+		0,
+		0,
+		tview.NewTableCell("Consume latest records:").SetAlign(tview.AlignRight),
+	)
 	selection.SetCell(1, 0, tview.NewTableCell("Timestamp:").SetAlign(tview.AlignRight))
 	selection.SetCell(2, 0, tview.NewTableCell("Offset:").SetAlign(tview.AlignRight))
 	selection.SetCell(3, 0, tview.NewTableCell("Partition:").SetAlign(tview.AlignRight))

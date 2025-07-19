@@ -22,7 +22,6 @@ func NewSchemaRegistryClient(config *config.SchemaRegistryConfig) (*Client, erro
 		config.SchemaRegistryUrl,
 		config.SchemaRegistryUsername,
 		config.SchemaRegistryPassword))
-
 	if err != nil {
 		fmt.Printf("Failed to create schema registry client: %s\n", err)
 		return nil, err
@@ -53,7 +52,11 @@ func (client *Client) Subjects(resultChan chan<- []string, errorChan chan<- erro
 	}()
 }
 
-func (client *Client) VersionsBySubject(subject string, resultChan chan<- []int, errorChan chan<- error) {
+func (client *Client) VersionsBySubject(
+	subject string,
+	resultChan chan<- []int,
+	errorChan chan<- error,
+) {
 	go func() {
 		versions, err := client.GetAllVersions(subject)
 		if err != nil {
@@ -65,7 +68,12 @@ func (client *Client) VersionsBySubject(subject string, resultChan chan<- []int,
 	}()
 }
 
-func (client *Client) Schema(subject string, version int, resultChan chan<- SchemaResult, errorChan chan<- error) {
+func (client *Client) Schema(
+	subject string,
+	version int,
+	resultChan chan<- SchemaResult,
+	errorChan chan<- error,
+) {
 	go func() {
 		metadata, err := client.GetSchemaMetadata(subject, version)
 		if err != nil {

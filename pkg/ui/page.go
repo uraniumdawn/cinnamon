@@ -18,7 +18,6 @@ type MainPage struct {
 }
 
 func NewPage() *MainPage {
-
 	pages := tview.NewPages()
 
 	sl := tview.NewTextView()
