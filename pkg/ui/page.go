@@ -7,18 +7,19 @@ import (
 	"github.com/rivo/tview"
 )
 
-type MainPage struct {
-	Pages            *tview.Pages
-	StatusLine       *tview.TextView
-	selectedResource *tview.TextView
-	Search           *tview.InputField
-	Content          *tview.Flex
-	Menu             *Menu
-	Bottom           *tview.Pages
+type Layout struct {
+	// Pages      *tview.Pages
+	PagesRegistry *PagesRegistry
+	StatusLine    *tview.TextView
+	Cluster       *tview.TextView
+	Search        *tview.InputField
+	Content       *tview.Flex
+	Menu          *Menu
+	Bottom        *tview.Pages
 }
 
-func NewPage() *MainPage {
-	pages := tview.NewPages()
+func NewLayout() *Layout {
+	registry := NewPagesRegistry()
 
 	sl := tview.NewTextView()
 	sl.SetLabel("Status:")
@@ -26,8 +27,8 @@ func NewPage() *MainPage {
 	sl.SetTextAlign(tview.AlignLeft).SetBorder(false)
 	sl.SetDynamicColors(true)
 
-	selected := tview.NewTextView()
-	selected.SetLabel("Cluster:")
+	cluster := tview.NewTextView()
+	cluster.SetLabel("Cluster:")
 
 	header := tview.NewFlex()
 	header.SetDirection(tview.FlexColumn)
@@ -35,7 +36,7 @@ func NewPage() *MainPage {
 	info := tview.NewFlex()
 	info.SetBorder(false)
 	info.SetDirection(tview.FlexColumn)
-	info.AddItem(selected, 0, 1, false)
+	info.AddItem(cluster, 0, 1, false)
 	info.AddItem(sl, 0, 1, false)
 
 	header.
@@ -49,25 +50,25 @@ func NewPage() *MainPage {
 		SetFieldBackgroundColor(tcell.ColorDefault)
 	bottom.AddPage("search", search, true, false)
 
-	return &MainPage{
-		Pages:            pages,
-		StatusLine:       sl,
-		selectedResource: selected,
-		Search:           search,
-		Menu:             menu,
-		Bottom:           bottom,
+	return &Layout{
+		PagesRegistry: registry,
+		StatusLine:    sl,
+		Cluster:       cluster,
+		Search:        search,
+		Menu:          menu,
+		Bottom:        bottom,
 		Content: tview.NewFlex().
 			SetDirection(tview.FlexRow).
 			AddItem(header, 1, 0, false).
-			AddItem(pages, 0, 1, true).
+			AddItem(registry.Pages, 0, 1, true).
 			AddItem(bottom, 1, 0, false),
 	}
 }
 
-func (p *MainPage) SetSelected(cluster string, sr string) {
-	p.selectedResource.SetText(fmt.Sprintf("[%s]", cluster))
+func (p *Layout) SetSelected(cluster string, sr string) {
+	p.Cluster.SetText(fmt.Sprintf("[%s]", cluster))
 }
 
-func (p *MainPage) ClearStatus() {
+func (p *Layout) ClearStatus() {
 	p.StatusLine.Clear()
 }

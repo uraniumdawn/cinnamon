@@ -32,29 +32,25 @@ const (
 	ConsumerGroups   = "Consumer-groups"
 	ConsumerGroup    = "Consumer-group"
 	Subjects         = "Subjects"
-	Opened           = "Opened"
+	Pages            = "Pages"
 	ConsumingParams  = "Consuming Parameters"
 )
 
 type App struct {
 	*tview.Application
-	Main                  *MainPage
+	Layout                *Layout
 	Cache                 *cache.Cache
 	Clusters              map[string]*config.ClusterConfig
 	SchemaRegistries      map[string]*config.SchemaRegistryConfig
 	KafkaClients          map[string]*client.Client
 	SchemaRegistryClients map[string]*schemaregistry.Client
 	Selected              Selected
-	Opened                *OpenedPages
+	// Registry              *PagesRegistry
 }
 
 type Selected struct {
 	Cluster        *config.ClusterConfig
 	SchemaRegistry *config.SchemaRegistryConfig
-}
-
-type KeySeries struct {
-	Series map[int]string
 }
 
 func toClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
@@ -91,7 +87,7 @@ func NewApp() *App {
 	}
 	return &App{
 		Application:           tview.NewApplication(),
-		Main:                  NewPage(),
+		Layout:                NewLayout(),
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
 		Clusters:              toClustersMap(cfg),
 		SchemaRegistries:      toSchemaRegistryMap(cfg),
@@ -135,11 +131,11 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 			case command := <-in:
 				switch command {
 				case Main:
-					app.Main.Pages.SwitchToPage(Main)
+					app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
 				case Clusters:
-					app.Main.Pages.SwitchToPage(Clusters)
+					app.Layout.PagesRegistry.Pages.SwitchToPage(Clusters)
 				case SchemaRegistries:
-					app.Main.Pages.SwitchToPage(SchemaRegistries)
+					app.Layout.PagesRegistry.Pages.SwitchToPage(SchemaRegistries)
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
@@ -196,7 +192,7 @@ func (app *App) StatusLineHandler(ctx context.Context, in chan string) {
 				return
 			case status := <-in:
 				app.QueueUpdateDraw(func() {
-					app.Main.StatusLine.SetText(status)
+					app.Layout.StatusLine.SetText(status)
 				})
 			}
 		}
@@ -208,7 +204,7 @@ func (app *App) Init() {
 	app.CommandHandler(ctx, commandChannel)
 	app.StatusLineHandler(ctx, statusLineChannel)
 
-	app.Opened = app.NewOpenedPages()
+	app.Layout = NewLayout()
 
 	ct := app.NewClustersTable()
 	st := app.NewSchemaRegistriesTable()
@@ -249,69 +245,74 @@ func (app *App) Init() {
 		if event.Key() == tcell.KeyEnter {
 			app.SelectCluster(cluster)
 			app.SelectSchemaRegistry(schemaRegistry)
-			app.Main.SetSelected(app.Selected.Cluster.Name, app.Selected.SchemaRegistry.Name)
-			app.Main.ClearStatus()
+			app.Layout.SetSelected(app.Selected.Cluster.Name, app.Selected.SchemaRegistry.Name)
+			app.Layout.ClearStatus()
 		}
 		return event
 	})
 
-	app.Main.Pages.AddPage(Resources, NewResourcesPage(commandChannel).Modal, true, true)
-	app.Main.Pages.AddPage(Opened, app.Opened.Modal, true, true)
-	app.Main.Pages.AddPage(Clusters, ct, true, true)
-	app.Main.Pages.AddPage(SchemaRegistries, st, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(
+		Resources,
+		NewResourcesPage(commandChannel).Modal,
+		true,
+		true,
+	)
+	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, true)
 
 	app.AddAndSwitch(Main, main, MainPageMenu)
 
-	app.Main.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
-			app.Main.Bottom.SwitchToPage("menu")
-			app.Application.SetFocus(app.Main.Pages)
+			app.Layout.Bottom.SwitchToPage("menu")
+			app.Application.SetFocus(app.Layout.PagesRegistry.Pages)
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.Main.Search.SetText("")
-			app.Main.Bottom.SwitchToPage("menu")
-			app.Application.SetFocus(app.Main.Pages)
+			app.Layout.Search.SetText("")
+			app.Layout.Bottom.SwitchToPage("menu")
+			app.Application.SetFocus(app.Layout.PagesRegistry.Pages)
 		}
 		return event
 	})
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
-			app.Main.Menu.SetMenu(ResourcesPageMenu)
-			app.Main.Pages.SwitchToPage(Resources)
+			app.Layout.Menu.SetMenu(ResourcesPageMenu)
+			app.Layout.PagesRegistry.Pages.SwitchToPage(Resources)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			app.Main.Bottom.SwitchToPage("search")
-			app.SetFocus(app.Main.Search)
-			app.Main.ClearStatus()
+			app.Layout.Bottom.SwitchToPage("search")
+			app.SetFocus(app.Layout.Search)
+			app.Layout.ClearStatus()
 			return nil
 		}
 
 		if event.Key() == tcell.KeyCtrlP {
-			app.Main.Menu.SetMenu(ResourcesPageMenu)
-			app.Main.Pages.SwitchToPage(Opened)
+			app.Layout.Menu.SetMenu(ResourcesPageMenu)
+			app.Layout.PagesRegistry.Pages.SwitchToPage(Pages)
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Main.Search.HasFocus() {
-			if app.Opened.ActivePage > 0 {
-				app.Opened.ActivePage--
-				app.NavigateTo(app.Opened.ActivePage)
+		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {
+			if app.Layout.PagesRegistry.ActivePage > 0 {
+				app.Layout.PagesRegistry.ActivePage--
+				app.NavigateTo(app.Layout.PagesRegistry.ActivePage)
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Main.Search.HasFocus() {
-			if app.Opened.ActivePage < app.Opened.Table.GetRowCount()-1 {
-				app.Opened.ActivePage++
-				app.NavigateTo(app.Opened.ActivePage)
+		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Layout.Search.HasFocus() {
+			if app.Layout.PagesRegistry.ActivePage < app.Layout.PagesRegistry.Table.GetRowCount()-1 {
+				app.Layout.PagesRegistry.ActivePage++
+				app.NavigateTo(app.Layout.PagesRegistry.ActivePage)
 			}
 		}
 
 		return event
 	})
 
-	err := app.SetRoot(app.Main.Content, true).Run()
+	err := app.SetRoot(app.Layout.Content, true).Run()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed Application execution")
 	}
@@ -327,7 +328,7 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 
 		if event.Key() == tcell.KeyEnter {
 			app.SelectCluster(cluster)
-			app.Main.ClearStatus()
+			app.Layout.ClearStatus()
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
@@ -384,7 +385,7 @@ func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
 
 		if event.Key() == tcell.KeyEnter {
 			app.SelectSchemaRegistry(sr)
-			app.Main.ClearStatus()
+			app.Layout.ClearStatus()
 		}
 
 		return event
@@ -407,7 +408,7 @@ func (app *App) Cluster() {
 					desc.SetText(description.String())
 
 					app.AddAndSwitch(Cluster, desc, ClustersPageMenu)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return

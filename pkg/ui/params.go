@@ -179,7 +179,7 @@ func (app *App) InitConsumingParams() {
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.Main.Pages.HidePage(ConsumingParams)
+			app.Layout.PagesRegistry.Pages.HidePage(ConsumingParams)
 		}
 
 		return event
@@ -201,5 +201,5 @@ func (app *App) InitConsumingParams() {
 	flex.SetBorder(true)
 
 	modal := util.NewModal(flex)
-	app.Main.Pages.AddPage(ConsumingParams, modal, true, false)
+	app.Layout.PagesRegistry.Pages.AddPage(ConsumingParams, modal, true, false)
 }

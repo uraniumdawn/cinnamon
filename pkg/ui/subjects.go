@@ -50,13 +50,13 @@ func (app *App) Subjects(statusLineChannel chan string) {
 						return event
 					})
 
-					app.Main.Search.SetChangedFunc(func(text string) {
+					app.Layout.Search.SetChangedFunc(func(text string) {
 						app.FilterSubjectsTable(table, subjects, text)
 						table.ScrollToBeginning()
 					})
 
 					app.AddAndSwitch(Subjects, table, SubjectsPageMenu)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return
@@ -120,7 +120,7 @@ func (app *App) Versions(subject string) {
 						return event
 					})
 
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return
@@ -172,7 +172,7 @@ func (app *App) Schema(subject string, version int) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return

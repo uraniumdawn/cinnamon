@@ -62,7 +62,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
-							app.Main.Pages.ShowPage(ConsumingParams)
+							app.Layout.PagesRegistry.Pages.ShowPage(ConsumingParams)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {
@@ -139,12 +139,12 @@ func (app *App) Topics(statusLineChannel chan string) {
 						return event
 					})
 
-					app.Main.Search.SetChangedFunc(func(text string) {
+					app.Layout.Search.SetChangedFunc(func(text string) {
 						app.FilterTopicsTable(table, topics.Result, text)
 						table.ScrollToBeginning()
 					})
 
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return
@@ -189,7 +189,7 @@ func (app *App) Topic(name string) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return

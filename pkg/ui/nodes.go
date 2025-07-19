@@ -50,7 +50,7 @@ func (app *App) Nodes(statusLineChannel chan string) {
 						table,
 						NodesPageMenu,
 					)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return
@@ -89,7 +89,7 @@ func (app *App) Node(id string, url string) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return

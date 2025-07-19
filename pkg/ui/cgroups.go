@@ -57,12 +57,12 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 						return event
 					})
 
-					app.Main.Search.SetChangedFunc(func(text string) {
+					app.Layout.Search.SetChangedFunc(func(text string) {
 						app.FilterConsumerGroupsTable(table, groups.Valid, text)
 						table.ScrollToBeginning()
 					})
 
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return
@@ -107,7 +107,7 @@ func (app *App) ConsumerGroup(name string) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Main.ClearStatus()
+					app.Layout.ClearStatus()
 				})
 				cancel()
 				return
