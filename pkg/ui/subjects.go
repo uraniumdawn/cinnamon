@@ -55,7 +55,7 @@ func (app *App) Subjects(statusLineChannel chan string) {
 						table.ScrollToBeginning()
 					})
 
-					app.AddAndSwitch(Subjects, table, SubjectsPageMenu)
+					app.AddToPageRegistry(Subjects, table, SubjectsPageMenu)
 					app.Layout.ClearStatus()
 				})
 				cancel()
@@ -89,7 +89,7 @@ func (app *App) Versions(subject string) {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewVersionsTable(subject, versions)
-					app.AddAndSwitch(
+					app.AddToPageRegistry(
 						fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name),
 						table,
 						VersionsPageMenu,
@@ -162,7 +162,7 @@ func (app *App) Schema(subject string, version int) {
 						return
 					}
 					desc.SetText(pretty.String())
-					app.AddAndSwitch(
+					app.AddToPageRegistry(
 						fmt.Sprintf(
 							"%s:%s:version:%d",
 							app.Selected.SchemaRegistry.Name,

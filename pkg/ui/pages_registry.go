@@ -68,7 +68,11 @@ func (app *App) Check(name string, onAbsent func()) {
 	}
 }
 
-func (app *App) AddAndSwitch(name string, component tview.Primitive, menu string) *tview.Pages {
+func (app *App) AddToPageRegistry(
+	name string,
+	component tview.Primitive,
+	menu string,
+) *tview.Pages {
 	registry := app.Layout.PagesRegistry
 
 	for _, p := range registry.PageList {
