@@ -18,7 +18,7 @@ type PagesRegistry struct {
 	Pages        *tview.Pages
 	Table        *tview.Table
 	Modal        tview.Primitive
-	PageMap      map[string]*Page
+	PageMenuMap  map[string]string
 	History      []string
 	HistoryIndex int
 }
@@ -40,7 +40,7 @@ func NewPagesRegistry() *PagesRegistry {
 		Pages:        pages,
 		Table:        table,
 		Modal:        util.NewModal(flex),
-		PageMap:      make(map[string]*Page),
+		PageMenuMap:  make(map[string]string),
 		HistoryIndex: -1,
 	}
 
@@ -75,13 +75,13 @@ func (app *App) AddToPagesRegistry(
 ) *tview.Pages {
 	registry := app.Layout.PagesRegistry
 
-	if _, exists := registry.PageMap[name]; exists {
+	if _, exists := registry.PageMenuMap[name]; exists {
 		app.SwitchToPage(name)
 		return registry.Pages
 	}
 
-	page := &Page{name, menu}
-	registry.PageMap[name] = page
+	// page := &Page{name, menu}
+	registry.PageMenuMap[name] = menu
 
 	row := registry.Table.GetRowCount()
 	registry.Table.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
@@ -101,8 +101,8 @@ func (app *App) Forward() {
 	if registry.HistoryIndex < len(registry.History)-1 {
 		registry.HistoryIndex++
 		name := registry.History[registry.HistoryIndex]
-		if page, ok := registry.PageMap[name]; ok {
-			app.Layout.Menu.SetMenu(page.Menu)
+		if menu, ok := registry.PageMenuMap[name]; ok {
+			app.Layout.Menu.SetMenu(menu)
 			app.Layout.PagesRegistry.Pages.SwitchToPage(name)
 		}
 	}
@@ -113,16 +113,16 @@ func (app *App) Back() {
 	if registry.HistoryIndex > 0 {
 		registry.HistoryIndex--
 		name := registry.History[registry.HistoryIndex]
-		if page, ok := registry.PageMap[name]; ok {
-			app.Layout.Menu.SetMenu(page.Menu)
+		if menu, ok := registry.PageMenuMap[name]; ok {
+			app.Layout.Menu.SetMenu(menu)
 			app.Layout.PagesRegistry.Pages.SwitchToPage(name)
 		}
 	}
 }
 
 func (app *App) SwitchToPage(name string) {
-	if page, ok := app.Layout.PagesRegistry.PageMap[name]; ok {
-		app.Layout.Menu.SetMenu(page.Menu)
+	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[name]; ok {
+		app.Layout.Menu.SetMenu(menu)
 		app.Layout.PagesRegistry.Pages.SwitchToPage(name)
 	}
 }

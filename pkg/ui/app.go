@@ -262,13 +262,12 @@ func (app *App) Init() {
 		return event
 	})
 
-	// Folow pages are tracked in the registry, but not showed in opened pages list
 	resourcesPage := NewResourcesPage(commandChannel)
-	app.Layout.PagesRegistry.PageMap[Main] = &Page{Main, MainPageMenu}
-	app.Layout.PagesRegistry.PageMap[Clusters] = &Page{Clusters, ClustersPageMenu}
-	app.Layout.PagesRegistry.PageMap[SchemaRegistries] = &Page{SchemaRegistries, SubjectsPageMenu}
-	app.Layout.PagesRegistry.PageMap[Resources] = &Page{Resources, ResourcesPageMenu}
-	app.Layout.PagesRegistry.PageMap[Pages] = &Page{Pages, ResourcesPageMenu}
+	app.Layout.PagesRegistry.PageMenuMap[Main] = MainPageMenu
+	app.Layout.PagesRegistry.PageMenuMap[Clusters] = ClustersPageMenu
+	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SubjectsPageMenu
+	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
+	app.Layout.PagesRegistry.PageMenuMap[Pages] = ResourcesPageMenu
 
 	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, true)
 	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
