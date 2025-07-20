@@ -34,7 +34,7 @@ func (app *App) Nodes(statusLineChannel chan string) {
 							nodeId := table.GetCell(row, 0).Text
 							url := table.GetCell(row, 1).Text
 
-							app.Check(
+							app.CheckInCache(
 								fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, nodeId),
 								func() {
 									app.Node(nodeId, url)

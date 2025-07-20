@@ -42,7 +42,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 							row, _ := table.GetSelection()
 							groupName := table.GetCell(row, 0).Text
 
-							app.Check(
+							app.CheckInCache(
 								fmt.Sprintf(
 									"%s:%s:%s",
 									app.Selected.Cluster.Name,

@@ -130,32 +130,28 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 			case command := <-in:
 				switch command {
 				case Main:
-					app.Layout.Menu.SetMenu(MainPageMenu)
-					app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
+					app.SwitchToPage(Main)
 				case Clusters:
-					app.Layout.Menu.SetMenu(Clusters)
-					app.AddToPagesRegistry(Clusters, app.NewClustersTable(), ClustersPageMenu)
+					app.SwitchToPage(Clusters)
 				case SchemaRegistries:
-					app.Layout.Menu.SetMenu(SchemaRegistries)
-					app.AddToPagesRegistry(
-						SchemaRegistries,
-						app.NewSchemaRegistriesTable(),
-						SubjectsPageMenu,
-					)
+					app.SwitchToPage(SchemaRegistries)
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
 						continue
 					}
-					app.Check(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics), func() {
-						app.Topics(statusLineChannel)
-					})
+					app.CheckInCache(
+						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
+						func() {
+							app.Topics(statusLineChannel)
+						},
+					)
 				case "grs", ConsumerGroups:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
 						continue
 					}
-					app.Check(
+					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
 						func() {
 							app.ConsumerGroups(statusLineChannel)
@@ -166,17 +162,20 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
 						continue
 					}
-					app.Check(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes), func() {
-						app.QueueUpdateDraw(func() {
-							app.Nodes(statusLineChannel)
-						})
-					})
+					app.CheckInCache(
+						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
+						func() {
+							app.QueueUpdateDraw(func() {
+								app.Nodes(statusLineChannel)
+							})
+						},
+					)
 				case "sjs", Subjects:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Schema Registry"
 						continue
 					}
-					app.Check(Subjects, func() {
+					app.CheckInCache(Subjects, func() {
 						app.Subjects(statusLineChannel)
 					})
 				case "q!":
@@ -257,6 +256,7 @@ func (app *App) Init() {
 		return event
 	})
 
+	// Folow pages are tracked in the registry, but not showed in opened pages list
 	resourcesPage := NewResourcesPage(commandChannel)
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
 		Name:      Resources,
@@ -275,12 +275,14 @@ func (app *App) Init() {
 		Component: app.Layout.PagesRegistry.Modal,
 	})
 	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
+
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
 		Name:      Clusters,
 		Menu:      ClustersPageMenu,
 		Component: ct,
 	})
 	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
+
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
 		Name:      SchemaRegistries,
 		Menu:      SubjectsPageMenu,
@@ -515,12 +517,11 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 
 func (app *App) SwitchToPage(name string) {
 	registry := app.Layout.PagesRegistry
-	registry.Pages.SwitchToPage(name)
 	for _, p := range registry.PageList {
 		if p.Name == name {
 			app.Layout.Menu.SetMenu(p.Menu)
-			app.SetFocus(p.Component)
 			break
 		}
 	}
+	registry.Pages.SwitchToPage(name)
 }

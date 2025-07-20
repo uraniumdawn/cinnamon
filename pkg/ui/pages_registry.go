@@ -59,7 +59,7 @@ func NewPagesRegistry() *PagesRegistry {
 	return registry
 }
 
-func (app *App) Check(name string, onAbsent func()) {
+func (app *App) CheckInCache(name string, onAbsent func()) {
 	_, found := app.Cache.Get(name)
 	if found {
 		app.SwitchToPage(name)
@@ -99,7 +99,6 @@ func (app *App) AddToPagesRegistry(
 	app.Cache.Set(name, name, cache.DefaultExpiration)
 	app.Layout.Menu.SetMenu(menu)
 	pages := registry.Pages.AddAndSwitchToPage(name, component, true)
-	app.SetFocus(component)
 	return pages
 }
 

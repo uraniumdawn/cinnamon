@@ -48,7 +48,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
-							app.Check(
+							app.CheckInCache(
 								fmt.Sprintf(
 									"%s:%s:%s",
 									app.Selected.Cluster.Name,

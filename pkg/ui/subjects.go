@@ -39,7 +39,7 @@ func (app *App) Subjects(statusLineChannel chan string) {
 							row, _ := table.GetSelection()
 							subject := table.GetCell(row, 0).Text
 
-							app.Check(
+							app.CheckInCache(
 								fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name),
 								func() {
 									app.Versions(subject)
@@ -104,7 +104,7 @@ func (app *App) Versions(subject string) {
 							version := table.GetCell(row, 0).Text
 							v, _ := strconv.Atoi(version)
 
-							app.Check(
+							app.CheckInCache(
 								fmt.Sprintf(
 									"%s:%s:version:%s",
 									app.Selected.SchemaRegistry.Name,
