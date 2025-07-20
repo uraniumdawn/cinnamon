@@ -2,19 +2,18 @@ package ui
 
 import (
 	"cinnamon/pkg/util"
-	"fmt"
+	// "fmt"
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/rivo/tview"
-	"github.com/rs/zerolog/log"
+	// "github.com/rs/zerolog/log"
 )
 
 type Page struct {
-	Name      string
-	Menu      string
-	Component tview.Primitive
+	Name string
+	Menu string
 }
 
 type PagesRegistry struct {
@@ -35,7 +34,7 @@ func NewPagesRegistry() *PagesRegistry {
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(table, 0, 1, true)
-	flex.SetTitle(" Pages ")
+	flex.SetTitle("Pages")
 	flex.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 
@@ -85,9 +84,8 @@ func (app *App) AddToPagesRegistry(
 	}
 
 	page := &Page{
-		Name:      name,
-		Menu:      menu,
-		Component: component,
+		Name: name,
+		Menu: menu,
 	}
 	registry.PageList = append(registry.PageList, page)
 
@@ -126,9 +124,10 @@ func (app *App) SwitchToPage(name string) {
 	registry := app.Layout.PagesRegistry
 	for _, p := range registry.PageList {
 		if p.Name == name {
-			registry.Pages.SwitchToPage(name)
-			app.Layout.Menu.SetMenu(p.Menu)
-			log.Info().Msg(fmt.Sprintf("%v", p.Component.HasFocus()))
+			app.QueueUpdateDraw(func() {
+				app.Layout.Menu.SetMenu(p.Menu)
+				registry.Pages.SwitchToPage(name)
+			})
 			break
 		}
 	}

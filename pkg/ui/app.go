@@ -171,7 +171,7 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 						},
 					)
 				case "sjs", Subjects:
-					if !app.isClusterSelected(app.Selected) {
+					if !app.isSchemaRegistrySelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Schema Registry"
 						continue
 					}
@@ -217,7 +217,7 @@ func (app *App) Init() {
 	app.ClustersTableInputHandler(ct)
 
 	main := tview.NewTable()
-	main.SetTitle(" Main ")
+	main.SetTitle("Main")
 	main.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -259,9 +259,8 @@ func (app *App) Init() {
 	// Folow pages are tracked in the registry, but not showed in opened pages list
 	resourcesPage := NewResourcesPage(commandChannel)
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name:      Resources,
-		Menu:      ResourcesPageMenu,
-		Component: resourcesPage.Modal,
+		Name: Resources,
+		Menu: ResourcesPageMenu,
 	})
 	app.Layout.PagesRegistry.Pages.AddPage(
 		Resources,
@@ -270,23 +269,20 @@ func (app *App) Init() {
 		true,
 	)
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name:      Pages,
-		Menu:      OpenedPageMenu,
-		Component: app.Layout.PagesRegistry.Modal,
+		Name: Pages,
+		Menu: OpenedPageMenu,
 	})
 	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
 
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name:      Clusters,
-		Menu:      ClustersPageMenu,
-		Component: ct,
+		Name: Clusters,
+		Menu: ClustersPageMenu,
 	})
 	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
 
 	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name:      SchemaRegistries,
-		Menu:      SubjectsPageMenu,
-		Component: st,
+		Name: SchemaRegistries,
+		Menu: SubjectsPageMenu,
 	})
 	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, true)
 
@@ -372,6 +368,10 @@ func (app *App) isClusterSelected(selected Selected) bool {
 	return selected.Cluster != nil
 }
 
+func (app *App) isSchemaRegistrySelected(selected Selected) bool {
+	return selected.SchemaRegistry != nil
+}
+
 func (app *App) SelectCluster(cluster *config.ClusterConfig) {
 	app.Selected.Cluster = cluster
 
@@ -453,7 +453,7 @@ func (app *App) Cluster() {
 
 func (app *App) NewMainTable() *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(" Main ")
+	table.SetTitle("Main")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -483,7 +483,7 @@ func (app *App) NewDescription(title string) *tview.TextView {
 
 func (app *App) NewClustersTable() *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(" Clusters ")
+	table.SetTitle("Clusters")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -500,7 +500,7 @@ func (app *App) NewClustersTable() *tview.Table {
 
 func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(" Schema Registry URLs ")
+	table.SetTitle("Schema Registry URLs")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)

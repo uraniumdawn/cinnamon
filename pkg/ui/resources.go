@@ -37,7 +37,7 @@ func NewResourcesPage(commandCh chan<- string) *ResourcesPage {
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(table, 0, 1, true)
-	flex.SetTitle(" Resources ")
+	flex.SetTitle("Resources")
 	flex.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 

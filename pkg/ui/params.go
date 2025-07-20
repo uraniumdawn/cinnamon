@@ -197,7 +197,7 @@ func (app *App) InitConsumingParams() {
 		SetDirection(tview.FlexRow).
 		AddItem(f, 0, 1, true).
 		AddItem(menu, 1, 0, false)
-	flex.SetTitle(" Consuming parameters ")
+	flex.SetTitle("Consuming parameters")
 	flex.SetBorder(true)
 
 	modal := util.NewModal(flex)

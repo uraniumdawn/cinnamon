@@ -128,7 +128,7 @@ func (app *App) ConsumerGroup(name string) {
 func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table {
 	table := tview.NewTable()
 	table.SetTitle(
-		fmt.Sprintf(" Consumer groups [%s] [%d]", app.Selected.Cluster.Name, len(groups.Valid)),
+		fmt.Sprintf("Consumer groups [%s] [%d]", app.Selected.Cluster.Name, len(groups.Valid)),
 	)
 	table.SetSelectable(true, false).
 		SetBorder(true).

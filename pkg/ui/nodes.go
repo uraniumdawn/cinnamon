@@ -109,7 +109,7 @@ func (app *App) Node(id string, url string) {
 
 func (app *App) NewNodesTable(nodes []kafka.Node, cluster string) *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(fmt.Sprintf(" Nodes (%s) ", cluster))
+	table.SetTitle(fmt.Sprintf("Nodes (%s)", cluster))
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)

@@ -21,7 +21,6 @@ func (app *App) Topics(statusLineChannel chan string) {
 	statusLineChannel <- "Getting topics..."
 	resultCh := make(chan *client.TopicsResult)
 	errorCh := make(chan error)
-	// paramsCh := make(chan Parameters, 1)
 
 	c := app.getCurrentKafkaClient()
 	c.Topics(resultCh, errorCh)
@@ -97,7 +96,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 							view.
 								SetBorder(true).
 								SetBorderPadding(0, 0, 1, 0).
-								SetTitle(fmt.Sprintf(" %s ", topicName))
+								SetTitle(fmt.Sprintf("%s", topicName))
 
 							view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 								if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
@@ -212,7 +211,7 @@ func (app *App) NewTopicsTable(topics *client.TopicsResult) *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf(" Topics [%s] [%d]", app.Selected.Cluster.Name, len(topics.Result)))
+	table.SetTitle(fmt.Sprintf("Topics [%s] [%d]", app.Selected.Cluster.Name, len(topics.Result)))
 
 	sorted := treemap.NewWithStringComparator()
 	for topicName, metadata := range topics.Result {
