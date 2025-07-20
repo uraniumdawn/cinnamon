@@ -217,7 +217,7 @@ func (app *App) Init() {
 	app.ClustersTableInputHandler(ct)
 
 	main := tview.NewTable()
-	main.SetTitle("Main")
+	main.SetTitle(" Main ")
 	main.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -453,7 +453,7 @@ func (app *App) Cluster() {
 
 func (app *App) NewMainTable() *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle("Main")
+	table.SetTitle(" Main ")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -483,7 +483,7 @@ func (app *App) NewDescription(title string) *tview.TextView {
 
 func (app *App) NewClustersTable() *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle("Clusters")
+	table.SetTitle(" Clusters ")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
@@ -500,7 +500,7 @@ func (app *App) NewClustersTable() *tview.Table {
 
 func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle("Schema Registry URLs")
+	table.SetTitle(" Schema Registry URLs ")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)

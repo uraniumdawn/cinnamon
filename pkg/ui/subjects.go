@@ -196,7 +196,7 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 	table.SetTitle(
-		fmt.Sprintf("Subjects [%s] [%d]", app.Selected.SchemaRegistry.Name, len(subjects)),
+		fmt.Sprintf(" Subjects [%s] [%d] ", app.Selected.SchemaRegistry.Name, len(subjects)),
 	)
 
 	for i, subject := range subjects {
@@ -210,7 +210,7 @@ func (app *App) NewVersionsTable(subject string, versions []int) *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf("Versions [%s] [%d]", subject, len(versions)))
+	table.SetTitle(fmt.Sprintf(" Versions [%s] [%d] ", subject, len(versions)))
 
 	row := 0
 	for _, version := range versions {
