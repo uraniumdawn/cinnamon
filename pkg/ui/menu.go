@@ -98,7 +98,7 @@ func NewMenu() *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			MainPageMenu:      {"up", "dw", "select", "res", "forward", "backward", "opened"},
+			MainPageMenu:      {"up", "dw", "select", "res", "opened"},
 			ResourcesPageMenu: {"up", "dw", "select"},
 			OpenedPageMenu:    {"up", "dw", "select"},
 			ClustersPageMenu: {

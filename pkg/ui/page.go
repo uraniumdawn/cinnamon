@@ -8,7 +8,6 @@ import (
 )
 
 type Layout struct {
-	// Pages      *tview.Pages
 	PagesRegistry *PagesRegistry
 	StatusLine    *tview.TextView
 	Cluster       *tview.TextView

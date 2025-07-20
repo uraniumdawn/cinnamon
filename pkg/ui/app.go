@@ -45,7 +45,6 @@ type App struct {
 	KafkaClients          map[string]*client.Client
 	SchemaRegistryClients map[string]*schemaregistry.Client
 	Selected              Selected
-	// Registry              *PagesRegistry
 }
 
 type Selected struct {
@@ -131,11 +130,18 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 			case command := <-in:
 				switch command {
 				case Main:
+					app.Layout.Menu.SetMenu(MainPageMenu)
 					app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
 				case Clusters:
-					app.Layout.PagesRegistry.Pages.SwitchToPage(Clusters)
+					app.Layout.Menu.SetMenu(Clusters)
+					app.AddAndSwitch(Clusters, app.NewClustersTable(), ClustersPageMenu)
 				case SchemaRegistries:
-					app.Layout.PagesRegistry.Pages.SwitchToPage(SchemaRegistries)
+					app.Layout.Menu.SetMenu(SchemaRegistries)
+					app.AddAndSwitch(
+						SchemaRegistries,
+						app.NewSchemaRegistriesTable(),
+						SubjectsPageMenu,
+					)
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
@@ -251,17 +257,40 @@ func (app *App) Init() {
 		return event
 	})
 
+	resourcesPage := NewResourcesPage(commandChannel)
+	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
+		Name:      Resources,
+		Menu:      ResourcesPageMenu,
+		Component: resourcesPage.Modal,
+	})
 	app.Layout.PagesRegistry.Pages.AddPage(
 		Resources,
-		NewResourcesPage(commandChannel).Modal,
+		resourcesPage.Modal,
 		true,
 		true,
 	)
+	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
+		Name:      Pages,
+		Menu:      OpenedPageMenu,
+		Component: app.Layout.PagesRegistry.Modal,
+	})
 	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
+	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
+		Name:      Clusters,
+		Menu:      ClustersPageMenu,
+		Component: ct,
+	})
 	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
+	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
+		Name:      SchemaRegistries,
+		Menu:      SubjectsPageMenu,
+		Component: st,
+	})
 	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, true)
 
-	app.AddAndSwitch(Main, main, MainPageMenu)
+	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, true)
+	app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
+	app.Layout.Menu.SetMenu(MainPageMenu)
 
 	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
@@ -296,17 +325,11 @@ func (app *App) Init() {
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {
-			if app.Layout.PagesRegistry.ActivePage > 0 {
-				app.Layout.PagesRegistry.ActivePage--
-				app.NavigateTo(app.Layout.PagesRegistry.ActivePage)
-			}
+			app.Back()
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Layout.Search.HasFocus() {
-			if app.Layout.PagesRegistry.ActivePage < app.Layout.PagesRegistry.Table.GetRowCount()-1 {
-				app.Layout.PagesRegistry.ActivePage++
-				app.NavigateTo(app.Layout.PagesRegistry.ActivePage)
-			}
+			app.Forward()
 		}
 
 		return event
@@ -488,4 +511,16 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 		row++
 	}
 	return table
+}
+
+func (app *App) SwitchToPage(name string) {
+	registry := app.Layout.PagesRegistry
+	registry.Pages.SwitchToPage(name)
+	for _, p := range registry.PageList {
+		if p.Name == name {
+			app.Layout.Menu.SetMenu(p.Menu)
+			app.SetFocus(p.Component)
+			break
+		}
+	}
 }

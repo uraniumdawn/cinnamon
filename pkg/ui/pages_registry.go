@@ -9,14 +9,19 @@ import (
 	"github.com/rivo/tview"
 )
 
+type Page struct {
+	Name      string
+	Menu      string
+	Component tview.Primitive
+}
+
 type PagesRegistry struct {
 	Pages        *tview.Pages
 	Table        *tview.Table
 	Modal        tview.Primitive
-	NameToPage   map[string]string
-	PageType     map[string]string
-	PreviousPage map[string]string
-	ActivePage   int
+	PageList     []*Page
+	History      []string
+	HistoryIndex int
 }
 
 func NewPagesRegistry() *PagesRegistry {
@@ -36,10 +41,7 @@ func NewPagesRegistry() *PagesRegistry {
 		Pages:        pages,
 		Table:        table,
 		Modal:        util.NewModal(flex),
-		ActivePage:   0,
-		NameToPage:   make(map[string]string),
-		PageType:     make(map[string]string),
-		PreviousPage: make(map[string]string),
+		HistoryIndex: -1,
 	}
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -47,11 +49,9 @@ func NewPagesRegistry() *PagesRegistry {
 			row, _ := table.GetSelection()
 			page := table.GetCell(row, 1).Text
 			registry.Pages.SwitchToPage(page)
-			// app.Registry.ActivePage = row
 		}
 		if event.Key() == tcell.KeyEsc {
 			registry.Pages.HidePage(Pages)
-			// app.SetFocus(app.Layout.Pages)
 		}
 		return event
 	})
@@ -60,41 +60,59 @@ func NewPagesRegistry() *PagesRegistry {
 }
 
 func (app *App) Check(name string, onAbsent func()) {
-	response, found := app.Cache.Get(name)
+	_, found := app.Cache.Get(name)
 	if found {
-		app.Layout.PagesRegistry.Pages.SwitchToPage(response.(string))
+		app.SwitchToPage(name)
 	} else {
 		onAbsent()
 	}
 }
 
 func (app *App) AddAndSwitch(name string, component tview.Primitive, menu string) *tview.Pages {
-	row := app.Layout.PagesRegistry.Table.GetRowCount()
 	registry := app.Layout.PagesRegistry
 
-	var previousPageName string
-	if row > 0 {
-		previousPageName = registry.Table.GetCell(app.Layout.PagesRegistry.ActivePage, 1).Text
+	for _, p := range registry.PageList {
+		if p.Name == name {
+			app.SwitchToPage(name)
+			return registry.Pages
+		}
 	}
 
-	_, exists := registry.NameToPage[name]
-	if !exists {
-		registry.Table.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
-		registry.Table.SetCell(row, 1, tview.NewTableCell(name))
-		registry.ActivePage = row
-		registry.NameToPage[name] = name
-		registry.PageType[name] = menu
-		registry.PreviousPage[name] = previousPageName
+	page := &Page{
+		Name:      name,
+		Menu:      menu,
+		Component: component,
 	}
+	registry.PageList = append(registry.PageList, page)
+
+	row := registry.Table.GetRowCount()
+	registry.Table.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
+	registry.Table.SetCell(row, 1, tview.NewTableCell(name))
+
+	registry.History = append(registry.History[:registry.HistoryIndex+1], name)
+	registry.HistoryIndex++
 
 	app.Cache.Set(name, name, cache.DefaultExpiration)
-	page := registry.Pages.AddAndSwitchToPage(name, component, true)
 	app.Layout.Menu.SetMenu(menu)
-	return page
+	pages := registry.Pages.AddAndSwitchToPage(name, component, true)
+	app.SetFocus(component)
+	return pages
 }
 
-func (app *App) NavigateTo(row int) {
-	page := app.Layout.PagesRegistry.Table.GetCell(row, 1).Text
-	app.Layout.PagesRegistry.Pages.SwitchToPage(page)
-	app.Layout.Menu.SetMenu(app.Layout.PagesRegistry.PageType[page])
+func (app *App) Forward() {
+	registry := app.Layout.PagesRegistry
+	if registry.HistoryIndex < len(registry.History)-1 {
+		registry.HistoryIndex++
+		pageName := registry.History[registry.HistoryIndex]
+		app.SwitchToPage(pageName)
+	}
+}
+
+func (app *App) Back() {
+	registry := app.Layout.PagesRegistry
+	if registry.HistoryIndex > 0 {
+		registry.HistoryIndex--
+		pageName := registry.History[registry.HistoryIndex]
+		app.SwitchToPage(pageName)
+	}
 }

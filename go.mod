@@ -21,20 +21,20 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/jroimartin/gocui v0.5.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/linkedin/goavro/v2 v2.12.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.0 // indirect
 	github.com/spf13/cobra v1.8.1 // indirect
-	github.com/yassinebenaid/bunster v0.13.0 // indirect
 	golang.org/x/sync v0.9.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.24.0 // indirect
 	golang.org/x/text v0.20.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
