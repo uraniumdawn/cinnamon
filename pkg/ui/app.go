@@ -130,11 +130,17 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 			case command := <-in:
 				switch command {
 				case Main:
-					app.SwitchToPage(Main)
+					app.QueueUpdateDraw(func() {
+						app.SwitchToPage(Main)
+					})
 				case Clusters:
-					app.SwitchToPage(Clusters)
+					app.QueueUpdateDraw(func() {
+						app.SwitchToPage(Clusters)
+					})
 				case SchemaRegistries:
-					app.SwitchToPage(SchemaRegistries)
+					app.QueueUpdateDraw(func() {
+						app.SwitchToPage(SchemaRegistries)
+					})
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineChannel <- "[red]To perform operation, select Cluster"
@@ -258,35 +264,17 @@ func (app *App) Init() {
 
 	// Folow pages are tracked in the registry, but not showed in opened pages list
 	resourcesPage := NewResourcesPage(commandChannel)
-	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name: Resources,
-		Menu: ResourcesPageMenu,
-	})
-	app.Layout.PagesRegistry.Pages.AddPage(
-		Resources,
-		resourcesPage.Modal,
-		true,
-		true,
-	)
-	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name: Pages,
-		Menu: OpenedPageMenu,
-	})
-	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
-
-	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name: Clusters,
-		Menu: ClustersPageMenu,
-	})
-	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
-
-	app.Layout.PagesRegistry.PageList = append(app.Layout.PagesRegistry.PageList, &Page{
-		Name: SchemaRegistries,
-		Menu: SubjectsPageMenu,
-	})
-	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, true)
+	app.Layout.PagesRegistry.PageMap[Main] = &Page{Main, MainPageMenu}
+	app.Layout.PagesRegistry.PageMap[Clusters] = &Page{Clusters, ClustersPageMenu}
+	app.Layout.PagesRegistry.PageMap[SchemaRegistries] = &Page{SchemaRegistries, SubjectsPageMenu}
+	app.Layout.PagesRegistry.PageMap[Resources] = &Page{Resources, ResourcesPageMenu}
+	app.Layout.PagesRegistry.PageMap[Pages] = &Page{Pages, ResourcesPageMenu}
 
 	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(Resources, resourcesPage.Modal, true, true)
+	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
 	app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
 	app.Layout.Menu.SetMenu(MainPageMenu)
 

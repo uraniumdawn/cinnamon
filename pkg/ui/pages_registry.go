@@ -2,13 +2,11 @@ package ui
 
 import (
 	"cinnamon/pkg/util"
-	// "fmt"
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/rivo/tview"
-	// "github.com/rs/zerolog/log"
 )
 
 type Page struct {
@@ -20,7 +18,7 @@ type PagesRegistry struct {
 	Pages        *tview.Pages
 	Table        *tview.Table
 	Modal        tview.Primitive
-	PageList     []*Page
+	PageMap      map[string]*Page
 	History      []string
 	HistoryIndex int
 }
@@ -42,6 +40,7 @@ func NewPagesRegistry() *PagesRegistry {
 		Pages:        pages,
 		Table:        table,
 		Modal:        util.NewModal(flex),
+		PageMap:      make(map[string]*Page),
 		HistoryIndex: -1,
 	}
 
@@ -76,18 +75,13 @@ func (app *App) AddToPagesRegistry(
 ) *tview.Pages {
 	registry := app.Layout.PagesRegistry
 
-	for _, p := range registry.PageList {
-		if p.Name == name {
-			app.SwitchToPage(name)
-			return registry.Pages
-		}
+	if _, exists := registry.PageMap[name]; exists {
+		app.SwitchToPage(name)
+		return registry.Pages
 	}
 
-	page := &Page{
-		Name: name,
-		Menu: menu,
-	}
-	registry.PageList = append(registry.PageList, page)
+	page := &Page{name, menu}
+	registry.PageMap[name] = page
 
 	row := registry.Table.GetRowCount()
 	registry.Table.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
@@ -106,8 +100,11 @@ func (app *App) Forward() {
 	registry := app.Layout.PagesRegistry
 	if registry.HistoryIndex < len(registry.History)-1 {
 		registry.HistoryIndex++
-		pageName := registry.History[registry.HistoryIndex]
-		app.SwitchToPage(pageName)
+		name := registry.History[registry.HistoryIndex]
+		if page, ok := registry.PageMap[name]; ok {
+			app.Layout.Menu.SetMenu(page.Menu)
+			app.Layout.PagesRegistry.Pages.SwitchToPage(name)
+		}
 	}
 }
 
@@ -115,20 +112,17 @@ func (app *App) Back() {
 	registry := app.Layout.PagesRegistry
 	if registry.HistoryIndex > 0 {
 		registry.HistoryIndex--
-		pageName := registry.History[registry.HistoryIndex]
-		app.SwitchToPage(pageName)
+		name := registry.History[registry.HistoryIndex]
+		if page, ok := registry.PageMap[name]; ok {
+			app.Layout.Menu.SetMenu(page.Menu)
+			app.Layout.PagesRegistry.Pages.SwitchToPage(name)
+		}
 	}
 }
 
 func (app *App) SwitchToPage(name string) {
-	registry := app.Layout.PagesRegistry
-	for _, p := range registry.PageList {
-		if p.Name == name {
-			app.QueueUpdateDraw(func() {
-				app.Layout.Menu.SetMenu(p.Menu)
-				registry.Pages.SwitchToPage(name)
-			})
-			break
-		}
+	if page, ok := app.Layout.PagesRegistry.PageMap[name]; ok {
+		app.Layout.Menu.SetMenu(page.Menu)
+		app.Layout.PagesRegistry.Pages.SwitchToPage(name)
 	}
 }
