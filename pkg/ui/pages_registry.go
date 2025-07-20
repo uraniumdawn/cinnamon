@@ -9,11 +9,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-type Page struct {
-	Name string
-	Menu string
-}
-
 type PagesRegistry struct {
 	Pages        *tview.Pages
 	Table        *tview.Table
