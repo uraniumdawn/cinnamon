@@ -17,7 +17,30 @@ type Layout struct {
 	Bottom        *tview.Pages
 }
 
+type Borders struct {
+	Horizontal  rune
+	Vertical    rune
+	TopLeft     rune
+	TopRight    rune
+	BottomLeft  rune
+	BottomRight rune
+
+	LeftT   rune
+	RightT  rune
+	TopT    rune
+	BottomT rune
+	Cross   rune
+
+	HorizontalFocus  rune
+	VerticalFocus    rune
+	TopLeftFocus     rune
+	TopRightFocus    rune
+	BottomLeftFocus  rune
+	BottomRightFocus rune
+}
+
 func NewLayout() *Layout {
+	InitBorders()
 	registry := NewPagesRegistry()
 
 	sl := tview.NewTextView()
@@ -61,6 +84,30 @@ func NewLayout() *Layout {
 			AddItem(header, 1, 0, false).
 			AddItem(registry.Pages, 0, 1, true).
 			AddItem(bottom, 1, 0, false),
+	}
+}
+
+func InitBorders() {
+	tview.Borders = Borders{
+		Horizontal:  tview.BoxDrawingsLightHorizontal,
+		Vertical:    tview.BoxDrawingsLightVertical,
+		TopLeft:     tview.BoxDrawingsLightDownAndRight,
+		TopRight:    tview.BoxDrawingsLightDownAndLeft,
+		BottomLeft:  tview.BoxDrawingsLightUpAndRight,
+		BottomRight: tview.BoxDrawingsLightUpAndLeft,
+
+		LeftT:   tview.BoxDrawingsLightVerticalAndRight,
+		RightT:  tview.BoxDrawingsLightVerticalAndLeft,
+		TopT:    tview.BoxDrawingsLightDownAndHorizontal,
+		BottomT: tview.BoxDrawingsLightUpAndHorizontal,
+		Cross:   tview.BoxDrawingsLightVerticalAndHorizontal,
+
+		HorizontalFocus:  tview.BoxDrawingsLightHorizontal,
+		VerticalFocus:    tview.BoxDrawingsLightVertical,
+		TopLeftFocus:     tview.BoxDrawingsLightDownAndRight,
+		TopRightFocus:    tview.BoxDrawingsLightDownAndLeft,
+		BottomLeftFocus:  tview.BoxDrawingsLightUpAndRight,
+		BottomRightFocus: tview.BoxDrawingsLightUpAndLeft,
 	}
 }
 
