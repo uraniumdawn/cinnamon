@@ -2,11 +2,13 @@ package ui
 
 import (
 	"cinnamon/pkg/util"
+	"fmt"
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/rivo/tview"
+	"github.com/rs/zerolog/log"
 )
 
 type Page struct {
@@ -117,5 +119,17 @@ func (app *App) Back() {
 		registry.HistoryIndex--
 		pageName := registry.History[registry.HistoryIndex]
 		app.SwitchToPage(pageName)
+	}
+}
+
+func (app *App) SwitchToPage(name string) {
+	registry := app.Layout.PagesRegistry
+	for _, p := range registry.PageList {
+		if p.Name == name {
+			registry.Pages.SwitchToPage(name)
+			app.Layout.Menu.SetMenu(p.Menu)
+			log.Info().Msg(fmt.Sprintf("%v", p.Component.HasFocus()))
+			break
+		}
 	}
 }

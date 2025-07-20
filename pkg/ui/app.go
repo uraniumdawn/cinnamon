@@ -514,14 +514,3 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	}
 	return table
 }
-
-func (app *App) SwitchToPage(name string) {
-	registry := app.Layout.PagesRegistry
-	for _, p := range registry.PageList {
-		if p.Name == name {
-			app.Layout.Menu.SetMenu(p.Menu)
-			break
-		}
-	}
-	registry.Pages.SwitchToPage(name)
-}
