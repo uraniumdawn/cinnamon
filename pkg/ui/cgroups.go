@@ -28,7 +28,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 			case groups := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewGroupsTable(groups)
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
 						table,
 						ConsumerGroupsPageMenu,
@@ -102,7 +102,7 @@ func (app *App) ConsumerGroup(name string) {
 						}
 						return event
 					})
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, ConsumerGroup, name),
 						desc,
 						FinalPageMenu,

@@ -33,7 +33,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 			case topics := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewTopicsTable(topics)
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
 						table,
 						TopicsPageMenu,
@@ -107,7 +107,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 								return event
 							})
 
-							app.AddToPageRegistry(
+							app.AddToPagesRegistry(
 								fmt.Sprintf(
 									"%s:%s:%s:consume",
 									app.Selected.Cluster.Name,
@@ -184,7 +184,7 @@ func (app *App) Topic(name string) {
 						}
 						return event
 					})
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, name),
 						desc,
 						FinalPageMenu,

@@ -134,10 +134,10 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 					app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
 				case Clusters:
 					app.Layout.Menu.SetMenu(Clusters)
-					app.AddToPageRegistry(Clusters, app.NewClustersTable(), ClustersPageMenu)
+					app.AddToPagesRegistry(Clusters, app.NewClustersTable(), ClustersPageMenu)
 				case SchemaRegistries:
 					app.Layout.Menu.SetMenu(SchemaRegistries)
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						SchemaRegistries,
 						app.NewSchemaRegistriesTable(),
 						SubjectsPageMenu,
@@ -430,7 +430,7 @@ func (app *App) Cluster() {
 					desc := app.NewDescription(fmt.Sprintf(" %s ", description.Name))
 					desc.SetText(description.String())
 
-					app.AddToPageRegistry(Cluster, desc, ClustersPageMenu)
+					app.AddToPagesRegistry(Cluster, desc, ClustersPageMenu)
 					app.Layout.ClearStatus()
 				})
 				cancel()

@@ -68,7 +68,7 @@ func (app *App) Check(name string, onAbsent func()) {
 	}
 }
 
-func (app *App) AddToPageRegistry(
+func (app *App) AddToPagesRegistry(
 	name string,
 	component tview.Primitive,
 	menu string,

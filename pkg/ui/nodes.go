@@ -45,7 +45,7 @@ func (app *App) Nodes(statusLineChannel chan string) {
 						return event
 					})
 
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
 						table,
 						NodesPageMenu,
@@ -84,7 +84,7 @@ func (app *App) Node(id string, url string) {
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(fmt.Sprintf(" ID: %s URL: %s ", id, url))
 					desc.SetText(description.String())
-					app.AddToPageRegistry(
+					app.AddToPagesRegistry(
 						fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, id),
 						desc,
 						FinalPageMenu,
