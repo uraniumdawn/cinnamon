@@ -281,13 +281,13 @@ func (app *App) Init() {
 
 	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
-			app.Layout.Bottom.SwitchToPage("menu")
+			app.Layout.SideBar.SwitchToPage("menu")
 			app.Application.SetFocus(app.Layout.PagesRegistry.Pages)
 		}
 
 		if event.Key() == tcell.KeyEsc {
 			app.Layout.Search.SetText("")
-			app.Layout.Bottom.SwitchToPage("menu")
+			app.Layout.SideBar.SwitchToPage("menu")
 			app.Application.SetFocus(app.Layout.PagesRegistry.Pages)
 		}
 		return event
@@ -300,7 +300,7 @@ func (app *App) Init() {
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			app.Layout.Bottom.SwitchToPage("search")
+			app.Layout.SideBar.SwitchToPage("search")
 			app.SetFocus(app.Layout.Search)
 			statusLineChannel <- ""
 			return nil

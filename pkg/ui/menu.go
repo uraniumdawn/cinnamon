@@ -98,11 +98,11 @@ func NewMenu() *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			MainPageMenu:      {"Mainup", "dw", "select", "res", "opened"},
-			ResourcesPageMenu: {"Resources up", "dw", "select"},
-			OpenedPageMenu:    {"Opened up", "dw", "select"},
+			MainPageMenu:      {"up", "dw", "select", "res", "opened"},
+			ResourcesPageMenu: {"up", "dw", "select"},
+			OpenedPageMenu:    {"up", "dw", "select"},
 			ClustersPageMenu: {
-				"Cluster up",
+				"up",
 				"dw",
 				"select",
 				"res",
@@ -112,7 +112,7 @@ func NewMenu() *Menu {
 				"dsc",
 			},
 			NodesPageMenu: {
-				"Nodes up",
+				"up",
 				"dw",
 				"res",
 				"forward",
@@ -122,7 +122,7 @@ func NewMenu() *Menu {
 				"upd",
 			},
 			TopicsPageMenu: {
-				"Topics up",
+				"up",
 				"dw",
 				"res",
 				"forward",
@@ -146,7 +146,7 @@ func NewMenu() *Menu {
 				"upd",
 			},
 			SubjectsPageMenu: {
-				"Subject up",
+				"up",
 				"dw",
 				"select",
 				"res",
@@ -157,7 +157,7 @@ func NewMenu() *Menu {
 				"upd",
 			},
 			VersionsPageMenu: {
-				"Version up",
+				"up",
 				"dw",
 				"res",
 				"forward",

@@ -14,7 +14,7 @@ type Layout struct {
 	Search        *tview.InputField
 	Content       *tview.Flex
 	Menu          *Menu
-	Bottom        *tview.Pages
+	SideBar       *tview.Pages
 }
 
 type Borders struct {
@@ -61,16 +61,21 @@ func NewLayout() *Layout {
 	info.AddItem(cluster, 0, 1, false)
 	info.AddItem(sl, 0, 1, false)
 
-	header.
-		AddItem(info, 0, 3, false)
+	header.AddItem(info, 0, 3, false)
 
-	bottom := tview.NewPages()
+	sideBar := tview.NewPages()
 	menu := NewMenu()
-	bottom.AddPage("menu", menu.Flex, true, true)
+	sideBar.AddPage("menu", menu.Flex, true, true)
 	search := tview.NewInputField().
 		SetLabel("Search:").
 		SetFieldBackgroundColor(tcell.ColorDefault)
-	bottom.AddPage("search", search, true, false)
+	sideBar.AddPage("search", search, true, false)
+
+	main := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(header, 1, 0, false).
+		AddItem(registry.Pages, 0, 1, true).
+		AddItem(sideBar, 1, 0, false)
 
 	return &Layout{
 		PagesRegistry: registry,
@@ -78,12 +83,8 @@ func NewLayout() *Layout {
 		Cluster:       cluster,
 		Search:        search,
 		Menu:          menu,
-		Bottom:        bottom,
-		Content: tview.NewFlex().
-			SetDirection(tview.FlexRow).
-			AddItem(header, 1, 0, false).
-			AddItem(registry.Pages, 0, 1, true).
-			AddItem(bottom, 1, 0, false),
+		SideBar:       sideBar,
+		Content:       main,
 	}
 }
 
