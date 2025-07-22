@@ -3,9 +3,9 @@ package ui
 import (
 	"cinnamon/pkg/util"
 	"strconv"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/patrickmn/go-cache"
 	"github.com/rivo/tview"
 )
 
@@ -17,6 +17,8 @@ type PagesRegistry struct {
 	History      []string
 	HistoryIndex int
 }
+
+const Expiration = time.Minute * 5
 
 func NewPagesRegistry() *PagesRegistry {
 	table := tview.NewTable()
@@ -75,7 +77,6 @@ func (app *App) AddToPagesRegistry(
 		return registry.Pages
 	}
 
-	// page := &Page{name, menu}
 	registry.PageMenuMap[name] = menu
 
 	row := registry.Table.GetRowCount()
@@ -85,7 +86,7 @@ func (app *App) AddToPagesRegistry(
 	registry.History = append(registry.History[:registry.HistoryIndex+1], name)
 	registry.HistoryIndex++
 
-	app.Cache.Set(name, name, cache.DefaultExpiration)
+	app.Cache.Set(name, name, Expiration)
 	app.Layout.Menu.SetMenu(menu)
 	pages := registry.Pages.AddAndSwitchToPage(name, component, true)
 	return pages

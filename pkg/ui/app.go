@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -45,6 +46,7 @@ type App struct {
 	KafkaClients          map[string]*client.Client
 	SchemaRegistryClients map[string]*schemaregistry.Client
 	Selected              Selected
+	mu                    sync.RWMutex
 }
 
 type Selected struct {
@@ -300,7 +302,7 @@ func (app *App) Init() {
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
 			app.Layout.Bottom.SwitchToPage("search")
 			app.SetFocus(app.Layout.Search)
-			app.Layout.ClearStatus()
+			statusLineChannel <- ""
 			return nil
 		}
 
