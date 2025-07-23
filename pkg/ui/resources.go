@@ -27,7 +27,7 @@ func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) tview.Primit
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			pr.Pages.HidePage(Resources)
+			pr.UI.Pages.HidePage(Resources)
 		}
 
 		return event

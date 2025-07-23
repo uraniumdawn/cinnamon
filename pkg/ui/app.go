@@ -30,10 +30,10 @@ const (
 	Topic            = "Topic"
 	Nodes            = "Nodes"
 	Node             = "Node"
-	ConsumerGroups   = "Consumer-groups"
-	ConsumerGroup    = "Consumer-group"
+	ConsumerGroups   = "Consumer groups"
+	ConsumerGroup    = "Consumer group"
 	Subjects         = "Subjects"
-	Pages            = "Pages"
+	OpenedPages      = "Opened pages"
 	ConsumingParams  = "Consuming Parameters"
 )
 
@@ -88,7 +88,6 @@ func NewApp() *App {
 	}
 	return &App{
 		Application:           tview.NewApplication(),
-		Layout:                NewLayout(),
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
 		Clusters:              toClustersMap(cfg),
 		SchemaRegistries:      toSchemaRegistryMap(cfg),
@@ -118,11 +117,11 @@ func initLogger() {
 }
 
 var (
-	statusLineChannel = make(chan string, 10)
-	commandChannel    = make(chan string)
+	statusLineCh = make(chan string, 10)
+	commandCh    = make(chan string)
 )
 
-func (app *App) CommandHandler(ctx context.Context, in chan string) {
+func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 	go func() {
 		for {
 			select {
@@ -145,58 +144,58 @@ func (app *App) CommandHandler(ctx context.Context, in chan string) {
 					})
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Cluster"
+						statusLineCh <- "[red]To perform operation, select Cluster"
 						continue
 					}
 					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
 						func() {
-							app.Topics(statusLineChannel)
+							app.Topics(statusLineCh)
 						},
 					)
 				case "grs", ConsumerGroups:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Cluster"
+						statusLineCh <- "[red]To perform operation, select Cluster"
 						continue
 					}
 					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
 						func() {
-							app.ConsumerGroups(statusLineChannel)
+							app.ConsumerGroups(statusLineCh)
 						},
 					)
 				case "nds", Nodes:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Cluster"
+						statusLineCh <- "[red]To perform operation, select Cluster"
 						continue
 					}
 					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
 						func() {
 							app.QueueUpdateDraw(func() {
-								app.Nodes(statusLineChannel)
+								app.Nodes(statusLineCh)
 							})
 						},
 					)
 				case "sjs", Subjects:
 					if !app.isSchemaRegistrySelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Schema Registry"
+						statusLineCh <- "[red]To perform operation, select Schema Registry"
 						continue
 					}
 					app.CheckInCache(Subjects, func() {
-						app.Subjects(statusLineChannel)
+						app.Subjects(statusLineCh)
 					})
 				case "q!":
 					app.Stop()
 				default:
-					statusLineChannel <- "Invalid command"
+					statusLineCh <- "Invalid command"
 				}
 			}
 		}
 	}()
 }
 
-func (app *App) StatusLineHandler(ctx context.Context, in chan string) {
+func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 	go func() {
 		for {
 			select {
@@ -212,12 +211,13 @@ func (app *App) StatusLineHandler(ctx context.Context, in chan string) {
 	}()
 }
 
-func (app *App) Init() {
+func (app *App) Run() {
 	ctx, cancel := context.WithCancel(context.Background())
-	app.CommandHandler(ctx, commandChannel)
-	app.StatusLineHandler(ctx, statusLineChannel)
+	app.RunCommandHandler(ctx, commandCh)
+	app.RunStatusLineHandler(ctx, statusLineCh)
 
-	app.Layout = NewLayout()
+	registry := NewPagesRegistry()
+	app.Layout = NewLayout(registry)
 
 	ct := app.NewClustersTable()
 	st := app.NewSchemaRegistriesTable()
@@ -248,94 +248,30 @@ func (app *App) Init() {
 		r++
 	}
 
-	main.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := main.GetSelection()
-		clusterName := main.GetCell(row, 0).Text
-		schemaRegistryName := main.GetCell(row, 2).Text
-		cluster := app.Clusters[clusterName]
-		schemaRegistry := app.SchemaRegistries[schemaRegistryName]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectCluster(cluster)
-			app.SelectSchemaRegistry(schemaRegistry)
-			app.Layout.SetSelected(app.Selected.Cluster.Name, app.Selected.SchemaRegistry.Name)
-			app.Layout.ClearStatus()
-		}
-		return event
-	})
-
 	app.Layout.PagesRegistry.PageMenuMap[Main] = MainPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Clusters] = ClustersPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SubjectsPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
-	app.Layout.PagesRegistry.PageMenuMap[Pages] = ResourcesPageMenu
+	app.Layout.PagesRegistry.PageMenuMap[OpenedPages] = OpenedPagesMenu
 
-	resourcesPage := app.Layout.PagesRegistry.InitResourcesPage(commandChannel)
-	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, false)
-	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, false)
-	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, false)
-	app.Layout.PagesRegistry.Pages.AddPage(Resources, resourcesPage, true, false)
-	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, false)
-	app.Layout.PagesRegistry.Pages.ShowPage(Main)
+	resourcesPage := app.Layout.PagesRegistry.InitResourcesPage(commandCh)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(Main, main, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, st, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(
+		OpenedPages,
+		app.Layout.PagesRegistry.UI.Main,
+		true,
+		false,
+	)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(Main)
 	app.Layout.Menu.SetMenu(MainPageMenu)
 
-	app.Layout.PagesRegistry.Table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
-			row, _ := app.Layout.PagesRegistry.Table.GetSelection()
-			page := app.Layout.PagesRegistry.Table.GetCell(row, 1).Text
-			app.SwitchToPage(page)
-			app.Layout.PagesRegistry.Pages.HidePage(Pages)
-		}
-		if event.Key() == tcell.KeyEsc {
-			app.Layout.PagesRegistry.Pages.HidePage(Pages)
-		}
-		return event
-	})
-
-	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
-			app.Layout.SideBar.SwitchToPage("menu")
-			app.Application.SetFocus(app.Layout.PagesRegistry.Pages)
-		}
-
-		if event.Key() == tcell.KeyEsc {
-			app.Layout.Search.SetText("")
-			app.Layout.SideBar.SwitchToPage("menu")
-			app.Application.SetFocus(app.Layout.PagesRegistry.Pages)
-		}
-		return event
-	})
-
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
-			app.Layout.Menu.SetMenu(ResourcesPageMenu)
-			app.Layout.PagesRegistry.Pages.ShowPage(Resources)
-			app.Layout.PagesRegistry.Pages.SendToFront(Resources)
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			app.Layout.SideBar.SwitchToPage("search")
-			app.SetFocus(app.Layout.Search)
-			statusLineChannel <- ""
-			return nil
-		}
-
-		if event.Key() == tcell.KeyCtrlP {
-			app.Layout.Menu.SetMenu(Pages)
-			app.Layout.PagesRegistry.Pages.ShowPage(Pages)
-			app.Layout.PagesRegistry.Pages.SendToFront(Pages)
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {
-			app.Back()
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Layout.Search.HasFocus() {
-			app.Forward()
-		}
-
-		return event
-	})
+	app.SelectClusterKeyHandler(main)
+	app.OpenPagesKeyHadler(app.Layout.PagesRegistry.UI.OpenedPages)
+	app.SearchKeyHadler(app.Layout.Search)
+	app.MainOperationKeyHadler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
 	if err != nil {
@@ -360,7 +296,7 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 			if !app.isClusterSelected(app.Selected) {
 				app.SelectCluster(cluster)
 			}
-			statusLineChannel <- "Getting cluster description results..."
+			statusLineCh <- "Getting cluster description results..."
 			app.Cluster()
 		}
 
@@ -443,12 +379,12 @@ func (app *App) Cluster() {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe cluster")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to describe cluster: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]Failed to describe cluster: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing cluster")
-				statusLineChannel <- "[red]Timeout while describing cluster"
+				statusLineCh <- "[red]Timeout while describing cluster"
 				return
 			}
 		}

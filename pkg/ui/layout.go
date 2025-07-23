@@ -39,9 +39,9 @@ type Borders struct {
 	BottomRightFocus rune
 }
 
-func NewLayout() *Layout {
+func NewLayout(registry *PagesRegistry) *Layout {
 	InitBorders()
-	registry := NewPagesRegistry()
+	// registry := NewPagesRegistry()
 
 	sl := tview.NewTextView()
 	sl.SetLabel("Status:")
@@ -74,7 +74,7 @@ func NewLayout() *Layout {
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
-		AddItem(registry.Pages, 0, 1, true).
+		AddItem(registry.UI.Pages, 0, 1, true).
 		AddItem(sideBar, 1, 0, false)
 
 	return &Layout{

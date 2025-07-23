@@ -75,7 +75,7 @@ var keys = map[string]Pair{
 const (
 	MainPageMenu           = "MainPageMenu"
 	ResourcesPageMenu      = "ResourcesPageMenu"
-	OpenedPageMenu         = "OpenedPageMenu"
+	OpenedPagesMenu        = "OpenedPagesMenu"
 	ClustersPageMenu       = "ClustersPageMenu"
 	NodesPageMenu          = "NodesPageMenu"
 	TopicsPageMenu         = "TopicsPageMenu"
@@ -100,7 +100,7 @@ func NewMenu() *Menu {
 		Map: &map[string]*[]string{
 			MainPageMenu:      {"up", "dw", "select", "res", "opened"},
 			ResourcesPageMenu: {"up", "dw", "select"},
-			OpenedPageMenu:    {"up", "dw", "select"},
+			OpenedPagesMenu:   {"up", "dw", "select"},
 			ClustersPageMenu: {
 				"up",
 				"dw",

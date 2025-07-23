@@ -61,7 +61,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
-							app.Layout.PagesRegistry.Pages.ShowPage(ConsumingParams)
+							app.Layout.PagesRegistry.UI.Pages.ShowPage(ConsumingParams)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {
@@ -166,7 +166,7 @@ func (app *App) Topic(name string) {
 	errorCh := make(chan error)
 
 	c := app.getCurrentKafkaClient()
-	statusLineChannel <- "Getting topic description results..."
+	statusLineCh <- "Getting topic description results..."
 	c.DescribeTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -194,12 +194,12 @@ func (app *App) Topic(name string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to describe topic")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to describe topic: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]Failed to describe topic: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while describing topic")
-				statusLineChannel <- "[red]Timeout while describing topic"
+				statusLineCh <- "[red]Timeout while describing topic"
 				return
 			}
 		}

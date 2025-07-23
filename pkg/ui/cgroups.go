@@ -81,7 +81,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 }
 
 func (app *App) ConsumerGroup(name string) {
-	statusLineChannel <- "Getting consumer group description results..."
+	statusLineCh <- "Getting consumer group description results..."
 	resultCh := make(chan *client.DescribeConsumerGroupResult)
 	errorCh := make(chan error)
 
@@ -113,12 +113,12 @@ func (app *App) ConsumerGroup(name string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to describe consumer group")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to describe consumer group: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]Failed to describe consumer group: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while describing consumer group")
-				statusLineChannel <- "[red]Timeout while describing consumer group"
+				statusLineCh <- "[red]Timeout while describing consumer group"
 				return
 			}
 		}

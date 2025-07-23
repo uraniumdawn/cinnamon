@@ -75,7 +75,7 @@ func (app *App) Subjects(statusLineChannel chan string) {
 }
 
 func (app *App) Versions(subject string) {
-	statusLineChannel <- "Getting versions..."
+	statusLineCh <- "Getting versions..."
 	resultCh := make(chan []int)
 	errorCh := make(chan error)
 
@@ -126,12 +126,12 @@ func (app *App) Versions(subject string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list subject's versions")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list subject's versions")
-				statusLineChannel <- "[red]Timeout while to list subject's versions"
+				statusLineCh <- "[red]Timeout while to list subject's versions"
 				return
 			}
 		}
@@ -139,7 +139,7 @@ func (app *App) Versions(subject string) {
 }
 
 func (app *App) Schema(subject string, version int) {
-	statusLineChannel <- "Getting schema..."
+	statusLineCh <- "Getting schema..."
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
 
@@ -178,12 +178,12 @@ func (app *App) Schema(subject string, version int) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to list subject's versions")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while to list subject's versions")
-				statusLineChannel <- "[red]Timeout while to list subject's versions"
+				statusLineCh <- "[red]Timeout while to list subject's versions"
 				return
 			}
 		}

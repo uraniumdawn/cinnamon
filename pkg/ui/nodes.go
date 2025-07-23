@@ -69,7 +69,7 @@ func (app *App) Nodes(statusLineChannel chan string) {
 }
 
 func (app *App) Node(id string, url string) {
-	statusLineChannel <- "Getting node description results..."
+	statusLineCh <- "Getting node description results..."
 	resultCh := make(chan *client.ResourceResult)
 	errorCh := make(chan error)
 
@@ -95,12 +95,12 @@ func (app *App) Node(id string, url string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe node")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to describe node: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]Failed to describe node: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing node")
-				statusLineChannel <- "[red]Timeout while describing node"
+				statusLineCh <- "[red]Timeout while describing node"
 				return
 			}
 		}

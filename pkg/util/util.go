@@ -55,14 +55,13 @@ func TableToCSV(fileName string, table *tview.Table) {
 }
 
 func NewModal(p tview.Primitive) tview.Primitive {
-	flex := tview.NewFlex().
+	return tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
 			AddItem(p, 0, 2, true).
 			AddItem(nil, 0, 1, false), 0, 5, true).
 		AddItem(nil, 0, 1, false)
-	return flex
 }
 
 func GetInt64(inputField *tview.InputField) int64 {
