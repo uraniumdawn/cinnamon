@@ -9,7 +9,10 @@ import (
 
 func (pr *PagesRegistry) InitResourcesPage(app *App, commandCh chan<- string) tview.Primitive {
 	table := tview.NewTable()
-	table.SetSelectable(true, false)
+	table.SetSelectable(true, false).
+		SetBorder(true).
+		SetBorderPadding(0, 0, 1, 0).
+		SetTitle(" Resources ")
 
 	table.SetCell(0, 0, tview.NewTableCell(Main))
 	table.SetCell(1, 0, tview.NewTableCell(Clusters))
@@ -34,12 +37,5 @@ func (pr *PagesRegistry) InitResourcesPage(app *App, commandCh chan<- string) tv
 		return event
 	})
 
-	flex := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(table, 0, 1, true)
-	flex.SetTitle(" Resources ")
-	flex.SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-
-	return util.NewModal(flex)
+	return util.NewModal(table)
 }

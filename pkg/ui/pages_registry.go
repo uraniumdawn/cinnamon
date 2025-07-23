@@ -25,22 +25,18 @@ const Expiration = time.Minute * 5
 
 func NewPagesRegistry() *PagesRegistry {
 	table := tview.NewTable()
-	table.SetSelectable(true, false)
+	table.SetSelectable(true, false).
+		SetBorder(true).
+		SetBorderPadding(0, 0, 1, 0).
+		SetTitle(" Pages ")
 
 	pages := tview.NewPages()
-
-	flex := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(table, 0, 1, true)
-	flex.SetTitle(" Pages ")
-	flex.SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
 
 	registry := &PagesRegistry{
 		UI: &UI{
 			Pages:       pages,
 			OpenedPages: table,
-			Main:        util.NewModal(flex),
+			Main:        util.NewModal(table),
 		},
 		PageMenuMap:  make(map[string]string),
 		HistoryIndex: -1,
