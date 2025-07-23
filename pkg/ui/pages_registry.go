@@ -45,7 +45,7 @@ func NewPagesRegistry() *PagesRegistry {
 		if event.Key() == tcell.KeyEnter {
 			row, _ := table.GetSelection()
 			page := table.GetCell(row, 1).Text
-			registry.Pages.SwitchToPage(page)
+			registry.Pages.ShowPage(page)
 		}
 		if event.Key() == tcell.KeyEsc {
 			registry.Pages.HidePage(Pages)
@@ -69,13 +69,8 @@ func (app *App) AddToPagesRegistry(
 	name string,
 	component tview.Primitive,
 	menu string,
-) *tview.Pages {
+) {
 	registry := app.Layout.PagesRegistry
-
-	if _, exists := registry.PageMenuMap[name]; exists {
-		app.SwitchToPage(name)
-		return registry.Pages
-	}
 
 	registry.PageMenuMap[name] = menu
 
@@ -88,8 +83,7 @@ func (app *App) AddToPagesRegistry(
 
 	app.Cache.Set(name, name, Expiration)
 	app.Layout.Menu.SetMenu(menu)
-	pages := registry.Pages.AddAndSwitchToPage(name, component, true)
-	return pages
+	registry.Pages.AddAndSwitchToPage(name, component, true)
 }
 
 func (app *App) Forward() {

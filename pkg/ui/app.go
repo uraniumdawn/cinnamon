@@ -264,19 +264,18 @@ func (app *App) Init() {
 		return event
 	})
 
-	resourcesPage := NewResourcesPage(commandChannel)
 	app.Layout.PagesRegistry.PageMenuMap[Main] = MainPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Clusters] = ClustersPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SubjectsPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Pages] = ResourcesPageMenu
 
-	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, true)
-	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, true)
-	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, true)
-	app.Layout.PagesRegistry.Pages.AddPage(Resources, resourcesPage.Modal, true, true)
-	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, true)
-	app.Layout.PagesRegistry.Pages.SwitchToPage(Main)
+	app.Layout.PagesRegistry.InitResourcesPage(commandChannel)
+	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, false)
+	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, false)
+	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, false)
+	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, false)
+	app.Layout.PagesRegistry.Pages.ShowPage(Main)
 	app.Layout.Menu.SetMenu(MainPageMenu)
 
 	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -296,7 +295,7 @@ func (app *App) Init() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
 			app.Layout.Menu.SetMenu(ResourcesPageMenu)
-			app.Layout.PagesRegistry.Pages.SwitchToPage(Resources)
+			app.Layout.PagesRegistry.Pages.ShowPage(Resources)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
@@ -307,8 +306,8 @@ func (app *App) Init() {
 		}
 
 		if event.Key() == tcell.KeyCtrlP {
-			app.Layout.Menu.SetMenu(ResourcesPageMenu)
-			app.Layout.PagesRegistry.Pages.SwitchToPage(Pages)
+			app.Layout.Menu.SetMenu(Pages)
+			app.Layout.PagesRegistry.Pages.ShowPage(Pages)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {

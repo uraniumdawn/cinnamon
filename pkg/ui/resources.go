@@ -7,12 +7,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-type ResourcesPage struct {
-	Modal   tview.Primitive
-	Channel chan<- string
-}
-
-func NewResourcesPage(commandCh chan<- string) *ResourcesPage {
+func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) {
 	table := tview.NewTable()
 	table.SetSelectable(true, false)
 
@@ -31,6 +26,10 @@ func NewResourcesPage(commandCh chan<- string) *ResourcesPage {
 			commandCh <- resource
 		}
 
+		if event.Key() == tcell.KeyEsc {
+			pr.Pages.HidePage(Resources)
+		}
+
 		return event
 	})
 
@@ -41,8 +40,5 @@ func NewResourcesPage(commandCh chan<- string) *ResourcesPage {
 	flex.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 
-	return &ResourcesPage{
-		Modal:   util.NewModal(flex),
-		Channel: commandCh,
-	}
+	pr.Pages.AddPage(Resources, util.NewModal(flex), true, false)
 }
