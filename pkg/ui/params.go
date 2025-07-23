@@ -179,24 +179,15 @@ func (app *App) InitConsumingParams() {
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.Layout.PagesRegistry.UI.Pages.HidePage(ConsumingParams)
+			app.HideModalPage(ConsumingParams)
 		}
 
 		return event
 	})
 
-	menu := tview.NewTable()
-	menu.SetBorderPadding(0, 0, 1, 0)
-	menu.SetCell(0, 0, tview.NewTableCell("[blue]<j, ↓> [grey]Down"))
-	menu.SetCell(0, 1, tview.NewTableCell("[blue]<k, ↑> [grey]Up"))
-	menu.SetCell(0, 2, tview.NewTableCell("[blue]<Enter> [grey]Focus/Set parameter"))
-	menu.SetCell(0, 4, tview.NewTableCell("[blue]<c> [grey]Default"))
-	menu.SetCell(0, 5, tview.NewTableCell("[blue]<Esc> [grey]Close window"))
-
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(f, 0, 1, true).
-		AddItem(menu, 1, 0, false)
+		AddItem(f, 0, 1, true)
 	flex.SetTitle(" Consuming parameters ")
 	flex.SetBorder(true)
 

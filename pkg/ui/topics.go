@@ -38,12 +38,13 @@ func (app *App) Topics(statusLineChannel chan string) {
 						TopicsPageMenu,
 					)
 
+					app.Layout.PagesRegistry.PageMenuMap[ConsumingParams] = ConsumingParamsPageMenu
 					app.InitConsumingParams()
+
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							app.Topics(statusLineChannel)
 						}
-
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
@@ -61,7 +62,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
-							app.Layout.PagesRegistry.UI.Pages.ShowPage(ConsumingParams)
+							app.ShowModalPage(ConsumingParams)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {

@@ -30,10 +30,10 @@ func (app *App) OpenPagesKeyHadler(table *tview.Table) {
 				row, _ := table.GetSelection()
 				page := table.GetCell(row, 1).Text
 				app.SwitchToPage(page)
-				app.Layout.PagesRegistry.UI.Pages.HidePage(OpenedPages)
+				app.HideModalPage(OpenedPages)
 			}
 			if event.Key() == tcell.KeyEsc {
-				app.Layout.PagesRegistry.UI.Pages.HidePage(OpenedPages)
+				app.HideModalPage(OpenedPages)
 			}
 			return event
 		},
@@ -59,9 +59,7 @@ func (app *App) SearchKeyHadler(input *tview.InputField) {
 func (app *App) MainOperationKeyHadler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
-			app.Layout.Menu.SetMenu(ResourcesPageMenu)
-			app.Layout.PagesRegistry.UI.Pages.ShowPage(Resources)
-			app.Layout.PagesRegistry.UI.Pages.SendToFront(Resources)
+			app.ShowModalPage(Resources)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
@@ -72,9 +70,7 @@ func (app *App) MainOperationKeyHadler() {
 		}
 
 		if event.Key() == tcell.KeyCtrlP {
-			app.Layout.PagesRegistry.UI.Pages.ShowPage(OpenedPages)
-			app.Layout.PagesRegistry.UI.Pages.SendToFront(OpenedPages)
-			app.Layout.Menu.SetMenu(OpenedPagesMenu)
+			app.ShowModalPage(OpenedPages)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {

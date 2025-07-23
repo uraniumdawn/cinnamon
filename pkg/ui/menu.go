@@ -66,6 +66,14 @@ var keys = map[string]Pair{
 		Key:   "[blue]<e>",
 		Value: "[grey]Terminating",
 	},
+	"default": {
+		Key:   "[blue]<c>",
+		Value: "[grey]Default",
+	},
+	"close": {
+		Key:   "[blue]<Esc>",
+		Value: "[grey]Close",
+	},
 	"q": {
 		Key:   "<q>",
 		Value: "",
@@ -73,17 +81,18 @@ var keys = map[string]Pair{
 }
 
 const (
-	MainPageMenu           = "MainPageMenu"
-	ResourcesPageMenu      = "ResourcesPageMenu"
-	OpenedPagesMenu        = "OpenedPagesMenu"
-	ClustersPageMenu       = "ClustersPageMenu"
-	NodesPageMenu          = "NodesPageMenu"
-	TopicsPageMenu         = "TopicsPageMenu"
-	ConsumingMenu          = "ConsumingMenu"
-	ConsumerGroupsPageMenu = "ConsumerGroupsPageMenu"
-	SubjectsPageMenu       = "SubjectsPageMenu"
-	VersionsPageMenu       = "VersionsPageMenu"
-	FinalPageMenu          = "FinalPageMenu"
+	MainPageMenu            = "MainPageMenu"
+	ResourcesPageMenu       = "ResourcesPageMenu"
+	OpenedPagesMenu         = "OpenedPagesMenu"
+	ClustersPageMenu        = "ClustersPageMenu"
+	NodesPageMenu           = "NodesPageMenu"
+	TopicsPageMenu          = "TopicsPageMenu"
+	ConsumingMenu           = "ConsumingMenu"
+	ConsumingParamsPageMenu = "ConsumingParamsPageMenu"
+	ConsumerGroupsPageMenu  = "ConsumerGroupsPageMenu"
+	SubjectsPageMenu        = "SubjectsPageMenu"
+	VersionsPageMenu        = "VersionsPageMenu"
+	FinalPageMenu           = "FinalPageMenu"
 )
 
 func NewMenu() *Menu {
@@ -98,9 +107,10 @@ func NewMenu() *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			MainPageMenu:      {"up", "dw", "select", "res", "opened"},
-			ResourcesPageMenu: {"up", "dw", "select"},
-			OpenedPagesMenu:   {"up", "dw", "select"},
+			MainPageMenu:            {"up", "dw", "select", "res", "opened"},
+			ResourcesPageMenu:       {"up", "dw", "select", "close"},
+			OpenedPagesMenu:         {"up", "dw", "select", "close"},
+			ConsumingParamsPageMenu: {"up", "dw", "select", "default", "close"},
 			ClustersPageMenu: {
 				"up",
 				"dw",

@@ -108,3 +108,21 @@ func (app *App) SwitchToPage(name string) {
 		app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
 	}
 }
+
+func (app *App) ShowModalPage(pageName string) {
+	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
+		app.Layout.Menu.SetMenu(menu)
+		app.Layout.PagesRegistry.UI.Pages.ShowPage(pageName)
+		app.Layout.PagesRegistry.UI.Pages.SendToFront(pageName)
+	}
+}
+
+func (app *App) HideModalPage(pageName string) {
+	registry := app.Layout.PagesRegistry
+	registry.UI.Pages.HidePage(pageName)
+
+	currentPage, _ := registry.UI.Pages.GetFrontPage()
+	if menu, ok := registry.PageMenuMap[currentPage]; ok {
+		app.Layout.Menu.SetMenu(menu)
+	}
+}

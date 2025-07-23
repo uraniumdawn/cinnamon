@@ -7,7 +7,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) tview.Primitive {
+func (pr *PagesRegistry) InitResourcesPage(app *App, commandCh chan<- string) tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false)
 
@@ -23,11 +23,12 @@ func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) tview.Primit
 		row, _ := table.GetSelection()
 		resource := table.GetCell(row, 0).Text
 		if event.Key() == tcell.KeyEnter {
+			app.HideModalPage(Resources)
 			commandCh <- resource
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			pr.UI.Pages.HidePage(Resources)
+			app.HideModalPage(Resources)
 		}
 
 		return event
