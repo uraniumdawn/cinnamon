@@ -7,7 +7,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) {
+func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false)
 
@@ -40,5 +40,5 @@ func (pr *PagesRegistry) InitResourcesPage(commandCh chan<- string) {
 	flex.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 
-	pr.Pages.AddPage(Resources, util.NewModal(flex), true, false)
+	return util.NewModal(flex)
 }

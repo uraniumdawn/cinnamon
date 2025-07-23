@@ -270,13 +270,27 @@ func (app *App) Init() {
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Pages] = ResourcesPageMenu
 
-	app.Layout.PagesRegistry.InitResourcesPage(commandChannel)
+	resourcesPage := app.Layout.PagesRegistry.InitResourcesPage(commandChannel)
 	app.Layout.PagesRegistry.Pages.AddPage(Main, main, true, false)
 	app.Layout.PagesRegistry.Pages.AddPage(Clusters, ct, true, false)
 	app.Layout.PagesRegistry.Pages.AddPage(SchemaRegistries, st, true, false)
+	app.Layout.PagesRegistry.Pages.AddPage(Resources, resourcesPage, true, false)
 	app.Layout.PagesRegistry.Pages.AddPage(Pages, app.Layout.PagesRegistry.Modal, true, false)
 	app.Layout.PagesRegistry.Pages.ShowPage(Main)
 	app.Layout.Menu.SetMenu(MainPageMenu)
+
+	app.Layout.PagesRegistry.Table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEnter {
+			row, _ := app.Layout.PagesRegistry.Table.GetSelection()
+			page := app.Layout.PagesRegistry.Table.GetCell(row, 1).Text
+			app.SwitchToPage(page)
+			app.Layout.PagesRegistry.Pages.HidePage(Pages)
+		}
+		if event.Key() == tcell.KeyEsc {
+			app.Layout.PagesRegistry.Pages.HidePage(Pages)
+		}
+		return event
+	})
 
 	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
@@ -296,6 +310,7 @@ func (app *App) Init() {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
 			app.Layout.Menu.SetMenu(ResourcesPageMenu)
 			app.Layout.PagesRegistry.Pages.ShowPage(Resources)
+			app.Layout.PagesRegistry.Pages.SendToFront(Resources)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
@@ -308,6 +323,7 @@ func (app *App) Init() {
 		if event.Key() == tcell.KeyCtrlP {
 			app.Layout.Menu.SetMenu(Pages)
 			app.Layout.PagesRegistry.Pages.ShowPage(Pages)
+			app.Layout.PagesRegistry.Pages.SendToFront(Pages)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {

@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -40,18 +39,6 @@ func NewPagesRegistry() *PagesRegistry {
 		PageMenuMap:  make(map[string]string),
 		HistoryIndex: -1,
 	}
-
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
-			row, _ := table.GetSelection()
-			page := table.GetCell(row, 1).Text
-			registry.Pages.ShowPage(page)
-		}
-		if event.Key() == tcell.KeyEsc {
-			registry.Pages.HidePage(Pages)
-		}
-		return event
-	})
 
 	return registry
 }
