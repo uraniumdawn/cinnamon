@@ -1,3 +1,7 @@
+// Copyright (c) Sergey Petrovsky
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 package client
 
 import (
@@ -5,7 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.comcom/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
 	"github.com/rs/zerolog/log"
