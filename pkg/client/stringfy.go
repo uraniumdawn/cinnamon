@@ -75,17 +75,17 @@ func (r *TopicResult) String() string {
 		sb.WriteString(fmt.Sprintf("Topic Id: %s\n", desc.TopicID))
 		sb.WriteString(fmt.Sprintf("Allowed operations: %s\n", desc.AuthorizedOperations))
 		sb.WriteString(fmt.Sprintf("Partitions count: %d\n", len(desc.Partitions)))
-		sb.WriteString(fmt.Sprintf("Offsets: \n"))
+		sb.WriteString("Offsets: \n")
 		for _, p := range desc.Partitions {
 			end := r.endOffsets[int32(p.Partition)]
 			st := r.startOffsets[int32(p.Partition)]
 			sb.WriteString(fmt.Sprintf("\t%d: [%d, %d] %d\n", p.Partition, st, end, end-st))
 		}
-		sb.WriteString(fmt.Sprintf("Partitions details: \n"))
+		sb.WriteString("Partitions details: \n")
 		for _, p := range desc.Partitions {
 			sb.WriteString(fmt.Sprintf("\tPartition: %d\n", p.Partition))
 			sb.WriteString(fmt.Sprintf("\tLeader: %s\n", p.Leader))
-			sb.WriteString(fmt.Sprintf("\tISRs:\n"))
+			sb.WriteString("\tISRs:\n")
 			for _, isr := range p.Isr {
 				sb.WriteString(fmt.Sprintf("\t\t%s\n", isr))
 			}
