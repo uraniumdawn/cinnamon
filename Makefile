@@ -23,7 +23,7 @@ generate:
 	go generate ./...
 
 format:
-	golangci-lint fmt
+	golangci-lint fmt -v
 
 .PHONY: lint
 lint:
