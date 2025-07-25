@@ -17,7 +17,7 @@ Cinnamon is a dedicated terminal client for Apache Kafka that allows you to:
 - **View** topics, consumer groups, cluster nodes, and schema subjects.
 - **Describe** resources to see detailed configurations and metadata.
 - **Search** and filter resources with fuzzy search.
-- **Consume** messages from your topics directly in the TUI.
+<!-- - **Consume** messages from your topics directly in the TUI. -->
 
 It's designed for developers and administrators who work with Kafka and prefer keyboard-driven workflows and the speed of a terminal interface.
 
@@ -37,10 +37,10 @@ It's designed for developers and administrators who work with Kafka and prefer k
   - List all subjects in your Schema Registry.
   - View all registered versions for a subject.
   - Inspect the schema for a specific version.
-- **Message Consuming**:
+<!-- - **Message Consuming**:
   - Built-in consumer to view topic messages.
   - Customizable consuming parameters (latest N records, offset, timestamp).
-  - Support for Avro-encoded messages with automatic deserialization.
+  - Support for Avro-encoded messages with automatic deserialization. -->
 
 ## Installation
 
@@ -76,7 +76,6 @@ cinnamon:
         # sasl.username: "$USER"
         # sasl.password: "$PASSWORD"
       schema.registry.name: "dev-sr"
-      command: "kcat -b {{bootstrap.servers}} -t {{topic}} -C -c1 -o-5 -q" # Optional: custom command for consuming
 
     - name: "prod-cluster"
       properties:
@@ -126,13 +125,10 @@ Cinnamon is controlled through keyboard shortcuts. The available actions are alw
 |-------------|--------------------------------------|----------------------|
 | `<d>`         | Describe the selected resource       | Most resource lists  |
 | `<Ctrl+u>`  | Refresh/update the current view      | Most resource lists  |
-| `<r>`         | Read/Consume from the selected topic | Topics list          |
-| `<p>`         | Set consuming parameters             | Topics list          |
-| `<e>`         | Terminate the running consumer       | Consuming view       |
 
-## Contributing
+<!-- ## Contributing
 
-Contributions are welcome! Please feel free to open an issue or submit a pull request.
+Contributions are welcome! Please feel free to open an issue or submit a pull request. -->
 
 ## License
 
