@@ -49,7 +49,7 @@ It's designed for developers and administrators who work with Kafka and prefer k
 Ensure you have Go installed (version 1.19+).
 
 ```shell
-git clone https://github.com/petrovsky-s/cinnamon.git
+git clone https://github.com/uraniumdawn/cinnamon.git
 cd cinnamon
 make install
 ```
