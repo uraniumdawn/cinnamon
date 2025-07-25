@@ -11,7 +11,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (pr *PagesRegistry) InitResourcesPage(app *App, commandCh chan<- string) tview.Primitive {
+func (pr *PagesRegistry) NewResourcesPage(app *App, commandCh chan<- string) tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).
