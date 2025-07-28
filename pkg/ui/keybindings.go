@@ -77,11 +77,11 @@ func (app *App) MainOperationKeyHadler() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Layout.Search.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.Layout.Search.HasFocus() {
 			app.Back()
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Layout.Search.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.Layout.Search.HasFocus() {
 			app.Forward()
 		}
 

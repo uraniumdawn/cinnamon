@@ -8,17 +8,30 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (pr *PagesRegistry) NewStatusPage(app *App) tview.Primitive {
-	text := tview.NewTextArea()
-	text.SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0).
-		SetTitle(" Status ")
+type StatusView struct {
+	Text *tview.TextView
+	View tview.Primitive
+}
 
-	return tview.NewFlex().
-		AddItem(nil, 0, 1, false).
+func (pr *PagesRegistry) NewStatusPage() *StatusView {
+	text := tview.NewTextView()
+	text.
+		SetBorderPadding(0, 0, 1, 0)
+	text.SetLabel("Status:").
+		SetWrap(true).SetWordWrap(true).
+		SetTextAlign(tview.AlignLeft)
+	text.SetDynamicColors(true)
+	// text.SetBackgroundColor(tcell.ColorGrey.TrueColor())
+
+	view := tview.NewFlex().
+		AddItem(nil, 1, 0, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(text, 0, 2, true).
-			AddItem(nil, 0, 1, false), 0, 5, true).
+			AddItem(text, 1, 0, false).
+			AddItem(nil, 1, 0, false), 0, 1, true).
 		AddItem(nil, 0, 1, false)
+	return &StatusView{
+		Text: text,
+		View: view,
+	}
 }
