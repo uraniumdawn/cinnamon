@@ -102,7 +102,6 @@ const (
 func NewMenu() *Menu {
 	table := tview.NewTable().
 		SetSelectable(false, false)
-	table.SetBorderPadding(0, 0, 1, 0)
 
 	flex := tview.NewFlex().SetDirection(tview.FlexColumn)
 	flex.AddItem(table, 0, 1, true)

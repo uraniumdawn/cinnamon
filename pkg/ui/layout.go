@@ -45,12 +45,10 @@ type Borders struct {
 
 func NewLayout(registry *PagesRegistry) *Layout {
 	InitBorders()
-	// registry := NewPagesRegistry()
 
 	sl := tview.NewTextView()
-	sl.SetLabel("Status:")
 	sl.SetWrap(true).SetWordWrap(true)
-	sl.SetTextAlign(tview.AlignLeft).SetBorder(false)
+	sl.SetTextAlign(tview.AlignRight).SetBorder(false)
 	sl.SetDynamicColors(true)
 
 	cluster := tview.NewTextView()
