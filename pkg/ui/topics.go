@@ -217,6 +217,13 @@ func (app *App) NewTopicsTable(topics *client.TopicsResult) *tview.Table {
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 	table.SetTitle(fmt.Sprintf(" Topics [%s] [%d] ", app.Selected.Cluster.Name, len(topics.Result)))
+	table.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
 
 	sorted := treemap.NewWithStringComparator()
 	for topicName, metadata := range topics.Result {

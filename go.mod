@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect

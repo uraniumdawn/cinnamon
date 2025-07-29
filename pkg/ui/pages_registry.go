@@ -5,6 +5,7 @@
 package ui
 
 import (
+	"cinnamon/pkg/config"
 	"cinnamon/pkg/util"
 	"strconv"
 	"time"
@@ -27,7 +28,7 @@ type UI struct {
 
 const Expiration = time.Minute * 5
 
-func NewPagesRegistry() *PagesRegistry {
+func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).

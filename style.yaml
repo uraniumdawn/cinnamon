@@ -1,0 +1,26 @@
+# Default color configuration for Cinnamon UI
+
+# See tcell source code to take and valid color name of provide the RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+# Components colors have more priority that root 'background' and 'foreground'
+# Put 'default' to apply color of your terminal
+cinnamon:
+  cluster:
+    fgColor: "white"
+    bgColor: "black"
+  status:
+    fgColor: "grey"
+    bgColor: "black"
+  label:
+    fgColor: "orange"
+    bgColor: "black"
+  keybinding:
+    key: "grey"
+    value: "grey"
+  selection:
+    fgColor: "black"
+    bgColor: "white"
+  title: "red"
+  border: "blue"
+  background: "black"
+  foreground: "white"

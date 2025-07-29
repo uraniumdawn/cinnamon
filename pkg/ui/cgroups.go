@@ -137,6 +137,13 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
+	table.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
 
 	for i, r := range groups.ListConsumerGroupsResult.Valid {
 		table.SetCell(i, 0, tview.NewTableCell(r.GroupID))

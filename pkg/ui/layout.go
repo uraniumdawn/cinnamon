@@ -5,6 +5,7 @@
 package ui
 
 import (
+	"cinnamon/pkg/config"
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
@@ -43,7 +44,7 @@ type Borders struct {
 	BottomRightFocus rune
 }
 
-func NewLayout(registry *PagesRegistry) *Layout {
+func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	InitBorders()
 
 	sl := tview.NewTextView()
@@ -52,7 +53,7 @@ func NewLayout(registry *PagesRegistry) *Layout {
 	sl.SetDynamicColors(true)
 
 	cluster := tview.NewTextView()
-	cluster.SetLabel("Cluster:")
+	cluster.SetLabel(fmt.Sprintf("[%s]Cluster:", colors.Cinnamon.Label.FgColor))
 
 	header := tview.NewFlex()
 	header.SetDirection(tview.FlexColumn)
@@ -66,11 +67,17 @@ func NewLayout(registry *PagesRegistry) *Layout {
 	header.AddItem(info, 0, 3, false)
 
 	sideBar := tview.NewPages()
-	menu := NewMenu()
+	menu := NewMenu(colors)
 	sideBar.AddPage("menu", menu.Flex, true, true)
 	search := tview.NewInputField().
-		SetLabel("Search:").
-		SetFieldBackgroundColor(tcell.ColorDefault)
+		SetLabel(fmt.Sprintf("[%s]Search:", colors.Cinnamon.Label.FgColor))
+
+	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Label.BgColor))
+	sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
+	sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Status.BgColor))
+	cluster.SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor))
+	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
+
 	sideBar.AddPage("search", search, true, false)
 
 	main := tview.NewFlex().

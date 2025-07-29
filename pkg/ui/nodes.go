@@ -117,6 +117,13 @@ func (app *App) NewNodesTable(nodes []kafka.Node, cluster string) *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
+	table.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
 
 	for i, node := range nodes {
 		table.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(node.ID)))

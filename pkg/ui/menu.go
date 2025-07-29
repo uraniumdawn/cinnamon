@@ -1,15 +1,17 @@
-// Copyright (c) Sergey Petrovsky
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
 package ui
 
-import "github.com/rivo/tview"
+import (
+	"cinnamon/pkg/config"
+	"fmt"
+
+	"github.com/rivo/tview"
+)
 
 type Menu struct {
 	Content *tview.Table
 	Flex    *tview.Flex
 	Map     *map[string]*[]string
+	Colors  *config.ColorConfig
 }
 
 type Pair struct {
@@ -19,64 +21,64 @@ type Pair struct {
 
 var keys = map[string]Pair{
 	"dw": {
-		Key:   "[blue]<j, ↓>",
-		Value: "[grey]Down",
+		Key:   "<j, ↓>",
+		Value: "Down",
 	},
 	"up": {
-		Key:   "[blue]<k, ↑>",
-		Value: "[grey]Up",
+		Key:   "<k, ↑>",
+		Value: "Up",
 	},
 	"forward": {
-		Key:   "[blue]<f>",
-		Value: "[grey]Forward",
+		Key:   "<f>",
+		Value: "Forward",
 	},
 	"backward": {
-		Key:   "[blue]<b>",
-		Value: "[grey]Backward",
+		Key:   "<b>",
+		Value: "Backward",
 	},
 	"select": {
-		Key:   "[blue]<Enter>",
-		Value: "[grey]Select",
+		Key:   "<Enter>",
+		Value: "Select",
 	},
 	"res": {
-		Key:   "[blue]<:>",
-		Value: "[grey]Resources",
+		Key:   "<:>",
+		Value: "Resources",
 	},
 	"opened": {
-		Key:   "[blue]<Ctrl+p>",
-		Value: "[grey]Opened Pages",
+		Key:   "<Ctrl+p>",
+		Value: "Opened Pages",
 	},
 	"filter": {
-		Key:   "[blue]</>",
-		Value: "[grey]Search",
+		Key:   "</>",
+		Value: "Search",
 	},
 	"dsc": {
-		Key:   "[blue]<d>",
-		Value: "[grey]Describe Resource",
+		Key:   "<d>",
+		Value: "Describe Resource",
 	},
 	"upd": {
-		Key:   "[blue]<Ctrl+u>",
-		Value: "[grey]Update",
+		Key:   "<Ctrl+u>",
+		Value: "Update",
 	},
 	"rft": {
-		Key:   "[blue]<r>",
-		Value: "[grey]Read",
+		Key:   "<r>",
+		Value: "Read",
 	},
 	"params": {
-		Key:   "[blue]<p>",
-		Value: "[grey]Consuming parameters",
+		Key:   "<p>",
+		Value: "Consuming parameters",
 	},
 	"term": {
-		Key:   "[blue]<e>",
-		Value: "[grey]Terminating",
+		Key:   "<e>",
+		Value: "Terminating",
 	},
 	"default": {
-		Key:   "[blue]<c>",
-		Value: "[grey]Default",
+		Key:   "<c>",
+		Value: "Default",
 	},
 	"close": {
-		Key:   "[blue]<Esc>",
-		Value: "[grey]Close",
+		Key:   "<Esc>",
+		Value: "Close",
 	},
 	"q": {
 		Key:   "<q>",
@@ -99,7 +101,7 @@ const (
 	FinalPageMenu           = "FinalPageMenu"
 )
 
-func NewMenu() *Menu {
+func NewMenu(colors *config.ColorConfig) *Menu {
 	table := tview.NewTable().
 		SetSelectable(false, false)
 
@@ -181,6 +183,7 @@ func NewMenu() *Menu {
 			},
 			FinalPageMenu: {"res", "forward", "backward", "opened", "upd"},
 		},
+		Colors: colors,
 	}
 }
 
@@ -190,11 +193,22 @@ func (m *Menu) SetMenu(menu string) {
 	if keyBindings, ok := (*m.Map)[menu]; ok {
 		for i, binding := range *keyBindings {
 			if value, exists := keys[binding]; exists {
-				m.Content.SetCell(0, col, tview.NewTableCell(value.Key))
-				m.Content.SetCell(0, col+1, tview.NewTableCell(value.Value))
+				keyColor := m.Colors.Cinnamon.Keybinding.Key
+				valueColor := m.Colors.Cinnamon.Keybinding.Value
+
+				m.Content.SetCell(
+					0,
+					col,
+					tview.NewTableCell(fmt.Sprintf("[%s]%s", keyColor, value.Key)),
+				)
+				m.Content.SetCell(
+					0,
+					col+1,
+					tview.NewTableCell(fmt.Sprintf("[%s]%s", valueColor, value.Value)),
+				)
 				col += 2
 				if i < len(*keyBindings)-1 {
-					m.Content.SetCell(0, col, tview.NewTableCell(","))
+					m.Content.SetCell(0, col, tview.NewTableCell("|"))
 					col++
 				}
 			}

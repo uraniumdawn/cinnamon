@@ -5,13 +5,18 @@
 package ui
 
 import (
+	"cinnamon/pkg/config"
 	"cinnamon/pkg/util"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
-func (pr *PagesRegistry) NewResourcesPage(app *App, commandCh chan<- string) tview.Primitive {
+func (pr *PagesRegistry) NewResourcesPage(
+	app *App,
+	commandCh chan<- string,
+	colors *config.ColorConfig,
+) tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).
@@ -25,6 +30,14 @@ func (pr *PagesRegistry) NewResourcesPage(app *App, commandCh chan<- string) tvi
 	table.SetCell(4, 0, tview.NewTableCell(Topics))
 	table.SetCell(5, 0, tview.NewTableCell(ConsumerGroups))
 	table.SetCell(6, 0, tview.NewTableCell(Subjects))
+
+	table.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
