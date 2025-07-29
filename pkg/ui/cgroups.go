@@ -22,7 +22,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 	resultCh := make(chan *client.ConsumerGroupsResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentKafkaClient()
+	c := app.GetCurrentKafkaClient()
 	c.ConsumerGroups(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -89,7 +89,7 @@ func (app *App) ConsumerGroup(name string) {
 	resultCh := make(chan *client.DescribeConsumerGroupResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentKafkaClient()
+	c := app.GetCurrentKafkaClient()
 	c.DescribeConsumerGroup(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

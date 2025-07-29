@@ -8,6 +8,7 @@ import (
 	"cinnamon/pkg/client"
 	"cinnamon/pkg/config"
 	"cinnamon/pkg/schemaregistry"
+	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"os"
@@ -59,32 +60,16 @@ type Selected struct {
 	SchemaRegistry *config.SchemaRegistryConfig
 }
 
-func toClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
-	clusterMap := make(map[string]*config.ClusterConfig)
-	for _, cluster := range cfg.Cinnamon.Clusters {
-		clusterMap[cluster.Name] = cluster
-	}
-	return clusterMap
-}
-
-func toSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryConfig {
-	srMap := make(map[string]*config.SchemaRegistryConfig)
-	for _, sr := range cfg.Cinnamon.SchemaRegistries {
-		srMap[sr.Name] = sr
-	}
-	return srMap
-}
-
-func (app *App) getCurrentKafkaClient() *client.Client {
+func (app *App) GetCurrentKafkaClient() *client.Client {
 	return app.KafkaClients[app.Selected.Cluster.Name]
 }
 
-func (app *App) getCurrentSchemaRegistryClient() *schemaregistry.Client {
+func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
 	return app.SchemaRegistryClients[app.Selected.SchemaRegistry.Name]
 }
 
 func NewApp() *App {
-	initLogger()
+	InitLogger()
 
 	cfg, err := config.InitConfig()
 	if err != nil {
@@ -94,15 +79,15 @@ func NewApp() *App {
 	return &App{
 		Application:           tview.NewApplication(),
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
-		Clusters:              toClustersMap(cfg),
-		SchemaRegistries:      toSchemaRegistryMap(cfg),
+		Clusters:              util.ToClustersMap(cfg),
+		SchemaRegistries:      util.ToSchemaRegistryMap(cfg),
 		KafkaClients:          make(map[string]*client.Client),
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
 		Config:                cfg,
 	}
 }
 
-func initLogger() {
+func InitLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339
 
 	logFilePath := filepath.Join(os.Getenv("HOME"), ".config", "cinamon", "cinnamon.log")
@@ -218,7 +203,7 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 }
 
 func (app *App) Run() {
-	app.applyColors()
+	app.ApplyColors()
 	ctx, cancel := context.WithCancel(context.Background())
 	app.RunCommandHandler(ctx, commandCh)
 	app.RunStatusLineHandler(ctx, statusLineCh)
@@ -302,7 +287,7 @@ func (app *App) Run() {
 	log.Info().Msg("Application terminated")
 }
 
-func (app *App) applyColors() {
+func (app *App) ApplyColors() {
 	tview.Styles = tview.Theme{
 		PrimitiveBackgroundColor:    tcell.GetColor(app.Config.Colors.Cinnamon.Background),
 		ContrastBackgroundColor:     tview.Styles.ContrastBackgroundColor,

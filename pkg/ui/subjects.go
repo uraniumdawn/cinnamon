@@ -24,7 +24,7 @@ func (app *App) Subjects(statusLineChannel chan string) {
 	resultCh := make(chan []string)
 	errorCh := make(chan error)
 
-	c := app.getCurrentSchemaRegistryClient()
+	c := app.GetCurrentSchemaRegistryClient()
 	c.Subjects(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -83,7 +83,7 @@ func (app *App) Versions(subject string) {
 	resultCh := make(chan []int)
 	errorCh := make(chan error)
 
-	c := app.getCurrentSchemaRegistryClient()
+	c := app.GetCurrentSchemaRegistryClient()
 	c.VersionsBySubject(subject, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -147,7 +147,7 @@ func (app *App) Schema(subject string, version int) {
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentSchemaRegistryClient()
+	c := app.GetCurrentSchemaRegistryClient()
 	c.Schema(subject, version, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

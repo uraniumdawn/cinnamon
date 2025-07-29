@@ -6,6 +6,7 @@ package util
 
 import (
 	"bytes"
+	"cinnamon/pkg/config"
 	"encoding/csv"
 	"os"
 	"strconv"
@@ -84,4 +85,20 @@ func GetInt32(inputField *tview.InputField) int32 {
 	}
 	res, _ := strconv.ParseInt(text, 10, 32)
 	return int32(res)
+}
+
+func ToClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
+	clusterMap := make(map[string]*config.ClusterConfig)
+	for _, cluster := range cfg.Cinnamon.Clusters {
+		clusterMap[cluster.Name] = cluster
+	}
+	return clusterMap
+}
+
+func ToSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryConfig {
+	srMap := make(map[string]*config.SchemaRegistryConfig)
+	for _, sr := range cfg.Cinnamon.SchemaRegistries {
+		srMap[sr.Name] = sr
+	}
+	return srMap
 }

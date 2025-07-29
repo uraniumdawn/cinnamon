@@ -21,7 +21,7 @@ func (app *App) Nodes(statusLineChannel chan string) {
 	resultCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentKafkaClient()
+	c := app.GetCurrentKafkaClient()
 	c.DescribeCluster(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -77,7 +77,7 @@ func (app *App) Node(id string, url string) {
 	resultCh := make(chan *client.ResourceResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentKafkaClient()
+	c := app.GetCurrentKafkaClient()
 	c.DescribeNode(id, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

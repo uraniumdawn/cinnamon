@@ -26,7 +26,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 	resultCh := make(chan *client.TopicsResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentKafkaClient()
+	c := app.GetCurrentKafkaClient()
 	c.Topics(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -170,7 +170,7 @@ func (app *App) Topic(name string) {
 	resultCh := make(chan *client.TopicResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentKafkaClient()
+	c := app.GetCurrentKafkaClient()
 	statusLineCh <- "Getting topic description results..."
 	c.DescribeTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
