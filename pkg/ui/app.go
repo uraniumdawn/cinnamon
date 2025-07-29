@@ -90,7 +90,7 @@ func NewApp() *App {
 func InitLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339
 
-	logFilePath := filepath.Join(os.Getenv("HOME"), ".config", "cinamon", "cinnamon.log")
+	logFilePath := filepath.Join(os.Getenv("HOME"), ".config", "cinnamon", "cinnamon.log")
 	logDir := filepath.Dir(logFilePath)
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		fmt.Printf("failed to create log directory, %s\n", err.Error())
