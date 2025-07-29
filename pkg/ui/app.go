@@ -310,7 +310,7 @@ func (app *App) applyColors() {
 		BorderColor:                 tcell.GetColor(app.Config.Colors.Cinnamon.Border),
 		TitleColor:                  tcell.GetColor(app.Config.Colors.Cinnamon.Title),
 		GraphicsColor:               tview.Styles.GraphicsColor,
-		PrimaryTextColor:            tcell.GetColor(app.Config.Colors.Cinnamon.Background),
+		PrimaryTextColor:            tcell.GetColor(app.Config.Colors.Cinnamon.Foreground),
 		SecondaryTextColor:          tview.Styles.SecondaryTextColor,
 		TertiaryTextColor:           tview.Styles.TertiaryTextColor,
 		InverseTextColor:            tview.Styles.InverseTextColor,
