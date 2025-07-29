@@ -419,7 +419,6 @@ func (app *App) NewMainTable() *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetBackgroundColor(tcell.GetColor(app.Config.Colors.Cinnamon.Background))
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
@@ -458,7 +457,6 @@ func (app *App) NewClustersTable() *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetBackgroundColor(tcell.GetColor(app.Config.Colors.Cinnamon.Background))
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
@@ -483,7 +481,6 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetBackgroundColor(tcell.GetColor(app.Config.Colors.Cinnamon.Background))
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),

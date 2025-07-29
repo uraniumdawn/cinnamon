@@ -21,7 +21,6 @@ func (pr *PagesRegistry) NewStatusPage() *StatusView {
 		SetWrap(true).SetWordWrap(true).
 		SetTextAlign(tview.AlignLeft)
 	text.SetDynamicColors(true)
-	// text.SetBackgroundColor(tcell.ColorGrey.TrueColor())
 
 	view := tview.NewFlex().
 		AddItem(nil, 1, 0, false).
