@@ -7,6 +7,7 @@ package ui
 import (
 	"cinnamon/pkg/config"
 	"fmt"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -20,6 +21,7 @@ type Layout struct {
 	Content       *tview.Flex
 	Menu          *Menu
 	SideBar       *tview.Pages
+	Colors        *config.ColorConfig
 }
 
 type Borders struct {
@@ -51,9 +53,11 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	sl.SetWrap(true).SetWordWrap(true)
 	sl.SetTextAlign(tview.AlignRight).SetBorder(false)
 	sl.SetDynamicColors(true)
+	sl.SetWordWrap(true).SetWrap(true)
 
 	cluster := tview.NewTextView()
-	cluster.SetLabel(fmt.Sprintf("[%s]Cluster:", colors.Cinnamon.Label.FgColor))
+	cluster.SetLabel(fmt.Sprintf("[%s]Clusters:", colors.Cinnamon.Label.FgColor))
+	cluster.SetWordWrap(true).SetWrap(true)
 
 	header := tview.NewFlex()
 	header.SetDirection(tview.FlexColumn)
@@ -94,6 +98,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		Menu:          menu,
 		SideBar:       sideBar,
 		Content:       main,
+		Colors:        colors,
 	}
 }
 
@@ -121,10 +126,19 @@ func InitBorders() {
 	}
 }
 
-func (p *Layout) SetSelected(cluster string, sr string) {
-	p.Cluster.SetText(fmt.Sprintf("[%s]", cluster))
-}
-
-func (p *Layout) ClearStatus() {
-	p.StatusLine.Clear()
+func (l *Layout) SetSelected(cluster *config.ClusterConfig, sr *config.SchemaRegistryConfig) {
+	var parts []string
+	if cluster != nil {
+		parts = append(
+			parts,
+			fmt.Sprintf("[%s]", cluster.Name),
+		)
+	}
+	if sr != nil {
+		parts = append(
+			parts,
+			fmt.Sprintf("[%s]", sr.Name),
+		)
+	}
+	l.Cluster.SetText(strings.Join(parts, " "))
 }

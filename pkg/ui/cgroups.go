@@ -17,8 +17,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (app *App) ConsumerGroups(statusLineChannel chan string) {
-	statusLineChannel <- "Getting consumer groups..."
+func (app *App) ConsumerGroups() {
+	statusLineCh <- "getting consumer groups..."
 	resultCh := make(chan *client.ConsumerGroupsResult)
 	errorCh := make(chan error)
 
@@ -39,7 +39,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.ConsumerGroups(statusLineChannel)
+							app.ConsumerGroups()
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
@@ -66,18 +66,18 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 						table.ScrollToBeginning()
 					})
 
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to list topics")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list topics: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to list topics: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while to list topics")
-				statusLineChannel <- "[red]Timeout while to list topics"
+				statusLineCh <- "[red]timeout while to list topics"
 				return
 			}
 		}
@@ -85,7 +85,7 @@ func (app *App) ConsumerGroups(statusLineChannel chan string) {
 }
 
 func (app *App) ConsumerGroup(name string) {
-	statusLineCh <- "Getting consumer group description results..."
+	statusLineCh <- "getting consumer group description results..."
 	resultCh := make(chan *client.DescribeConsumerGroupResult)
 	errorCh := make(chan error)
 
@@ -111,18 +111,18 @@ func (app *App) ConsumerGroup(name string) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to describe consumer group")
-				statusLineCh <- fmt.Sprintf("[red]Failed to describe consumer group: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to describe consumer group: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while describing consumer group")
-				statusLineCh <- "[red]Timeout while describing consumer group"
+				statusLineCh <- "[red]timeout while describing consumer group"
 				return
 			}
 		}

@@ -6,8 +6,6 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
-	"cinnamon/pkg/shell"
-	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"sort"
@@ -21,8 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (app *App) Topics(statusLineChannel chan string) {
-	statusLineChannel <- "Getting topics..."
+func (app *App) Topics() {
+	statusLineCh <- "getting topics..."
 	resultCh := make(chan *client.TopicsResult)
 	errorCh := make(chan error)
 
@@ -47,7 +45,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Topics(statusLineChannel)
+							app.Topics()
 						}
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
@@ -70,7 +68,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {
-							statusLineChannel <- "Consuming records..."
+							statusLineCh <- "consuming records..."
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							rc := make(chan string)
@@ -79,17 +77,17 @@ func (app *App) Topics(statusLineChannel chan string) {
 							// consumer, _ := NewConsumer(app.Selected.Cluster, app.Selected.SchemaRegistry)
 							// go consumer.Consume(ConsumingParameters, topicName, rc, statusLineChannel, sig)
 
-							args, err := util.ParseShellCommand(
-								app.Selected.Cluster.Command,
-								topicName,
-							)
-							if err != nil {
-								log.Error().Msg("Failed to parse command")
-								statusLineChannel <- "[red]Failed to parse command: " + err.Error()
-								return event
-							}
+							// args, err := util.ParseShellCommand(
+							// 	app.Selected.Cluster.Command,
+							// 	topicName,
+							// )
+							// if err != nil {
+							// 	log.Error().Msg("Failed to parse command")
+							// 	statusLineChannel <- "[red]Failed to parse command: " + err.Error()
+							// 	return event
+							// }
 
-							go shell.Execute(args, rc, statusLineChannel, sig)
+							// go shell.Execute(args, rc, statusLineChannel, sig)
 
 							view := tview.NewTextView().
 								SetTextAlign(tview.AlignLeft).
@@ -124,7 +122,7 @@ func (app *App) Topics(statusLineChannel chan string) {
 							run := true
 							go func() {
 								defer func() {
-									statusLineChannel <- "Consuming terminated"
+									statusLineCh <- "consuming terminated"
 								}()
 								for run {
 									select {
@@ -148,18 +146,18 @@ func (app *App) Topics(statusLineChannel chan string) {
 						table.ScrollToBeginning()
 					})
 
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to list topics")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list topics: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to list topics: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while to list topics")
-				statusLineChannel <- "[red]Timeout while to list topics"
+				statusLineCh <- "[red]timeout while to list topics"
 				return
 			}
 		}
@@ -171,7 +169,7 @@ func (app *App) Topic(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "Getting topic description results..."
+	statusLineCh <- "getting topic description results..."
 	c.DescribeTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -193,18 +191,18 @@ func (app *App) Topic(name string) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to describe topic")
-				statusLineCh <- fmt.Sprintf("[red]Failed to describe topic: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to describe topic: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while describing topic")
-				statusLineCh <- "[red]Timeout while describing topic"
+				statusLineCh <- "[red]timeout while describing topic"
 				return
 			}
 		}

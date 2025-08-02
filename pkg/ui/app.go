@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"time"
 
@@ -26,7 +25,6 @@ import (
 
 const timeout = time.Second * 10
 const (
-	Main             = "Main"
 	Resources        = "Resources"
 	Clusters         = "Clusters"
 	Cluster          = "Cluster"
@@ -66,6 +64,9 @@ func (app *App) GetCurrentKafkaClient() *client.Client {
 }
 
 func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
+	if app.Selected.SchemaRegistry == nil {
+		return nil
+	}
 	return app.SchemaRegistryClients[app.Selected.SchemaRegistry.Name]
 }
 
@@ -77,7 +78,8 @@ func NewApp() *App {
 		log.Fatal().Err(err).Msg("failed to initialize config")
 		os.Exit(1)
 	}
-	return &App{
+
+	app := &App{
 		Application:           tview.NewApplication(),
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
 		Clusters:              util.ToClustersMap(cfg),
@@ -86,6 +88,8 @@ func NewApp() *App {
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
 		Config:                cfg,
 	}
+
+	return app
 }
 
 func InitLogger() {
@@ -113,6 +117,10 @@ var (
 	commandCh    = make(chan string)
 )
 
+func ClearStatus() {
+	statusLineCh <- ""
+}
+
 func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 	go func() {
 		for {
@@ -122,10 +130,6 @@ func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 				return
 			case command := <-in:
 				switch command {
-				case Main:
-					app.QueueUpdateDraw(func() {
-						app.SwitchToPage(Main)
-					})
 				case Clusters:
 					app.QueueUpdateDraw(func() {
 						app.SwitchToPage(Clusters)
@@ -136,51 +140,51 @@ func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 					})
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]To perform operation, select Cluster"
+						statusLineCh <- "[red]to perform operation, select Cluster"
 						continue
 					}
 					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
 						func() {
-							app.Topics(statusLineCh)
+							app.Topics()
 						},
 					)
 				case "grs", ConsumerGroups:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]To perform operation, select Cluster"
+						statusLineCh <- "[red]to perform operation, select Cluster"
 						continue
 					}
 					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
 						func() {
-							app.ConsumerGroups(statusLineCh)
+							app.ConsumerGroups()
 						},
 					)
 				case "nds", Nodes:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]To perform operation, select Cluster"
+						statusLineCh <- "[red]to perform operation, select Cluster"
 						continue
 					}
 					app.CheckInCache(
 						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
 						func() {
 							app.QueueUpdateDraw(func() {
-								app.Nodes(statusLineCh)
+								app.Nodes()
 							})
 						},
 					)
 				case "sjs", Subjects:
 					if !app.isSchemaRegistrySelected(app.Selected) {
-						statusLineCh <- "[red]To perform operation, select Schema Registry"
+						statusLineCh <- "[red]to perform operation, select Schema Registry"
 						continue
 					}
 					app.CheckInCache(Subjects, func() {
-						app.Subjects(statusLineCh)
+						app.Subjects()
 					})
 				case "q!":
 					app.Stop()
 				default:
-					statusLineCh <- "Invalid command"
+					statusLineCh <- "invalid command"
 				}
 			}
 		}
@@ -212,50 +216,32 @@ func (app *App) Run() {
 	registry := NewPagesRegistry(app.Config.Colors)
 	app.Layout = NewLayout(registry, app.Config.Colors)
 
+	for _, c := range app.Config.Cinnamon.Clusters {
+		if c.Selected {
+			app.SelectCluster(c, false)
+			break // Assuming only one can be selected
+		}
+	}
+
+	for _, sr := range app.Config.Cinnamon.SchemaRegistries {
+		if sr.Selected {
+			app.SelectSchemaRegistry(sr, false)
+			break // Assuming only one can be selected
+		}
+	}
+
 	ct := app.NewClustersTable()
 	st := app.NewSchemaRegistriesTable()
 	app.SchemaRegistriesTableInputHandler(st)
 	app.ClustersTableInputHandler(ct)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
-	main := tview.NewTable()
-	main.SetTitle(" Main ")
-	main.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-	main.SetSelectedStyle(
-		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
-		).Background(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
-		),
-	)
-
-	r := 0
-	var configs []*config.ClusterConfig
-	for _, cluster := range app.Clusters {
-		configs = append(configs, cluster)
-	}
-
-	sort.Slice(configs, func(i, j int) bool {
-		return configs[i].Name < configs[j].Name
-	})
-	for _, cluster := range configs {
-		main.
-			SetCell(r, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(r, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"])).
-			SetCell(r, 2, tview.NewTableCell(cluster.SchemaRegistry)).
-			SetCell(r, 3, tview.NewTableCell(app.SchemaRegistries[cluster.SchemaRegistry].SchemaRegistryUrl))
-		r++
-	}
-
-	app.Layout.PagesRegistry.PageMenuMap[Main] = MainPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Clusters] = ClustersPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SubjectsPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[OpenedPages] = OpenedPagesMenu
 
 	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh, app.Config.Colors)
-	app.Layout.PagesRegistry.UI.Pages.AddPage(Main, main, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, st, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
@@ -265,8 +251,8 @@ func (app *App) Run() {
 		true,
 		false,
 	)
-	app.Layout.PagesRegistry.UI.Pages.ShowPage(Main)
-	app.Layout.Menu.SetMenu(MainPageMenu)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(Clusters)
+	app.Layout.Menu.SetMenu(ClustersPageMenu)
 	app.Layout.PagesRegistry.UI.OpenedPages.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
@@ -275,7 +261,8 @@ func (app *App) Run() {
 		),
 	)
 
-	app.SelectClusterKeyHandler(main)
+	app.ClustersTableInputHandler(ct)
+	app.SchemaRegistriesTableInputHandler(st)
 	app.OpenPagesKeyHadler(app.Layout.PagesRegistry.UI.OpenedPages)
 	app.SearchKeyHadler(app.Layout.Search)
 	app.MainOperationKeyHadler()
@@ -304,29 +291,6 @@ func (app *App) ApplyColors() {
 	}
 }
 
-func (app *App) ClustersTableInputHandler(ct *tview.Table) {
-	ct.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := ct.GetSelection()
-		clusterName := ct.GetCell(row, 0).Text
-		cluster := app.Clusters[clusterName]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectCluster(cluster)
-			app.Layout.ClearStatus()
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
-			if !app.isClusterSelected(app.Selected) {
-				app.SelectCluster(cluster)
-			}
-			statusLineCh <- "Getting cluster description results..."
-			app.Cluster()
-		}
-
-		return event
-	})
-}
-
 func (app *App) isClusterSelected(selected Selected) bool {
 	return selected.Cluster != nil
 }
@@ -335,8 +299,18 @@ func (app *App) isSchemaRegistrySelected(selected Selected) bool {
 	return selected.SchemaRegistry != nil
 }
 
-func (app *App) SelectCluster(cluster *config.ClusterConfig) {
+func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
+	if save {
+		for _, c := range app.Config.Cinnamon.Clusters {
+			c.Selected = c.Name == cluster.Name
+		}
+		if err := app.Config.Save(); err != nil {
+			log.Error().Err(err).Msg("failed to save config after cluster selection")
+		}
+	}
+
 	app.Selected.Cluster = cluster
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
 	_, exists := app.KafkaClients[cluster.Name]
 	if !exists {
@@ -350,8 +324,18 @@ func (app *App) SelectCluster(cluster *config.ClusterConfig) {
 	}
 }
 
-func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig) {
+func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool) {
+	if save {
+		for _, r := range app.Config.Cinnamon.SchemaRegistries {
+			r.Selected = r.Name == sr.Name
+		}
+		if err := app.Config.Save(); err != nil {
+			log.Error().Err(err).Msg("failed to save config after schema registry selection")
+		}
+	}
+
 	app.Selected.SchemaRegistry = sr
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
 	_, exists := app.SchemaRegistryClients[sr.Name]
 	if !exists {
@@ -363,21 +347,6 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig) {
 		}
 		app.SchemaRegistryClients[sr.Name] = newClient
 	}
-}
-
-func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
-	st.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := st.GetSelection()
-		name := st.GetCell(row, 0).Text
-		sr := app.SchemaRegistries[name]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectSchemaRegistry(sr)
-			app.Layout.ClearStatus()
-		}
-
-		return event
-	})
 }
 
 func (app *App) Cluster() {
@@ -396,46 +365,22 @@ func (app *App) Cluster() {
 					desc.SetText(description.String())
 
 					app.AddToPagesRegistry(Cluster, desc, ClustersPageMenu)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe cluster")
-				statusLineCh <- fmt.Sprintf("[red]Failed to describe cluster: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to describe cluster: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing cluster")
-				statusLineCh <- "[red]Timeout while describing cluster"
+				statusLineCh <- "[red]timeout while describing cluster"
 				return
 			}
 		}
 	}()
-}
-
-func (app *App) NewMainTable() *tview.Table {
-	table := tview.NewTable()
-	table.SetTitle(" Main ")
-	table.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-	table.SetSelectedStyle(
-		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
-		).Background(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
-		),
-	)
-
-	row := 0
-	for _, cluster := range app.Clusters {
-		table.
-			SetCell(row, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"]))
-		row++
-	}
-	return table
 }
 
 func (app *App) NewDescription(title string) *tview.TextView {

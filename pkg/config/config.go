@@ -52,10 +52,9 @@ type ColorConfig struct {
 }
 
 type ClusterConfig struct {
-	Name           string            `yaml:"name"`
-	Properties     map[string]string `yaml:"properties"`
-	SchemaRegistry string            `yaml:"schema.registry.name"`
-	Command        string            `yaml:"command"`
+	Name       string            `yaml:"name"`
+	Properties map[string]string `yaml:"properties"`
+	Selected   bool              `yaml:"selected"`
 }
 
 type SchemaRegistryConfig struct {
@@ -63,6 +62,7 @@ type SchemaRegistryConfig struct {
 	SchemaRegistryUrl      string `yaml:"schema.registry.url"`
 	SchemaRegistryUsername string `yaml:"schema.registry.sasl.username"`
 	SchemaRegistryPassword string `yaml:"schema.registry.sasl.password"`
+	Selected               bool   `yaml:"selected"`
 }
 
 const (
@@ -73,7 +73,7 @@ func isEnvSet(env string) bool {
 	return os.Getenv(env) != ""
 }
 
-func loadDefaultColorConfig() (*ColorConfig, error) {
+func LoadDefaultColorConfig() (*ColorConfig, error) {
 	data, err := os.ReadFile("style.yaml")
 	if err != nil {
 		log.Error().Err(err).Msg("error reading default style.yaml")
@@ -88,7 +88,7 @@ func loadDefaultColorConfig() (*ColorConfig, error) {
 	return defaultConfig, nil
 }
 
-func loadUserColorConfig(configDir string) (*ColorConfig, error) {
+func LoadUserColorConfig(configDir string) (*ColorConfig, error) {
 	configPath := filepath.Join(configDir, ".config", "cinnamon", "style.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil, nil // User config is optional
@@ -109,12 +109,12 @@ func loadUserColorConfig(configDir string) (*ColorConfig, error) {
 }
 
 func LoadColorConfig(configDir string) (*ColorConfig, error) {
-	defaultConfig, err := loadDefaultColorConfig()
+	defaultConfig, err := LoadDefaultColorConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	userConfig, err := loadUserColorConfig(configDir)
+	userConfig, err := LoadUserColorConfig(configDir)
 	if err != nil {
 		return nil, err
 	}
@@ -130,19 +130,11 @@ func LoadColorConfig(configDir string) (*ColorConfig, error) {
 }
 
 func InitConfig() (*Config, error) {
-	var configDir string
-	switch {
-	case isEnvSet(CinnamonEnvConfigDir):
-		configDir = os.Getenv(CinnamonEnvConfigDir)
-	default:
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal().Err(err).Msg("error getting home directory")
-			return nil, err
-		}
-		configDir = homeDir
+	configPath, err := GetConfigPath()
+	if err != nil {
+		return nil, err
 	}
-	configPath := filepath.Join(configDir, ".config", "cinnamon", "config.yaml")
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error reading config file")
@@ -158,6 +150,7 @@ func InitConfig() (*Config, error) {
 		return nil, err
 	}
 
+	configDir := filepath.Dir(filepath.Dir(configPath))
 	colorConfig, err := LoadColorConfig(configDir)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error loading color config")
@@ -166,4 +159,41 @@ func InitConfig() (*Config, error) {
 	config.Colors = colorConfig
 
 	return config, nil
+}
+
+func GetConfigPath() (string, error) {
+	var configDir string
+	switch {
+	case isEnvSet(CinnamonEnvConfigDir):
+		configDir = os.Getenv(CinnamonEnvConfigDir)
+	default:
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal().Err(err).Msg("error getting home directory")
+			return "", err
+		}
+		configDir = homeDir
+	}
+	return filepath.Join(configDir, ".config", "cinnamon", "config.yaml"), nil
+}
+
+func (c *Config) Save() error {
+	configPath, err := GetConfigPath()
+	if err != nil {
+		return err
+	}
+
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to marshal config")
+		return err
+	}
+
+	err = os.WriteFile(configPath, data, 0o644)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to write config")
+		return err
+	}
+
+	return nil
 }

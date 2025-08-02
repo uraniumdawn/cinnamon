@@ -9,20 +9,42 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (app *App) SelectClusterKeyHandler(table *tview.Table) {
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := table.GetSelection()
-		clusterName := table.GetCell(row, 0).Text
-		schemaRegistryName := table.GetCell(row, 2).Text
+func (app *App) ClustersTableInputHandler(ct *tview.Table) {
+	ct.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := ct.GetSelection()
+		clusterName := ct.GetCell(row, 0).Text
 		cluster := app.Clusters[clusterName]
-		schemaRegistry := app.SchemaRegistries[schemaRegistryName]
 
 		if event.Key() == tcell.KeyEnter {
-			app.SelectCluster(cluster)
-			app.SelectSchemaRegistry(schemaRegistry)
-			app.Layout.SetSelected(app.Selected.Cluster.Name, app.Selected.SchemaRegistry.Name)
-			app.Layout.ClearStatus()
+			app.SelectCluster(cluster, true)
+			ClearStatus()
 		}
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+			if !app.isClusterSelected(app.Selected) {
+				statusLineCh <- "[red]to perform operation, select cluster"
+				return event
+			}
+
+			statusLineCh <- "Getting cluster description results..."
+			app.Cluster()
+		}
+
+		return event
+	})
+}
+
+func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
+	st.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := st.GetSelection()
+		name := st.GetCell(row, 0).Text
+		sr := app.SchemaRegistries[name]
+
+		if event.Key() == tcell.KeyEnter {
+			app.SelectSchemaRegistry(sr, true)
+			ClearStatus()
+		}
+
 		return event
 	})
 }

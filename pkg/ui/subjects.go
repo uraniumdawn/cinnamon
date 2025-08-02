@@ -19,8 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (app *App) Subjects(statusLineChannel chan string) {
-	statusLineChannel <- "Getting subjects..."
+func (app *App) Subjects() {
+	statusLineCh <- "getting subjects..."
 	resultCh := make(chan []string)
 	errorCh := make(chan error)
 
@@ -36,7 +36,7 @@ func (app *App) Subjects(statusLineChannel chan string) {
 					table := app.NewSubjectsTable(subjects)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Subjects(statusLineChannel)
+							app.Subjects()
 						}
 
 						if event.Key() == tcell.KeyEnter {
@@ -60,18 +60,18 @@ func (app *App) Subjects(statusLineChannel chan string) {
 					})
 
 					app.AddToPagesRegistry(Subjects, table, SubjectsPageMenu)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to list subjects")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list subjects: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to list subjects: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while to list subjects")
-				statusLineChannel <- "[red]Timeout while to list subjects"
+				statusLineCh <- "[red]timeout while to list subjects"
 				return
 			}
 		}
@@ -79,7 +79,7 @@ func (app *App) Subjects(statusLineChannel chan string) {
 }
 
 func (app *App) Versions(subject string) {
-	statusLineCh <- "Getting versions..."
+	statusLineCh <- "getting versions..."
 	resultCh := make(chan []int)
 	errorCh := make(chan error)
 
@@ -124,18 +124,18 @@ func (app *App) Versions(subject string) {
 						return event
 					})
 
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list subject's versions")
-				statusLineCh <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list subject's versions")
-				statusLineCh <- "[red]Timeout while to list subject's versions"
+				statusLineCh <- "[red]timeout while to list subject's versions"
 				return
 			}
 		}
@@ -143,7 +143,7 @@ func (app *App) Versions(subject string) {
 }
 
 func (app *App) Schema(subject string, version int) {
-	statusLineCh <- "Getting schema..."
+	statusLineCh <- "getting schema..."
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
 
@@ -176,18 +176,18 @@ func (app *App) Schema(subject string, version int) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to list subject's versions")
-				statusLineCh <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while to list subject's versions")
-				statusLineCh <- "[red]Timeout while to list subject's versions"
+				statusLineCh <- "[red]Ttmeout while to list subject's versions"
 				return
 			}
 		}

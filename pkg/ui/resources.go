@@ -23,13 +23,12 @@ func (pr *PagesRegistry) NewResourcesPage(
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(" Resources ")
 
-	table.SetCell(0, 0, tview.NewTableCell(Main))
-	table.SetCell(1, 0, tview.NewTableCell(Clusters))
-	table.SetCell(2, 0, tview.NewTableCell(SchemaRegistries))
-	table.SetCell(3, 0, tview.NewTableCell(Nodes))
-	table.SetCell(4, 0, tview.NewTableCell(Topics))
-	table.SetCell(5, 0, tview.NewTableCell(ConsumerGroups))
-	table.SetCell(6, 0, tview.NewTableCell(Subjects))
+	table.SetCell(0, 0, tview.NewTableCell(Clusters))
+	table.SetCell(1, 0, tview.NewTableCell(SchemaRegistries))
+	table.SetCell(2, 0, tview.NewTableCell(Nodes))
+	table.SetCell(3, 0, tview.NewTableCell(Topics))
+	table.SetCell(4, 0, tview.NewTableCell(ConsumerGroups))
+	table.SetCell(5, 0, tview.NewTableCell(Subjects))
 
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(

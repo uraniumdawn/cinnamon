@@ -16,8 +16,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (app *App) Nodes(statusLineChannel chan string) {
-	statusLineChannel <- "Getting nodes..."
+func (app *App) Nodes() {
+	statusLineCh <- "getting nodes..."
 	resultCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
 
@@ -54,18 +54,18 @@ func (app *App) Nodes(statusLineChannel chan string) {
 						table,
 						NodesPageMenu,
 					)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("Failed to describe cluster")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to describe cluster: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to describe cluster: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while describing cluster")
-				statusLineChannel <- "[red]Timeout while describing cluster"
+				statusLineCh <- "[red]timeout while describing cluster"
 				return
 			}
 		}
@@ -73,7 +73,7 @@ func (app *App) Nodes(statusLineChannel chan string) {
 }
 
 func (app *App) Node(id string, url string) {
-	statusLineCh <- "Getting node description results..."
+	statusLineCh <- "getting node description results..."
 	resultCh := make(chan *client.ResourceResult)
 	errorCh := make(chan error)
 
@@ -93,18 +93,18 @@ func (app *App) Node(id string, url string) {
 						desc,
 						FinalPageMenu,
 					)
-					app.Layout.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe node")
-				statusLineCh <- fmt.Sprintf("[red]Failed to describe node: %s", err.Error())
+				statusLineCh <- fmt.Sprintf("[red]failed to describe node: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing node")
-				statusLineCh <- "[red]Timeout while describing node"
+				statusLineCh <- "[red]timeout while describing node"
 				return
 			}
 		}
