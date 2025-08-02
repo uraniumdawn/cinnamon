@@ -148,7 +148,7 @@ func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 					})
 				case "tps", Topics:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select Cluster"
+						statusLineCh <- "[red]to perform operation, select cluster"
 						continue
 					}
 					app.CheckInCache(
@@ -159,7 +159,7 @@ func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 					)
 				case "grs", ConsumerGroups:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select Cluster"
+						statusLineCh <- "[red]to perform operation, select cluster"
 						continue
 					}
 					app.CheckInCache(
@@ -170,7 +170,7 @@ func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
 					)
 				case "nds", Nodes:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select Cluster"
+						statusLineCh <- "[red]to perform operation, select cluster"
 						continue
 					}
 					app.CheckInCache(

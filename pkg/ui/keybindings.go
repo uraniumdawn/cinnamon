@@ -21,7 +21,7 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
-			if !app.isClusterSelected(app.Selected) {
+			if !app.isClusterSelected(app.Selected) || app.Selected.Cluster.Name != clusterName {
 				statusLineCh <- "[red]to perform operation, select cluster"
 				return event
 			}
