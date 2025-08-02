@@ -58,7 +58,7 @@ func loadDefaultColorConfig() (*ColorConfig, error) {
 }
 
 func loadUserColorConfig(configDir string) (*ColorConfig, error) {
-	configPath := filepath.Join(configDir, ".config", "cinnamon", "style.yaml")
+	configPath := filepath.Join(configDir, "style.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil, nil // User config is optional
 	}
