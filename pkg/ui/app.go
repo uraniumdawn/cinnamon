@@ -53,6 +53,7 @@ type App struct {
 	Selected              Selected
 	Config                *config.Config
 	mu                    sync.RWMutex
+	modalHideTimer        *time.Timer
 }
 
 type Selected struct {

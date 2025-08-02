@@ -21,6 +21,6 @@ cinnamon:
     fgColor: "black"
     bgColor: "white"
   title: "red"
-  border: "blue"
+  border: "white"
   background: "black"
   foreground: "white"
