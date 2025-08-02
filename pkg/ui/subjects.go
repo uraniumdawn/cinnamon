@@ -202,12 +202,12 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	table.SetTitle(
 		fmt.Sprintf(" Subjects [%s] [%d] ", app.Selected.SchemaRegistry.Name, len(subjects)),
 	)
-	if app.Config.Colors != nil {
+	if app.Colors != nil {
 		table.SetSelectedStyle(
 			tcell.StyleDefault.Foreground(
-				tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+				tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 			).Background(
-				tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+				tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 			),
 		)
 	}
@@ -224,12 +224,12 @@ func (app *App) NewVersionsTable(subject string, versions []int) *tview.Table {
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 	table.SetTitle(fmt.Sprintf(" Versions [%s] [%d] ", subject, len(versions)))
-	if app.Config.Colors != nil {
+	if app.Colors != nil {
 		table.SetSelectedStyle(
 			tcell.StyleDefault.Foreground(
-				tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+				tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 			).Background(
-				tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+				tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 			),
 		)
 	}

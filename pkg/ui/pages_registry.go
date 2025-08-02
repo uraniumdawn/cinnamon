@@ -87,12 +87,12 @@ func (app *App) Forward() {
 		if menu, ok := registry.PageMenuMap[name]; ok {
 			app.Layout.Menu.SetMenu(menu)
 			app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
-			if app.modalHideTimer != nil {
-				app.modalHideTimer.Stop()
+			if app.ModalHideTimer != nil {
+				app.ModalHideTimer.Stop()
 			}
 			app.ShowModalPage(OpenedPages)
 			registry.UI.OpenedPages.Select(registry.HistoryIndex, 0)
-			app.modalHideTimer = time.AfterFunc(1*time.Second, func() {
+			app.ModalHideTimer = time.AfterFunc(1*time.Second, func() {
 				app.QueueUpdateDraw(func() {
 					app.HideModalPage(OpenedPages)
 				})
@@ -109,12 +109,12 @@ func (app *App) Back() {
 		if menu, ok := registry.PageMenuMap[name]; ok {
 			app.Layout.Menu.SetMenu(menu)
 			app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
-			if app.modalHideTimer != nil {
-				app.modalHideTimer.Stop()
+			if app.ModalHideTimer != nil {
+				app.ModalHideTimer.Stop()
 			}
 			app.ShowModalPage(OpenedPages)
 			registry.UI.OpenedPages.Select(registry.HistoryIndex, 0)
-			app.modalHideTimer = time.AfterFunc(1*time.Second, func() {
+			app.ModalHideTimer = time.AfterFunc(1*time.Second, func() {
 				app.QueueUpdateDraw(func() {
 					app.HideModalPage(OpenedPages)
 				})

@@ -50,8 +50,9 @@ type App struct {
 	SchemaRegistryClients map[string]*schemaregistry.Client
 	Selected              Selected
 	Config                *config.Config
+	Colors                *config.ColorConfig
 	mu                    sync.RWMutex
-	modalHideTimer        *time.Timer
+	ModalHideTimer        *time.Timer
 }
 
 type Selected struct {
@@ -73,9 +74,15 @@ func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
 func NewApp() *App {
 	InitLogger()
 
-	cfg, err := config.InitConfig()
+	cfg, err := config.LoadAppConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize config")
+		os.Exit(1)
+	}
+
+	colors, err := config.LoadColorConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to load color config")
 		os.Exit(1)
 	}
 
@@ -87,6 +94,7 @@ func NewApp() *App {
 		KafkaClients:          make(map[string]*client.Client),
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
 		Config:                cfg,
+		Colors:                colors,
 	}
 
 	return app
@@ -213,8 +221,8 @@ func (app *App) Run() {
 	app.RunCommandHandler(ctx, commandCh)
 	app.RunStatusLineHandler(ctx, statusLineCh)
 
-	registry := NewPagesRegistry(app.Config.Colors)
-	app.Layout = NewLayout(registry, app.Config.Colors)
+	registry := NewPagesRegistry(app.Colors)
+	app.Layout = NewLayout(registry, app.Colors)
 
 	for _, c := range app.Config.Cinnamon.Clusters {
 		if c.Selected {
@@ -241,7 +249,7 @@ func (app *App) Run() {
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[OpenedPages] = OpenedPagesMenu
 
-	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh, app.Config.Colors)
+	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh, app.Colors)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, st, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
@@ -255,9 +263,9 @@ func (app *App) Run() {
 	app.Layout.Menu.SetMenu(ClustersPageMenu)
 	app.Layout.PagesRegistry.UI.OpenedPages.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 		).Background(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
 
@@ -277,13 +285,13 @@ func (app *App) Run() {
 
 func (app *App) ApplyColors() {
 	tview.Styles = tview.Theme{
-		PrimitiveBackgroundColor:    tcell.GetColor(app.Config.Colors.Cinnamon.Background),
+		PrimitiveBackgroundColor:    tcell.GetColor(app.Colors.Cinnamon.Background),
 		ContrastBackgroundColor:     tview.Styles.ContrastBackgroundColor,
 		MoreContrastBackgroundColor: tview.Styles.MoreContrastBackgroundColor,
-		BorderColor:                 tcell.GetColor(app.Config.Colors.Cinnamon.Border),
-		TitleColor:                  tcell.GetColor(app.Config.Colors.Cinnamon.Title),
+		BorderColor:                 tcell.GetColor(app.Colors.Cinnamon.Border),
+		TitleColor:                  tcell.GetColor(app.Colors.Cinnamon.Title),
 		GraphicsColor:               tview.Styles.GraphicsColor,
-		PrimaryTextColor:            tcell.GetColor(app.Config.Colors.Cinnamon.Foreground),
+		PrimaryTextColor:            tcell.GetColor(app.Colors.Cinnamon.Foreground),
 		SecondaryTextColor:          tview.Styles.SecondaryTextColor,
 		TertiaryTextColor:           tview.Styles.TertiaryTextColor,
 		InverseTextColor:            tview.Styles.InverseTextColor,
@@ -393,7 +401,7 @@ func (app *App) NewDescription(title string) *tview.TextView {
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(title)
-	desc.SetTextColor(tcell.GetColor(app.Config.Colors.Cinnamon.Foreground))
+	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
 	return desc
 }
 
@@ -405,9 +413,9 @@ func (app *App) NewClustersTable() *tview.Table {
 		SetBorderPadding(0, 0, 1, 0)
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 		).Background(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
 
@@ -429,9 +437,9 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 		SetBorderPadding(0, 0, 1, 0)
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 		).Background(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
 

@@ -139,9 +139,9 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 		SetBorderPadding(0, 0, 1, 0)
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.FgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 		).Background(
-			tcell.GetColor(app.Config.Colors.Cinnamon.Selection.BgColor),
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
 
