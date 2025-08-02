@@ -7,6 +7,7 @@ package ui
 import (
 	"bytes"
 	"cinnamon/pkg/schemaregistry"
+	"cinnamon/pkg/util"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -34,6 +35,9 @@ func (app *App) Subjects() {
 			case subjects := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewSubjectsTable(subjects)
+					table.SetTitle(util.BuildTitle(
+						Subjects,
+						"["+strconv.Itoa(len(subjects))+"]"))
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							app.Subjects()
@@ -44,7 +48,7 @@ func (app *App) Subjects() {
 							subject := table.GetCell(row, 0).Text
 
 							app.CheckInCache(
-								fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name),
+								util.BuildPageKey(app.Selected.SchemaRegistry.Name, "versions"),
 								func() {
 									app.Versions(subject)
 								},
@@ -59,7 +63,11 @@ func (app *App) Subjects() {
 						table.ScrollToBeginning()
 					})
 
-					app.AddToPagesRegistry(Subjects, table, SubjectsPageMenu)
+					app.AddToPagesRegistry(
+						util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects),
+						table,
+						SubjectsPageMenu,
+					)
 					ClearStatus()
 				})
 				cancel()
@@ -92,9 +100,12 @@ func (app *App) Versions(subject string) {
 			select {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					table := app.NewVersionsTable(subject, versions)
+					table := app.NewVersionsTable(versions)
+					table.SetTitle(util.BuildTitle(subject,
+						"["+strconv.Itoa(len(versions))+"]"))
+
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name),
+						util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "versions"),
 						table,
 						VersionsPageMenu,
 					)
@@ -109,10 +120,10 @@ func (app *App) Versions(subject string) {
 							v, _ := strconv.Atoi(version)
 
 							app.CheckInCache(
-								fmt.Sprintf(
-									"%s:%s:version:%s",
+								util.BuildPageKey(
 									app.Selected.SchemaRegistry.Name,
 									subject,
+									"version",
 									version,
 								),
 								func() {
@@ -157,7 +168,7 @@ func (app *App) Schema(subject string, version int) {
 			case result := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(
-						fmt.Sprintf(" Subject: %s, Version: %d", subject, version),
+						util.BuildTitle(subject, strconv.Itoa(version)),
 					)
 					var pretty bytes.Buffer
 					err := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
@@ -167,11 +178,11 @@ func (app *App) Schema(subject string, version int) {
 					}
 					desc.SetText(pretty.String())
 					app.AddToPagesRegistry(
-						fmt.Sprintf(
-							"%s:%s:version:%d",
+						util.BuildPageKey(
 							app.Selected.SchemaRegistry.Name,
 							subject,
-							version,
+							"version",
+							strconv.Itoa(version),
 						),
 						desc,
 						FinalPageMenu,
@@ -199,9 +210,6 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(
-		fmt.Sprintf(" Subjects [%s] [%d] ", app.Selected.SchemaRegistry.Name, len(subjects)),
-	)
 	if app.Colors != nil {
 		table.SetSelectedStyle(
 			tcell.StyleDefault.Foreground(
@@ -218,12 +226,12 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	return table
 }
 
-func (app *App) NewVersionsTable(subject string, versions []int) *tview.Table {
+func (app *App) NewVersionsTable(versions []int) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf(" Versions [%s] [%d] ", subject, len(versions)))
+
 	if app.Colors != nil {
 		table.SetSelectedStyle(
 			tcell.StyleDefault.Foreground(

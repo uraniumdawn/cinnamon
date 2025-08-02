@@ -22,7 +22,6 @@ type ClusterConfig struct {
 	Name           string            `yaml:"name"`
 	Properties     map[string]string `yaml:"properties"`
 	SchemaRegistry string            `yaml:"schema.registry.name"`
-	Command        string            `yaml:"command"`
 	Selected       bool              `yaml:"selected,omitempty"`
 }
 

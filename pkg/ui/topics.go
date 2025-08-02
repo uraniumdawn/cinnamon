@@ -6,6 +6,7 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
+	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"sort"
@@ -34,8 +35,14 @@ func (app *App) Topics() {
 			case topics := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewTopicsTable(topics)
+					table.SetTitle(
+						util.BuildTitle(
+							Topics,
+							"["+strconv.Itoa(len(topics.Result))+"]"),
+					)
+
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
+						util.BuildPageKey(app.Selected.Cluster.Name, Topics),
 						table,
 						TopicsPageMenu,
 					)
@@ -51,10 +58,9 @@ func (app *App) Topics() {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.CheckInCache(
-								fmt.Sprintf(
-									"%s:%s:%s",
+								util.BuildPageKey(
 									app.Selected.Cluster.Name,
-									Topic,
+									Topics,
 									topicName,
 								),
 								func() {
@@ -178,7 +184,7 @@ func (app *App) Topic(name string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" Topic: %s ", name))
+					desc := app.NewDescription(util.BuildTitle(Topic, name))
 					desc.SetText(description.String())
 					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
@@ -187,7 +193,7 @@ func (app *App) Topic(name string) {
 						return event
 					})
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, Topic, name),
+						util.BuildPageKey(app.Selected.Cluster.Name, Topic, name),
 						desc,
 						FinalPageMenu,
 					)
@@ -214,7 +220,6 @@ func (app *App) NewTopicsTable(topics *client.TopicsResult) *tview.Table {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf(" Topics [%s] [%d] ", app.Selected.Cluster.Name, len(topics.Result)))
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),

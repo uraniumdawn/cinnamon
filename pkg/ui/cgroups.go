@@ -6,9 +6,11 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
+	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gdamore/tcell/v2"
@@ -32,8 +34,18 @@ func (app *App) ConsumerGroups() {
 			case groups := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewGroupsTable(groups)
+					table.SetTitle(
+						util.BuildTitle(
+							ConsumerGroups,
+							"["+strconv.Itoa(len(groups.Valid))+"]",
+						),
+					)
+
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
+						util.BuildPageKey(
+							app.Selected.Cluster.Name,
+							ConsumerGroups,
+						),
 						table,
 						ConsumerGroupsPageMenu,
 					)
@@ -98,7 +110,9 @@ func (app *App) ConsumerGroup(name string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" Consumer group: %s ", name))
+					desc := app.NewDescription(
+						util.BuildTitle(ConsumerGroup, name),
+					)
 					desc.SetText(description.String())
 					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
@@ -107,7 +121,11 @@ func (app *App) ConsumerGroup(name string) {
 						return event
 					})
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:%s:%s", app.Selected.Cluster.Name, ConsumerGroup, name),
+						util.BuildPageKey(
+							app.Selected.Cluster.Name,
+							ConsumerGroup,
+							name,
+						),
 						desc,
 						FinalPageMenu,
 					)
@@ -131,9 +149,6 @@ func (app *App) ConsumerGroup(name string) {
 
 func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(
-		fmt.Sprintf(" Consumer groups [%s] [%d] ", app.Selected.Cluster.Name, len(groups.Valid)),
-	)
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)

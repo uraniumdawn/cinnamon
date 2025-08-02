@@ -102,3 +102,27 @@ func ToSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryCo
 	}
 	return srMap
 }
+
+func BuildTitle(parts ...string) string {
+	var builder strings.Builder
+	builder.WriteString(" ")
+	for i, part := range parts {
+		builder.WriteString(strings.ToLower(part))
+		if i < len(parts)-1 {
+			builder.WriteString(":")
+		}
+	}
+	builder.WriteString(" ")
+	return builder.String()
+}
+
+func BuildPageKey(parts ...string) string {
+	var builder strings.Builder
+	for i, part := range parts {
+		builder.WriteString(strings.ToLower(part))
+		if i < len(parts)-1 {
+			builder.WriteString(":")
+		}
+	}
+	return builder.String()
+}

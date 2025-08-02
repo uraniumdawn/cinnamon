@@ -6,6 +6,7 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
+	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 
@@ -26,10 +27,16 @@ func (app *App) Cluster() {
 			select {
 			case description := <-rCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" %s ", description.Name))
+					desc := app.NewDescription(
+						util.BuildTitle(app.Selected.Cluster.Name, "info"),
+					)
 					desc.SetText(description.String())
 
-					app.AddToPagesRegistry(Cluster, desc, ClustersPageMenu)
+					app.AddToPagesRegistry(
+						util.BuildPageKey(app.Selected.Cluster.Name, "info"),
+						desc,
+						ClustersPageMenu,
+					)
 					ClearStatus()
 				})
 				cancel()

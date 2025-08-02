@@ -6,6 +6,7 @@ package ui
 
 import (
 	"cinnamon/pkg/client"
+	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"strconv"
@@ -31,7 +32,10 @@ func (app *App) Nodes() {
 			case description := <-resultCh:
 				nodes := description.Nodes
 				app.QueueUpdateDraw(func() {
-					table := app.NewNodesTable(nodes, app.Selected.Cluster.Name)
+					table := app.NewNodesTable(nodes)
+					table.SetTitle(
+						util.BuildTitle(Nodes, "["+strconv.Itoa(len(nodes))+"]"),
+					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
@@ -39,7 +43,11 @@ func (app *App) Nodes() {
 							url := table.GetCell(row, 1).Text
 
 							app.CheckInCache(
-								fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, nodeId),
+								util.BuildPageKey(
+									app.Selected.Cluster.Name,
+									Nodes,
+									nodeId,
+								),
 								func() {
 									app.Node(nodeId, url)
 								},
@@ -50,7 +58,7 @@ func (app *App) Nodes() {
 					})
 
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
+						util.BuildPageKey(app.Selected.Cluster.Name, Nodes),
 						table,
 						NodesPageMenu,
 					)
@@ -86,10 +94,10 @@ func (app *App) Node(id string, url string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" ID: %s URL: %s ", id, url))
+					desc := app.NewDescription(util.BuildTitle(Node, url, id))
 					desc.SetText(description.String())
 					app.AddToPagesRegistry(
-						fmt.Sprintf("%s:%s:%s:", app.Selected.Cluster.Name, Node, id),
+						util.BuildPageKey(app.Selected.Cluster.Name, Node, id),
 						desc,
 						FinalPageMenu,
 					)
@@ -111,9 +119,8 @@ func (app *App) Node(id string, url string) {
 	}()
 }
 
-func (app *App) NewNodesTable(nodes []kafka.Node, cluster string) *tview.Table {
+func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 	table := tview.NewTable()
-	table.SetTitle(" Nodes ")
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
