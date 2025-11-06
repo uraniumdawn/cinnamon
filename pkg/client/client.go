@@ -69,11 +69,22 @@ func NewClient(config *config.ClusterConfig) (*Client, error) {
 	for key, value := range config.Properties {
 		_ = conf.SetKey(key, value)
 	}
+	_ = conf.SetKey("log.queue", "true")
+
 	adminClient, err := kafka.NewAdminClient(conf)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create Admin client")
 		return nil, err
 	}
+
+	go func() {
+		for e := range adminClient.Events() {
+			switch ev := e.(type) {
+			case kafka.LogEvent:
+				log.Info().Str("kafka_log", ev.Message).Msg("librdkafka")
+			}
+		}
+	}()
 
 	return &Client{config.Name, adminClient}, nil
 }
