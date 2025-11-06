@@ -21,15 +21,14 @@ type Config struct {
 type ClusterConfig struct {
 	Name           string            `yaml:"name"`
 	Properties     map[string]string `yaml:"properties"`
-	SchemaRegistry string            `yaml:"schema.registry.name"`
 	Selected       bool              `yaml:"selected,omitempty"`
 }
 
 type SchemaRegistryConfig struct {
 	Name                   string `yaml:"name"`
 	SchemaRegistryUrl      string `yaml:"schema.registry.url"`
-	SchemaRegistryUsername string `yaml:"schema.registry.sasl.username"`
-	SchemaRegistryPassword string `yaml:"schema.registry.sasl.password"`
+	SchemaRegistryUsername string `yaml:"schema.registry.sasl.username,omitempty"`
+	SchemaRegistryPassword string `yaml:"schema.registry.sasl.password,omitempty"`
 	Selected               bool   `yaml:"selected,omitempty"`
 }
 

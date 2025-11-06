@@ -245,7 +245,7 @@ func (app *App) Run() {
 	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
 	app.Layout.PagesRegistry.PageMenuMap[Clusters] = ClustersPageMenu
-	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SubjectsPageMenu
+	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SchemaRegistriesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[OpenedPages] = OpenedPagesMenu
 
@@ -275,7 +275,12 @@ func (app *App) Run() {
 	app.SearchKeyHadler(app.Layout.Search)
 	app.MainOperationKeyHadler()
 
-	err := app.SetRoot(app.Layout.Content, true).Run()
+	halfScreenFlex := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(app.Layout.Content, 0, 1, true).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	err := app.SetRoot(halfScreenFlex, true).Run()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed Application execution")
 	}

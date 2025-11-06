@@ -87,18 +87,18 @@ var keys = map[string]Pair{
 }
 
 const (
-	MainPageMenu            = "MainPageMenu"
-	ResourcesPageMenu       = "ResourcesPageMenu"
-	OpenedPagesMenu         = "OpenedPagesMenu"
-	ClustersPageMenu        = "ClustersPageMenu"
-	NodesPageMenu           = "NodesPageMenu"
-	TopicsPageMenu          = "TopicsPageMenu"
-	ConsumingMenu           = "ConsumingMenu"
-	ConsumingParamsPageMenu = "ConsumingParamsPageMenu"
-	ConsumerGroupsPageMenu  = "ConsumerGroupsPageMenu"
-	SubjectsPageMenu        = "SubjectsPageMenu"
-	VersionsPageMenu        = "VersionsPageMenu"
-	FinalPageMenu           = "FinalPageMenu"
+	ResourcesPageMenu        = "ResourcesPageMenu"
+	OpenedPagesMenu          = "OpenedPagesMenu"
+	ClustersPageMenu         = "ClustersPageMenu"
+	SchemaRegistriesPageMenu = "SchemaRegistriesPageMenu"
+	NodesPageMenu            = "NodesPageMenu"
+	TopicsPageMenu           = "TopicsPageMenu"
+	ConsumingMenu            = "ConsumingMenu"
+	ConsumingParamsPageMenu  = "ConsumingParamsPageMenu"
+	ConsumerGroupsPageMenu   = "ConsumerGroupsPageMenu"
+	SubjectsPageMenu         = "SubjectsPageMenu"
+	VersionsPageMenu         = "VersionsPageMenu"
+	FinalPageMenu            = "FinalPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -112,7 +112,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			MainPageMenu:            {"up", "dw", "select", "res", "opened"},
 			ResourcesPageMenu:       {"up", "dw", "select", "close"},
 			OpenedPagesMenu:         {"up", "dw", "select", "close"},
 			ConsumingParamsPageMenu: {"up", "dw", "select", "default", "close"},
@@ -125,6 +124,15 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"backward",
 				"opened",
 				"dsc",
+			},
+			SchemaRegistriesPageMenu: {
+				"up",
+				"dw",
+				"select",
+				"res",
+				"forward",
+				"backward",
+				"opened",
 			},
 			NodesPageMenu: {
 				"up",
