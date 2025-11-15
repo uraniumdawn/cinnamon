@@ -6,7 +6,9 @@ package shell
 
 import (
 	"bufio"
+	"bytes"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -82,3 +84,20 @@ func Execute(args []string, rc chan string, e chan string, sig chan int) {
 
 	cmd.Wait()
 }
+
+func ExecuteWithInput(input string, args []string) (string, error) {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		log.Error().Err(err).Str("stderr", stderr.String()).Msg("failed to run command with input")
+		return stderr.String(), err
+	}
+	return out.String(), nil
+}
+

@@ -7,6 +7,7 @@ package ui
 import (
 	"bytes"
 	"cinnamon/pkg/schemaregistry"
+	"cinnamon/pkg/shell"
 	"cinnamon/pkg/util"
 	"context"
 	"encoding/json"
@@ -166,17 +167,42 @@ func (app *App) Schema(subject string, version int) {
 		for {
 			select {
 			case result := <-resultCh:
+				var formattedSchema string
+				var err error
+				isJqOk := true
+
+				if app.Config.Cinnamon.Jq {
+					formattedSchema, err = shell.ExecuteWithInput(result.Metadata.Schema, []string{"jq", "-C", "."})
+					if err != nil {
+						isJqOk = false
+						log.Warn().Err(err).Msg("jq command failed, falling back to default json indent.")
+					}
+				}
+
+				if !app.Config.Cinnamon.Jq || !isJqOk {
+					var pretty bytes.Buffer
+					indentErr := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
+					if indentErr != nil {
+						errorCh <- indentErr
+						cancel()
+						return
+					}
+					formattedSchema = pretty.String()
+				}
+
 				app.QueueUpdateDraw(func() {
+					if !isJqOk {
+						statusLineCh <- "[yellow]jq command failed, using default formatter. Is jq installed?"
+					}
 					desc := app.NewDescription(
 						util.BuildTitle(subject, strconv.Itoa(version)),
 					)
-					var pretty bytes.Buffer
-					err := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
+					writer := tview.ANSIWriter(desc)
+					_, err := writer.Write([]byte(formattedSchema))
 					if err != nil {
-						errorCh <- err
-						return
+						log.Error().Err(err).Msg("failed to write formatted schema")
+						statusLineCh <- "[red]failed to write formatted schema"
 					}
-					desc.SetText(pretty.String())
 					app.AddToPagesRegistry(
 						util.BuildPageKey(
 							app.Selected.SchemaRegistry.Name,

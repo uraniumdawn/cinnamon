@@ -275,12 +275,7 @@ func (app *App) Run() {
 	app.SearchKeyHadler(app.Layout.Search)
 	app.MainOperationKeyHadler()
 
-	halfScreenFlex := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(app.Layout.Content, 0, 1, true).
-		AddItem(tview.NewBox(), 0, 1, false)
-
-	err := app.SetRoot(halfScreenFlex, true).Run()
+	err := app.SetRoot(app.Layout.Content, true).Run()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed Application execution")
 	}

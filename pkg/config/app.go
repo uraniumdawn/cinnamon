@@ -15,6 +15,7 @@ type Config struct {
 	Cinnamon struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
+		Jq               bool                   `yaml:"jq"`
 	} `yaml:"cinnamon"`
 }
 
