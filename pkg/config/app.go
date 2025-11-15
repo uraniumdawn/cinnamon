@@ -11,11 +11,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type JqConfig struct {
+	Enable  bool     `yaml:"enable,omitempty"`
+	Command []string `yaml:"command,omitempty"`
+}
+
 type Config struct {
 	Cinnamon struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
-		Jq               bool                   `yaml:"jq"`
+		Jq               JqConfig                `yaml:"jq,omitempty"`
 	} `yaml:"cinnamon"`
 }
 

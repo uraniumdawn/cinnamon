@@ -171,17 +171,15 @@ func (app *App) Schema(subject string, version int) {
 				var err error
 				isJqOk := true
 
-				if app.Config.Cinnamon.Jq {
-					formattedSchema, err = shell.ExecuteWithInput(
-						result.Metadata.Schema,
-						[]string{"jq", "-C", "."},
-					)
+				jqConfig := app.Config.Cinnamon.Jq
+				if jqConfig.Enable {
+					formattedSchema, err = shell.ExecuteWithInput(result.Metadata.Schema, jqConfig.Command)
 					if err != nil {
 						isJqOk = false
 					}
 				}
 
-				if !app.Config.Cinnamon.Jq || !isJqOk {
+				if !jqConfig.Enable || !isJqOk {
 					var pretty bytes.Buffer
 					indentErr := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
 					if indentErr != nil {
