@@ -100,7 +100,7 @@ func (app *App) MainOperationKeyHadler() {
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.Layout.Search.HasFocus() {
-			app.Back()
+			app.Backward()
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.Layout.Search.HasFocus() {

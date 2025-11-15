@@ -114,7 +114,7 @@ func (app *App) Forward() {
 	}
 }
 
-func (app *App) Back() {
+func (app *App) Backward() {
 	registry := app.Layout.PagesRegistry
 	if registry.HistoryIndex > 0 {
 		registry.HistoryIndex--
