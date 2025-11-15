@@ -173,7 +173,10 @@ func (app *App) Schema(subject string, version int) {
 
 				jqConfig := app.Config.Cinnamon.Jq
 				if jqConfig.Enable {
-					formattedSchema, err = shell.ExecuteWithInput(result.Metadata.Schema, jqConfig.Command)
+					formattedSchema, err = shell.ExecuteWithInput(
+						result.Metadata.Schema,
+						jqConfig.Command,
+					)
 					if err != nil {
 						isJqOk = false
 					}
@@ -194,6 +197,14 @@ func (app *App) Schema(subject string, version int) {
 					desc := app.NewDescription(
 						util.BuildTitle(subject, strconv.Itoa(version)),
 					)
+
+					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+						if event.Key() == tcell.KeyCtrlU {
+							app.Schema(subject, version)
+						}
+						return event
+					})
+
 					writer := tview.ANSIWriter(desc)
 					_, err := writer.Write([]byte(formattedSchema))
 					if err != nil {

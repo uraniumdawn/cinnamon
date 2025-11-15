@@ -67,12 +67,25 @@ func (app *App) AddToPagesRegistry(
 	registry := app.Layout.PagesRegistry
 	registry.PageMenuMap[name] = menu
 
-	row := registry.UI.OpenedPages.GetRowCount()
-	registry.UI.OpenedPages.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
-	registry.UI.OpenedPages.SetCell(row, 1, tview.NewTableCell(name))
+	existingRow := -1
+	for i := 0; i < registry.UI.OpenedPages.GetRowCount(); i++ {
+		cell := registry.UI.OpenedPages.GetCell(i, 1)
+		if cell != nil && cell.Text == name {
+			existingRow = i
+			break
+		}
+	}
 
-	registry.History = append(registry.History[:registry.HistoryIndex+1], name)
-	registry.HistoryIndex++
+	if existingRow >= 0 {
+		registry.UI.Pages.RemovePage(name)
+	} else {
+		row := registry.UI.OpenedPages.GetRowCount()
+		registry.UI.OpenedPages.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
+		registry.UI.OpenedPages.SetCell(row, 1, tview.NewTableCell(name))
+
+		registry.History = append(registry.History[:registry.HistoryIndex+1], name)
+		registry.HistoryIndex++
+	}
 
 	app.Cache.Set(name, name, Expiration)
 	app.Layout.Menu.SetMenu(menu)
