@@ -14,10 +14,10 @@ import (
 )
 
 type PagesRegistry struct {
-	UI           *UI
-	PageMenuMap  map[string]string
-	History      []string
-	HistoryIndex int
+	UI               *UI
+	PageMenuMap      map[string]string
+	History          []string
+	CurrentPageIndex int
 }
 
 type UI struct {
@@ -43,8 +43,8 @@ func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
 			OpenedPages: table,
 			Main:        util.NewModal(table),
 		},
-		PageMenuMap:  make(map[string]string),
-		HistoryIndex: -1,
+		PageMenuMap:      make(map[string]string),
+		CurrentPageIndex: -1,
 	}
 
 	return registry
@@ -83,8 +83,8 @@ func (app *App) AddToPagesRegistry(
 		registry.UI.OpenedPages.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
 		registry.UI.OpenedPages.SetCell(row, 1, tview.NewTableCell(name))
 
-		registry.History = append(registry.History[:registry.HistoryIndex+1], name)
-		registry.HistoryIndex++
+		registry.History = append(registry.History[:registry.CurrentPageIndex+1], name)
+		registry.CurrentPageIndex++
 	}
 
 	app.Cache.Set(name, name, Expiration)
@@ -94,9 +94,9 @@ func (app *App) AddToPagesRegistry(
 
 func (app *App) Forward() {
 	registry := app.Layout.PagesRegistry
-	if registry.HistoryIndex < len(registry.History)-1 {
-		registry.HistoryIndex++
-		name := registry.History[registry.HistoryIndex]
+	if registry.CurrentPageIndex < len(registry.History)-1 {
+		registry.CurrentPageIndex++
+		name := registry.History[registry.CurrentPageIndex]
 		if menu, ok := registry.PageMenuMap[name]; ok {
 			app.Layout.Menu.SetMenu(menu)
 			app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
@@ -104,7 +104,7 @@ func (app *App) Forward() {
 				app.ModalHideTimer.Stop()
 			}
 			app.ShowModalPage(OpenedPages)
-			registry.UI.OpenedPages.Select(registry.HistoryIndex, 0)
+			registry.UI.OpenedPages.Select(registry.CurrentPageIndex, 0)
 			app.ModalHideTimer = time.AfterFunc(1*time.Second, func() {
 				app.QueueUpdateDraw(func() {
 					app.HideModalPage(OpenedPages)
@@ -116,9 +116,9 @@ func (app *App) Forward() {
 
 func (app *App) Backward() {
 	registry := app.Layout.PagesRegistry
-	if registry.HistoryIndex > 0 {
-		registry.HistoryIndex--
-		name := registry.History[registry.HistoryIndex]
+	if registry.CurrentPageIndex > 0 {
+		registry.CurrentPageIndex--
+		name := registry.History[registry.CurrentPageIndex]
 		if menu, ok := registry.PageMenuMap[name]; ok {
 			app.Layout.Menu.SetMenu(menu)
 			app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
@@ -126,7 +126,7 @@ func (app *App) Backward() {
 				app.ModalHideTimer.Stop()
 			}
 			app.ShowModalPage(OpenedPages)
-			registry.UI.OpenedPages.Select(registry.HistoryIndex, 0)
+			registry.UI.OpenedPages.Select(registry.CurrentPageIndex, 0)
 			app.ModalHideTimer = time.AfterFunc(1*time.Second, func() {
 				app.QueueUpdateDraw(func() {
 					app.HideModalPage(OpenedPages)
