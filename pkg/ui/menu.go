@@ -29,11 +29,11 @@ var keys = map[string]Pair{
 		Value: "Up",
 	},
 	"forward": {
-		Key:   "<f>",
+		Key:   "<l>",
 		Value: "Forward",
 	},
 	"backward": {
-		Key:   "<b>",
+		Key:   "<h>",
 		Value: "Backward",
 	},
 	"select": {
