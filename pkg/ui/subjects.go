@@ -172,10 +172,12 @@ func (app *App) Schema(subject string, version int) {
 				isJqOk := true
 
 				if app.Config.Cinnamon.Jq {
-					formattedSchema, err = shell.ExecuteWithInput(result.Metadata.Schema, []string{"jq", "-C", "."})
+					formattedSchema, err = shell.ExecuteWithInput(
+						result.Metadata.Schema,
+						[]string{"jq", "-C", "."},
+					)
 					if err != nil {
 						isJqOk = false
-						log.Warn().Err(err).Msg("jq command failed, falling back to default json indent.")
 					}
 				}
 
@@ -191,9 +193,6 @@ func (app *App) Schema(subject string, version int) {
 				}
 
 				app.QueueUpdateDraw(func() {
-					if !isJqOk {
-						statusLineCh <- "[yellow]jq command failed, using default formatter. Is jq installed?"
-					}
 					desc := app.NewDescription(
 						util.BuildTitle(subject, strconv.Itoa(version)),
 					)
@@ -213,7 +212,12 @@ func (app *App) Schema(subject string, version int) {
 						desc,
 						FinalPageMenu,
 					)
-					ClearStatus()
+
+					if !isJqOk {
+						statusLineCh <- "[yellow]jq command failed, using default formatter"
+					} else {
+						ClearStatus()
+					}
 				})
 				cancel()
 				return
