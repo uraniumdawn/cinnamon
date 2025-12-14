@@ -184,6 +184,46 @@ func (client *Client) ConsumerGroups(
 	}()
 }
 
+func (client *Client) CreateTopic(
+	name string,
+	numPartitions int,
+	replicationFactor int,
+	config map[string]string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		topicSpec := kafka.TopicSpecification{
+			Topic:             name,
+			NumPartitions:     numPartitions,
+			ReplicationFactor: replicationFactor,
+			Config:            config,
+		}
+
+		results, err := client.AdminClient.CreateTopics(
+			ctx,
+			[]kafka.TopicSpecification{topicSpec},
+			kafka.SetAdminRequestTimeout(timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- err
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
 func (client *Client) DescribeConsumerGroup(
 	group string,
 	resultChan chan<- *DescribeConsumerGroupResult,

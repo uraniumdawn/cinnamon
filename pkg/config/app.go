@@ -25,9 +25,9 @@ type Config struct {
 }
 
 type ClusterConfig struct {
-	Name           string            `yaml:"name"`
-	Properties     map[string]string `yaml:"properties"`
-	Selected       bool              `yaml:"selected,omitempty"`
+	Name       string            `yaml:"name"`
+	Properties map[string]string `yaml:"properties"`
+	Selected   bool              `yaml:"selected,omitempty"`
 }
 
 type SchemaRegistryConfig struct {

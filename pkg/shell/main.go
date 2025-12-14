@@ -100,4 +100,3 @@ func ExecuteWithInput(input string, args []string) (string, error) {
 	}
 	return out.String(), nil
 }
-

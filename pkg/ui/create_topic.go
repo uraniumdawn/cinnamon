@@ -6,93 +6,63 @@ package ui
 
 import (
 	"cinnamon/pkg/util"
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/rs/zerolog/log"
 )
 
 type CreateTopicParams struct {
 	TopicName         string
-	ReplicationFactor int32
-	Partitions        int32
-	Properties        string
+	ReplicationFactor int
+	Partitions        int
+	Config            map[string]string
 }
 
-var topicCreationParams = &CreateTopicParams{
+var params = &CreateTopicParams{
 	TopicName:         "",
 	ReplicationFactor: 1,
 	Partitions:        1,
-	Properties:        "",
+	Config:            make(map[string]string),
 }
 
 func (app *App) InitCreateTopicModal() {
 	width := 40
 
-	// Input field for topic name
 	topicName := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault)
 
-	// Input field for replication factor
 	replicationFactor := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault)
 	replicationFactor.SetAcceptanceFunc(tview.InputFieldInteger)
 	replicationFactor.SetText("1")
 
-	// Input field for partitions
 	partitions := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault)
 	partitions.SetAcceptanceFunc(tview.InputFieldInteger)
 	partitions.SetText("1")
 
-	// Dropdown for optional properties
-	propertiesDropdown := tview.NewDropDown().
-		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault)
+	// Text area for optional properties (multi-line)
+	configTextArea := (tview.NewTextArea().
+		SetPlaceholder(`Enter properties (one per line):
+cleanup.policy=delete
+retention.ms=604800000`))
 
-	// Common topic properties
-	propertyOptions := []string{
-		"(none)",
-		"cleanup.policy=delete",
-		"cleanup.policy=compact",
-		"compression.type=gzip",
-		"compression.type=snappy",
-		"compression.type=lz4",
-		"compression.type=zstd",
-		"retention.ms=604800000",     // 7 days
-		"retention.ms=86400000",      // 1 day
-		"retention.bytes=1073741824", // 1GB
-	}
-	propertiesDropdown.SetOptions(propertyOptions, nil)
-
-	// Selection table (labels)
 	selection := tview.NewTable()
-	selection.SetCell(
-		0,
-		0,
-		tview.NewTableCell("Topic Name:").SetAlign(tview.AlignRight),
-	)
-	selection.SetCell(
-		1,
-		0,
-		tview.NewTableCell("Replication Factor:").SetAlign(tview.AlignRight),
-	)
-	selection.SetCell(
-		2,
-		0,
-		tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight),
-	)
-	selection.SetCell(
-		3,
-		0,
-		tview.NewTableCell("Properties (optional):").SetAlign(tview.AlignRight),
-	)
+	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
+	selection.SetCell(1, 0, tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight))
+	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
+	selection.SetCell(3, 0, tview.NewTableCell("Properties (optional):").SetAlign(tview.AlignLeft))
 	selection.SetSelectable(true, false)
 	selection.SetBorderPadding(0, 0, 1, 0)
 
-	// Keep order of input fields
 	inputFields := []*tview.InputField{topicName, replicationFactor, partitions}
 	for _, inf := range inputFields {
 		inf.SetDoneFunc(func(key tcell.Key) {
@@ -100,7 +70,6 @@ func (app *App) InitCreateTopicModal() {
 		})
 	}
 
-	// Create layout
 	f := tview.NewFlex()
 	f.SetDirection(tview.FlexColumn)
 	f.AddItem(selection, 30, 0, true)
@@ -110,50 +79,43 @@ func (app *App) InitCreateTopicModal() {
 		AddItem(topicName, 1, 0, false).
 		AddItem(replicationFactor, 1, 0, false).
 		AddItem(partitions, 1, 0, false).
-		AddItem(propertiesDropdown, 1, 0, false).
-		AddItem(tview.NewBox(), 0, 1, false)
+		AddItem(tview.NewBox(), 1, 0, false).
+		AddItem(configTextArea, 0, 1, false)
 
 	f.AddItem(inputs, 40, 0, false).
 		AddItem(tview.NewBox(), 0, 1, false)
 
-	// Input capture for topic name
 	topicName.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
-			topicCreationParams.TopicName = topicName.GetText()
+			params.TopicName = topicName.GetText()
 		}
 		return event
 	})
 
-	// Input capture for replication factor
 	replicationFactor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
-			topicCreationParams.ReplicationFactor = util.GetInt32(replicationFactor)
+			params.ReplicationFactor, _ = strconv.Atoi(replicationFactor.GetText())
 		}
 		return event
 	})
 
-	// Input capture for partitions
 	partitions.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
-			topicCreationParams.Partitions = util.GetInt32(partitions)
+			params.Partitions, _ = strconv.Atoi(partitions.GetText())
 		}
 		return event
 	})
 
-	// Input capture for properties dropdown
-	propertiesDropdown.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEnter {
-			_, selected := propertiesDropdown.GetCurrentOption()
-			if selected != "(none)" {
-				topicCreationParams.Properties = selected
-			} else {
-				topicCreationParams.Properties = ""
-			}
+	configTextArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			propertiesText := configTextArea.GetText()
+			params.Config = parseConfig(propertiesText)
 			app.SetFocus(selection)
+			return nil
 		}
+		return event
 	})
 
-	// Selection table input capture
 	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := selection.GetSelection()
 
@@ -161,23 +123,24 @@ func (app *App) InitCreateTopicModal() {
 			if row < len(inputFields) {
 				app.SetFocus(inputFields[row])
 			} else if row == 3 {
-				app.SetFocus(propertiesDropdown)
+				app.SetFocus(configTextArea)
 			}
 		}
 
-		// Reset to defaults on 'c' key
 		if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
 			topicName.SetText("")
 			replicationFactor.SetText("1")
 			partitions.SetText("1")
-			propertiesDropdown.SetCurrentOption(0)
+			configTextArea.SetText("", true)
 		}
 
-		// Submit on 's' key
 		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
-			// TODO: Implement actual topic creation logic here
-			// For now, just close the modal
-			statusLineCh <- "Topic creation would be triggered here"
+			app.CreationTopicHandler(
+				params.TopicName,
+				params.ReplicationFactor,
+				params.Partitions,
+				params.Config,
+			)
 			app.HideModalPage(CreateTopic)
 		}
 
@@ -196,4 +159,62 @@ func (app *App) InitCreateTopicModal() {
 
 	modal := util.NewModal(flex)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(CreateTopic, modal, true, false)
+}
+
+func parseConfig(text string) map[string]string {
+	properties := make(map[string]string)
+
+	lines := strings.Split(text, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key != "" && value != "" {
+				properties[key] = value
+			}
+		}
+	}
+
+	return properties
+}
+
+func (app *App) CreationTopicHandler(
+	name string,
+	numPartitions int,
+	replicationFactor int,
+	config map[string]string,
+) {
+	statusLineCh <- "creating topic..."
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	c.CreateTopic(name, numPartitions, replicationFactor, config, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				statusLineCh <- "topic has been created"
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msg("Failed to create topic")
+				statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("Timeout while creating topics")
+				statusLineCh <- "[red]timeout while creating topics"
+				return
+			}
+		}
+	}()
 }
