@@ -8,7 +8,7 @@ require (
 	dario.cat/mergo v1.0.2
 	github.com/confluentinc/confluent-kafka-go/v2 v2.12.0
 	github.com/emirpasic/gods v1.18.1
-	github.com/gdamore/tcell/v2 v2.9.0
+	github.com/gdamore/tcell/v2 v2.13.4
 	github.com/goccy/go-json v0.10.5
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -21,7 +21,6 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect
@@ -36,10 +35,10 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/term v0.36.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

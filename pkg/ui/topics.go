@@ -50,6 +50,9 @@ func (app *App) Topics() {
 					app.Layout.PagesRegistry.PageMenuMap[ConsumingParams] = ConsumingParamsPageMenu
 					app.InitConsumingParams()
 
+					app.Layout.PagesRegistry.PageMenuMap[CreateTopic] = CreateTopicPageMenu
+					app.InitCreateTopicModal()
+
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							app.Topics()
@@ -71,6 +74,10 @@ func (app *App) Topics() {
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
 							app.ShowModalPage(ConsumingParams)
+						}
+
+						if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
+							app.ShowModalPage(CreateTopic)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {
