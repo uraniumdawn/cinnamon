@@ -413,7 +413,7 @@ func (app *App) CreateEditTopicModal(topicName string, topicResult *client.Topic
 		configLines = append(configLines, fmt.Sprintf("%s=%s", key, value))
 	}
 	if len(configLines) > 0 {
-		configTextArea.SetText(strings.Join(configLines, "\n"), true)
+		configTextArea.SetText(strings.Join(configLines, "\n"), false)
 	}
 
 	selection := tview.NewTable()
