@@ -69,6 +69,16 @@ func NewModal(p tview.Primitive) tview.Primitive {
 		AddItem(nil, 0, 1, false)
 }
 
+func NewConfirmationModal(p tview.Primitive) tview.Primitive {
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(p, 3, 0, true).
+			AddItem(nil, 0, 1, false), 0, 2, true).
+		AddItem(nil, 0, 1, false)
+}
+
 func GetInt64(inputField *tview.InputField) int64 {
 	text := inputField.GetText()
 	if text == "" {

@@ -39,6 +39,7 @@ const (
 	OpenedPages      = "Opened pages"
 	ConsumingParams  = "Consuming Parameters"
 	CreateTopic      = "Create Topic"
+	DeleteTopic      = "Delete Topic"
 )
 
 type App struct {

@@ -53,6 +53,8 @@ func (app *App) Topics() {
 					app.Layout.PagesRegistry.PageMenuMap[CreateTopic] = CreateTopicPageMenu
 					app.InitCreateTopicModal()
 
+					app.Layout.PagesRegistry.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
+
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							app.Topics()
@@ -83,7 +85,8 @@ func (app *App) Topics() {
 						if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
-							app.DeleteTopicHandler(topicName)
+							app.InitDeleteTopicModal(topicName)
+							app.ShowModalPage(DeleteTopic)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {

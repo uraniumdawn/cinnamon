@@ -88,9 +88,17 @@ var keys = map[string]Pair{
 		Key:   "<s>",
 		Value: "Submit",
 	},
+	"confirm": {
+		Key:   "<s>",
+		Value: "Confirm",
+	},
 	"close": {
 		Key:   "<Esc>",
 		Value: "Close",
+	},
+	"cancel": {
+		Key:   "<Esc>",
+		Value: "Cancel",
 	},
 	"q": {
 		Key:   "<q>",
@@ -108,6 +116,7 @@ const (
 	ConsumingMenu            = "ConsumingMenu"
 	ConsumingParamsPageMenu  = "ConsumingParamsPageMenu"
 	CreateTopicPageMenu      = "CreateTopicPageMenu"
+	DeleteTopicPageMenu      = "DeleteTopicPageMenu"
 	ConsumerGroupsPageMenu   = "ConsumerGroupsPageMenu"
 	SubjectsPageMenu         = "SubjectsPageMenu"
 	VersionsPageMenu         = "VersionsPageMenu"
@@ -129,6 +138,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			OpenedPagesMenu:         {"up", "dw", "select", "close"},
 			ConsumingParamsPageMenu: {"up", "dw", "select", "default", "close"},
 			CreateTopicPageMenu:     {"up", "dw", "select", "submit", "default", "close"},
+			DeleteTopicPageMenu:     {"confirm", "cancel"},
 			ClustersPageMenu: {
 				"up",
 				"dw",

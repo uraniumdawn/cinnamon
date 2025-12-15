@@ -258,3 +258,32 @@ func (app *App) DeleteTopicHandler(name string) {
 		}
 	}()
 }
+
+func (app *App) InitDeleteTopicModal(topicName string) {
+	messageText := tview.NewTextView().
+		SetText(fmt.Sprintf("Topic [red::b]%s[-::-] will be deleted. Confirm?", topicName)).
+		SetTextAlign(tview.AlignCenter).
+		SetDynamicColors(true)
+
+	messageText.SetBorder(true).
+		SetTitle(" Confirm Deletion ").
+		SetBorderPadding(0, 0, 1, 1)
+
+	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
+			app.DeleteTopicHandler(topicName)
+			app.HideModalPage(DeleteTopic)
+			commandCh <- Topics
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.HideModalPage(DeleteTopic)
+		}
+
+		return event
+	})
+
+	modal := util.NewConfirmationModal(messageText)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(DeleteTopic, modal, true, true)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(DeleteTopic)
+}
