@@ -24,6 +24,19 @@ type TopicParams struct {
 	Config            map[string]string
 }
 
+func (tp *TopicParams) Validate() error {
+	if strings.TrimSpace(tp.TopicName) == "" {
+		return fmt.Errorf("topic name cannot be empty")
+	}
+	if tp.ReplicationFactor <= 0 {
+		return fmt.Errorf("replication factor must be greater than 0")
+	}
+	if tp.Partitions <= 0 {
+		return fmt.Errorf("partitions must be greater than 0")
+	}
+	return nil
+}
+
 func (app *App) InitCreateTopicModal() {
 	params := &TopicParams{
 		TopicName:         "",
@@ -161,6 +174,11 @@ retention.ms=604800000`).
 			params.ReplicationFactor, _ = strconv.Atoi(replicationFactor.GetText())
 			params.Partitions, _ = strconv.Atoi(partitions.GetText())
 			params.Config = parseConfig(configTextArea.GetText())
+
+			if err := params.Validate(); err != nil {
+				statusLineCh <- fmt.Sprintf("[red]%s", err.Error())
+				return event
+			}
 
 			app.CreateTopicResultHandler(
 				params.TopicName,
