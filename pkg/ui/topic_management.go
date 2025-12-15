@@ -206,13 +206,53 @@ func (app *App) CreationTopicHandler(
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to create topic")
-				statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to create topic")
+					statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
+				} else {
+					log.Error().Msg("Failed to create topic: unknown error")
+					statusLineCh <- "[red]failed to create topic: unknown error"
+				}
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("Timeout while creating topics")
 				statusLineCh <- "[red]timeout while creating topics"
+				return
+			}
+		}
+	}()
+}
+
+func (app *App) DeleteTopicHandler(name string) {
+	statusLineCh <- "deleting topic..."
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	c.DeleteTopic(name, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				statusLineCh <- "topic has been deleted"
+				cancel()
+				return
+			case err := <-errorCh:
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to delete topic")
+					statusLineCh <- fmt.Sprintf("[red]failed to delete topic: %s", err.Error())
+				} else {
+					log.Error().Msg("Failed to delete topic: unknown error")
+					statusLineCh <- "[red]failed to delete topic: unknown error"
+				}
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("Timeout while deleting topic")
+				statusLineCh <- "[red]timeout while deleting topic"
 				return
 			}
 		}

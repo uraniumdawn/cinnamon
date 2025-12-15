@@ -80,6 +80,10 @@ var keys = map[string]Pair{
 		Key:   "<c>",
 		Value: "Create Topic",
 	},
+	"delete": {
+		Key:   "<x>",
+		Value: "Delete Topic",
+	},
 	"submit": {
 		Key:   "<s>",
 		Value: "Submit",
@@ -165,6 +169,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"filter",
 				"upd",
 				"create",
+				"delete",
 			},
 			ConsumingMenu: {"forward", "backward", "res", "params", "term"},
 			ConsumerGroupsPageMenu: {

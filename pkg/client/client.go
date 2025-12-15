@@ -215,7 +215,37 @@ func (client *Client) CreateTopic(
 
 		for _, result := range results {
 			if result.Error.Code() != kafka.ErrNoError {
-				errorChan <- err
+				errorChan <- fmt.Errorf("failed to create topic '%s': %s", name, result.Error.String())
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
+func (client *Client) DeleteTopic(
+	name string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		results, err := client.AdminClient.DeleteTopics(
+			ctx,
+			[]string{name},
+			kafka.SetAdminRequestTimeout(timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to delete topic '%s': %s", name, result.Error.String())
 				return
 			}
 		}

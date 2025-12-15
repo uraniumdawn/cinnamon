@@ -80,6 +80,12 @@ func (app *App) Topics() {
 							app.ShowModalPage(CreateTopic)
 						}
 
+						if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
+							row, _ := table.GetSelection()
+							topicName := table.GetCell(row, 0).Text
+							app.DeleteTopicHandler(topicName)
+						}
+
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {
 							statusLineCh <- "consuming records..."
 							row, _ := table.GetSelection()
