@@ -20,6 +20,7 @@ cinnamon:
   selection:
     fgColor: "black"
     bgColor: "white"
+  placeholder: "grey"
   title: "orange"
   border: "white"
   background: "black"

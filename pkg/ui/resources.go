@@ -5,7 +5,6 @@
 package ui
 
 import (
-	"cinnamon/pkg/config"
 	"cinnamon/pkg/util"
 
 	"github.com/gdamore/tcell/v2"
@@ -15,7 +14,6 @@ import (
 func (pr *PagesRegistry) NewResourcesPage(
 	app *App,
 	commandCh chan<- string,
-	colors *config.ColorConfig,
 ) tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).

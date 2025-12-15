@@ -27,39 +27,69 @@ type TopicParams struct {
 func (app *App) InitCreateTopicModal() {
 	params := &TopicParams{
 		TopicName:         "",
-		ReplicationFactor: 1,
-		Partitions:        1,
+		ReplicationFactor: -1,
+		Partitions:        -1,
 		Config:            make(map[string]string),
 	}
 	width := 40
 
 	topicName := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault)
+		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetPlaceholder("Put topic name here").
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
 
 	replicationFactor := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault)
+		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetPlaceholder("-1")
 	replicationFactor.SetAcceptanceFunc(tview.InputFieldInteger)
-	replicationFactor.SetText("1")
+	replicationFactor.SetPlaceholderStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Colors.Cinnamon.Foreground),
+		).Background(
+			tcell.GetColor(app.Colors.Cinnamon.Background),
+		)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
 
 	partitions := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault)
+		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetPlaceholder("-1")
 	partitions.SetAcceptanceFunc(tview.InputFieldInteger)
-	partitions.SetText("1")
+	partitions.
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
 
 	// Text area for optional properties (multi-line)
 	configTextArea := tview.NewTextArea().
 		SetPlaceholder(`Enter properties (one per line):
 cleanup.policy=delete
-retention.ms=604800000`)
+retention.ms=604800000`).
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Placeholder),
+			))
 
 	selection := tview.NewTable()
 	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
 	selection.SetCell(1, 0, tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight))
 	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
-	selection.SetCell(3, 0, tview.NewTableCell("Properties (optional):").SetAlign(tview.AlignLeft))
+	selection.SetCell(3, 0, tview.NewTableCell("Configs (optional):").SetAlign(tview.AlignRight))
 	selection.SetSelectable(true, false)
 	selection.SetBorderPadding(0, 0, 1, 0)
 
@@ -72,14 +102,13 @@ retention.ms=604800000`)
 
 	f := tview.NewFlex()
 	f.SetDirection(tview.FlexColumn)
-	f.AddItem(selection, 30, 0, true)
+	f.AddItem(selection, 20, 0, true)
 	f.AddItem(tview.NewBox(), 3, 0, false)
 
 	inputs := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(topicName, 1, 0, false).
 		AddItem(replicationFactor, 1, 0, false).
 		AddItem(partitions, 1, 0, false).
-		AddItem(tview.NewBox(), 1, 0, false).
 		AddItem(configTextArea, 0, 1, false)
 
 	f.AddItem(inputs, 40, 0, false).
@@ -418,30 +447,21 @@ func (app *App) CreateEditTopicModal(topicName string, topicResult *client.Topic
 
 	selection := tview.NewTable()
 	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
-	selection.SetCell(
-		1,
-		0,
-		tview.NewTableCell("Replication factor (read-only):").SetAlign(tview.AlignRight),
-	)
-	selection.SetCell(
-		2,
-		0,
-		tview.NewTableCell("Partitions (read-only):").SetAlign(tview.AlignRight),
-	)
-	selection.SetCell(3, 0, tview.NewTableCell("Properties (editable):").SetAlign(tview.AlignLeft))
+	selection.SetCell(1, 0, tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight))
+	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
+	selection.SetCell(3, 0, tview.NewTableCell("Configs:").SetAlign(tview.AlignRight))
 	selection.SetSelectable(true, false)
 	selection.SetBorderPadding(0, 0, 1, 0)
 
 	f := tview.NewFlex()
 	f.SetDirection(tview.FlexColumn)
-	f.AddItem(selection, 30, 0, true)
+	f.AddItem(selection, 20, 0, true)
 	f.AddItem(tview.NewBox(), 3, 0, false)
 
 	inputs := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(topicNameField, 1, 0, false).
 		AddItem(replicationFactorField, 1, 0, false).
 		AddItem(partitionsField, 1, 0, false).
-		AddItem(tview.NewBox(), 1, 0, false).
 		AddItem(configTextArea, 0, 1, false)
 
 	f.AddItem(inputs, 40, 0, false).

@@ -35,11 +35,12 @@ type ColorConfig struct {
 			FgColor string `yaml:"fgColor"`
 			BgColor string `yaml:"bgColor"`
 		} `yaml:"selection"`
-		Title      string `yaml:"title"`
-		Border     string `yaml:"border"`
-		Background string `yaml:"background"`
-		Foreground string `yaml:"foreground"`
-	} `yaml:"cinnamon"`
+		Placeholder string `yaml:"placeholder"`
+		Title       string `yaml:"title"`
+		Border      string `yaml:"border"`
+		Background  string `yaml:"background"`
+		Foreground  string `yaml:"foreground"`
+	} `yaml:"cinnamon" `
 }
 
 func loadDefaultColorConfig() (*ColorConfig, error) {
