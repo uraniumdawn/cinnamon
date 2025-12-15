@@ -49,11 +49,9 @@ func (app *App) Topics() {
 
 					app.Layout.PagesRegistry.PageMenuMap[ConsumingParams] = ConsumingParamsPageMenu
 					app.InitConsumingParams()
-
 					app.Layout.PagesRegistry.PageMenuMap[CreateTopic] = CreateTopicPageMenu
-					app.InitCreateTopicModal()
-
 					app.Layout.PagesRegistry.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
+					app.Layout.PagesRegistry.PageMenuMap[EditTopic] = EditTopicPageMenu
 
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
@@ -79,6 +77,7 @@ func (app *App) Topics() {
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
+							app.InitCreateTopicModal()
 							app.ShowModalPage(CreateTopic)
 						}
 
@@ -87,6 +86,12 @@ func (app *App) Topics() {
 							topicName := table.GetCell(row, 0).Text
 							app.InitDeleteTopicModal(topicName)
 							app.ShowModalPage(DeleteTopic)
+						}
+
+						if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+							row, _ := table.GetSelection()
+							topicName := table.GetCell(row, 0).Text
+							app.InitEditTopicModal(topicName)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {

@@ -254,6 +254,58 @@ func (client *Client) DeleteTopic(
 	}()
 }
 
+func (client *Client) UpdateTopicConfig(
+	name string,
+	config map[string]string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		resourceType, err := kafka.ResourceTypeFromString("topic")
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to parse resource type: %w", err)
+			return
+		}
+
+		// Build config entries for AlterConfigs
+		var configEntries []kafka.ConfigEntry
+		for key, value := range config {
+			configEntries = append(configEntries, kafka.ConfigEntry{
+				Name:  key,
+				Value: value,
+			})
+		}
+
+		configResource := kafka.ConfigResource{
+			Type:   resourceType,
+			Name:   name,
+			Config: configEntries,
+		}
+
+		results, err := client.AdminClient.AlterConfigs(
+			ctx,
+			[]kafka.ConfigResource{configResource},
+			kafka.SetAdminRequestTimeout(timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to update topic config '%s': %s", name, result.Error.String())
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
 func (client *Client) DescribeConsumerGroup(
 	group string,
 	resultChan chan<- *DescribeConsumerGroupResult,

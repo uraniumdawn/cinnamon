@@ -40,6 +40,7 @@ const (
 	ConsumingParams  = "Consuming Parameters"
 	CreateTopic      = "Create Topic"
 	DeleteTopic      = "Delete Topic"
+	EditTopic        = "Edit Topic"
 )
 
 type App struct {

@@ -84,6 +84,10 @@ var keys = map[string]Pair{
 		Key:   "<x>",
 		Value: "Delete Topic",
 	},
+	"edit": {
+		Key:   "<e>",
+		Value: "Edit Topic",
+	},
 	"submit": {
 		Key:   "<s>",
 		Value: "Submit",
@@ -117,6 +121,7 @@ const (
 	ConsumingParamsPageMenu  = "ConsumingParamsPageMenu"
 	CreateTopicPageMenu      = "CreateTopicPageMenu"
 	DeleteTopicPageMenu      = "DeleteTopicPageMenu"
+	EditTopicPageMenu        = "EditTopicPageMenu"
 	ConsumerGroupsPageMenu   = "ConsumerGroupsPageMenu"
 	SubjectsPageMenu         = "SubjectsPageMenu"
 	VersionsPageMenu         = "VersionsPageMenu"
@@ -138,6 +143,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			OpenedPagesMenu:         {"up", "dw", "select", "close"},
 			ConsumingParamsPageMenu: {"up", "dw", "select", "default", "close"},
 			CreateTopicPageMenu:     {"up", "dw", "select", "submit", "default", "close"},
+			EditTopicPageMenu:       {"up", "dw", "select", "submit", "close"},
 			DeleteTopicPageMenu:     {"confirm", "cancel"},
 			ClustersPageMenu: {
 				"up",
@@ -180,6 +186,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"upd",
 				"create",
 				"delete",
+				"edit",
 			},
 			ConsumingMenu: {"forward", "backward", "res", "params", "term"},
 			ConsumerGroupsPageMenu: {

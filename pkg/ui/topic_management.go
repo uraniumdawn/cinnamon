@@ -5,6 +5,7 @@
 package ui
 
 import (
+	"cinnamon/pkg/client"
 	"cinnamon/pkg/util"
 	"context"
 	"fmt"
@@ -16,21 +17,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type CreateTopicParams struct {
+type TopicParams struct {
 	TopicName         string
 	ReplicationFactor int
 	Partitions        int
 	Config            map[string]string
 }
 
-var params = &CreateTopicParams{
-	TopicName:         "",
-	ReplicationFactor: 1,
-	Partitions:        1,
-	Config:            make(map[string]string),
-}
-
 func (app *App) InitCreateTopicModal() {
+	params := &TopicParams{
+		TopicName:         "",
+		ReplicationFactor: 1,
+		Partitions:        1,
+		Config:            make(map[string]string),
+	}
 	width := 40
 
 	topicName := tview.NewInputField().
@@ -50,10 +50,10 @@ func (app *App) InitCreateTopicModal() {
 	partitions.SetText("1")
 
 	// Text area for optional properties (multi-line)
-	configTextArea := (tview.NewTextArea().
+	configTextArea := tview.NewTextArea().
 		SetPlaceholder(`Enter properties (one per line):
 cleanup.policy=delete
-retention.ms=604800000`))
+retention.ms=604800000`)
 
 	selection := tview.NewTable()
 	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
@@ -127,15 +127,13 @@ retention.ms=604800000`))
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
-			topicName.SetText("")
-			replicationFactor.SetText("1")
-			partitions.SetText("1")
-			configTextArea.SetText("", true)
-		}
-
 		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
-			app.CreationTopicHandler(
+			params.TopicName = topicName.GetText()
+			params.ReplicationFactor, _ = strconv.Atoi(replicationFactor.GetText())
+			params.Partitions, _ = strconv.Atoi(partitions.GetText())
+			params.Config = parseConfig(configTextArea.GetText())
+
+			app.CreateTopicResultHandler(
 				params.TopicName,
 				params.ReplicationFactor,
 				params.Partitions,
@@ -158,7 +156,8 @@ retention.ms=604800000`))
 	flex.SetBorder(true)
 
 	modal := util.NewModal(flex)
-	app.Layout.PagesRegistry.UI.Pages.AddPage(CreateTopic, modal, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(CreateTopic, modal, true, true)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(CreateTopic)
 }
 
 func parseConfig(text string) map[string]string {
@@ -184,7 +183,7 @@ func parseConfig(text string) map[string]string {
 	return properties
 }
 
-func (app *App) CreationTopicHandler(
+func (app *App) CreateTopicResultHandler(
 	name string,
 	numPartitions int,
 	replicationFactor int,
@@ -224,7 +223,7 @@ func (app *App) CreationTopicHandler(
 	}()
 }
 
-func (app *App) DeleteTopicHandler(name string) {
+func (app *App) DeleteTopicResultHandler(name string) {
 	statusLineCh <- "deleting topic..."
 	resultCh := make(chan bool)
 	errorCh := make(chan error)
@@ -259,6 +258,44 @@ func (app *App) DeleteTopicHandler(name string) {
 	}()
 }
 
+func (app *App) UpdateTopicResultConfigHandler(
+	name string,
+	config map[string]string,
+) {
+	statusLineCh <- "updating topic config..."
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	c.UpdateTopicConfig(name, config, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				statusLineCh <- "topic config has been updated"
+				cancel()
+				return
+			case err := <-errorCh:
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to update topic config")
+					statusLineCh <- fmt.Sprintf("[red]failed to update topic config: %s", err.Error())
+				} else {
+					log.Error().Msg("Failed to update topic config: unknown error")
+					statusLineCh <- "[red]failed to update topic config: unknown error"
+				}
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("Timeout while updating topic config")
+				statusLineCh <- "[red]timeout while updating topic config"
+				return
+			}
+		}
+	}()
+}
+
 func (app *App) InitDeleteTopicModal(topicName string) {
 	messageText := tview.NewTextView().
 		SetText(fmt.Sprintf("Topic [red::b]%s[-::-] will be deleted. Confirm?", topicName)).
@@ -271,7 +308,7 @@ func (app *App) InitDeleteTopicModal(topicName string) {
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
-			app.DeleteTopicHandler(topicName)
+			app.DeleteTopicResultHandler(topicName)
 			app.HideModalPage(DeleteTopic)
 			commandCh <- Topics
 		}
@@ -286,4 +323,172 @@ func (app *App) InitDeleteTopicModal(topicName string) {
 	modal := util.NewConfirmationModal(messageText)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(DeleteTopic, modal, true, true)
 	app.Layout.PagesRegistry.UI.Pages.ShowPage(DeleteTopic)
+}
+
+func (app *App) InitEditTopicModal(topicName string) {
+	statusLineCh <- "fetching topic configuration..."
+	resultCh := make(chan *client.TopicResult)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	c.DescribeTopic(topicName, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	go func() {
+		for {
+			select {
+			case topicResult := <-resultCh:
+				app.QueueUpdateDraw(func() {
+					app.CreateEditTopicModal(topicName, topicResult)
+					app.ShowModalPage(EditTopic)
+					statusLineCh <- "ready to edit topic"
+				})
+				cancel()
+				return
+			case err := <-errorCh:
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to fetch topic config")
+					statusLineCh <- fmt.Sprintf("[red]failed to fetch topic config: %s", err.Error())
+				} else {
+					log.Error().Msg("Failed to fetch topic config: unknown error")
+					statusLineCh <- "[red]failed to fetch topic config: unknown error"
+				}
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("Timeout while fetching topic config")
+				statusLineCh <- "[red]timeout while fetching topic config"
+				return
+			}
+		}
+	}()
+}
+
+func (app *App) CreateEditTopicModal(topicName string, topicResult *client.TopicResult) {
+	width := 40
+
+	currentConfig := make(map[string]string)
+	partitionCount := 0
+	replicationFactor := 0
+
+	if len(topicResult.TopicDescriptions) > 0 {
+		desc := topicResult.TopicDescriptions[0]
+		partitionCount = len(desc.Partitions)
+		if len(desc.Partitions) > 0 {
+			replicationFactor = len(desc.Partitions[0].Replicas)
+		}
+	}
+
+	for _, configResult := range topicResult.Config {
+		for _, entry := range configResult.Config {
+			// Only include non-default, non-readonly configs
+			if !entry.IsDefault && !entry.IsReadOnly {
+				currentConfig[entry.Name] = entry.Value
+			}
+		}
+	}
+
+	topicNameField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetText(topicName)
+	topicNameField.SetDisabled(true)
+
+	replicationFactorField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetText(fmt.Sprintf("%d", replicationFactor))
+	replicationFactorField.SetDisabled(true)
+
+	partitionsField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetText(fmt.Sprintf("%d", partitionCount))
+	partitionsField.SetDisabled(true)
+
+	configTextArea := tview.NewTextArea()
+
+	var configLines []string
+	for key, value := range currentConfig {
+		configLines = append(configLines, fmt.Sprintf("%s=%s", key, value))
+	}
+	if len(configLines) > 0 {
+		configTextArea.SetText(strings.Join(configLines, "\n"), true)
+	}
+
+	selection := tview.NewTable()
+	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
+	selection.SetCell(
+		1,
+		0,
+		tview.NewTableCell("Replication factor (read-only):").SetAlign(tview.AlignRight),
+	)
+	selection.SetCell(
+		2,
+		0,
+		tview.NewTableCell("Partitions (read-only):").SetAlign(tview.AlignRight),
+	)
+	selection.SetCell(3, 0, tview.NewTableCell("Properties (editable):").SetAlign(tview.AlignLeft))
+	selection.SetSelectable(true, false)
+	selection.SetBorderPadding(0, 0, 1, 0)
+
+	f := tview.NewFlex()
+	f.SetDirection(tview.FlexColumn)
+	f.AddItem(selection, 30, 0, true)
+	f.AddItem(tview.NewBox(), 3, 0, false)
+
+	inputs := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(topicNameField, 1, 0, false).
+		AddItem(replicationFactorField, 1, 0, false).
+		AddItem(partitionsField, 1, 0, false).
+		AddItem(tview.NewBox(), 1, 0, false).
+		AddItem(configTextArea, 0, 1, false)
+
+	f.AddItem(inputs, 40, 0, false).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	var editedConfig map[string]string
+
+	configTextArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			propertiesText := configTextArea.GetText()
+			editedConfig = parseConfig(propertiesText)
+			app.SetFocus(selection)
+			return nil
+		}
+		return event
+	})
+
+	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := selection.GetSelection()
+
+		if event.Key() == tcell.KeyEnter {
+			if row == 3 {
+				app.SetFocus(configTextArea)
+			}
+		}
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
+			propertiesText := configTextArea.GetText()
+			editedConfig = parseConfig(propertiesText)
+			app.UpdateTopicResultConfigHandler(topicName, editedConfig)
+			app.HideModalPage(EditTopic)
+			commandCh <- Topics
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.HideModalPage(EditTopic)
+		}
+
+		return event
+	})
+
+	flex := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(f, 0, 1, true)
+	flex.SetTitle(fmt.Sprintf(" Edit Topic: %s ", topicName))
+	flex.SetBorder(true)
+
+	modal := util.NewModal(flex)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(EditTopic, modal, true, false)
 }
