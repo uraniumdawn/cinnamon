@@ -252,7 +252,7 @@ func (app *App) Run() {
 	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
 	app.Layout.PagesRegistry.PageMenuMap[OpenedPages] = OpenedPagesMenu
 
-	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh, app.Colors)
+	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, st, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
