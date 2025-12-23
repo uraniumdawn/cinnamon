@@ -19,7 +19,7 @@ func (app *App) InitCliTemplatesModal(topicName string) {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
-		SetTitle(" Select CLI Template ")
+		SetTitle(" CLI commands ")
 
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
