@@ -47,7 +47,20 @@ func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
 		CurrentPageIndex: -1,
 	}
 
+	registry.SetupPageMenus()
+
 	return registry
+}
+
+func (pr *PagesRegistry) SetupPageMenus() {
+	pr.PageMenuMap[Clusters] = ClustersPageMenu
+	pr.PageMenuMap[SchemaRegistries] = SchemaRegistriesPageMenu
+	pr.PageMenuMap[Resources] = ResourcesPageMenu
+	pr.PageMenuMap[OpenedPages] = OpenedPagesMenu
+	pr.PageMenuMap[ConsumingParams] = ConsumingParamsPageMenu
+	pr.PageMenuMap[CreateTopic] = CreateTopicPageMenu
+	pr.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
+	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
 }
 
 func (app *App) CheckInCache(name string, onAbsent func()) {

@@ -47,11 +47,7 @@ func (app *App) Topics() {
 						TopicsPageMenu,
 					)
 
-					app.Layout.PagesRegistry.PageMenuMap[ConsumingParams] = ConsumingParamsPageMenu
 					app.InitConsumingParams()
-					app.Layout.PagesRegistry.PageMenuMap[CreateTopic] = CreateTopicPageMenu
-					app.Layout.PagesRegistry.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
-					app.Layout.PagesRegistry.PageMenuMap[EditTopic] = EditTopicPageMenu
 
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {

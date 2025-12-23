@@ -247,11 +247,6 @@ func (app *App) Run() {
 	app.ClustersTableInputHandler(ct)
 	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
-	app.Layout.PagesRegistry.PageMenuMap[Clusters] = ClustersPageMenu
-	app.Layout.PagesRegistry.PageMenuMap[SchemaRegistries] = SchemaRegistriesPageMenu
-	app.Layout.PagesRegistry.PageMenuMap[Resources] = ResourcesPageMenu
-	app.Layout.PagesRegistry.PageMenuMap[OpenedPages] = OpenedPagesMenu
-
 	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, st, true, false)
