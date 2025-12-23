@@ -1,0 +1,15 @@
+cinnamon:
+  clusters:
+    - name: prod
+      properties:
+        bootstrap.servers: kafka-prod:9094
+    - name: dev
+      properties:
+        bootstrap.servers: kafka-dev:29094
+  schema-registries:
+    - name: prod
+      schema.registry.url: http://schema-registry-prod:8081
+    - name: dev
+      schema.registry.url: http://schema-registry-dev:8081
+  cli_templates:
+    consume_command: kcat -b {{bootstrap}} -t {{topic}} -C

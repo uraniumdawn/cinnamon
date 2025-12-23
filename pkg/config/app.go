@@ -16,11 +16,16 @@ type JqConfig struct {
 	Command []string `yaml:"command,omitempty"`
 }
 
+type CliTemplatesConfig struct {
+	ConsumeCommand string `yaml:"consume_command,omitempty"`
+}
+
 type Config struct {
 	Cinnamon struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
 		Jq               JqConfig                `yaml:"jq,omitempty"`
+		CliTemplates     CliTemplatesConfig      `yaml:"cli_templates,omitempty"`
 	} `yaml:"cinnamon"`
 }
 
@@ -28,6 +33,13 @@ type ClusterConfig struct {
 	Name       string            `yaml:"name"`
 	Properties map[string]string `yaml:"properties"`
 	Selected   bool              `yaml:"selected,omitempty"`
+}
+
+func (c *ClusterConfig) GetBootstrapServers() string {
+	if bootstrap, ok := c.Properties["bootstrap.servers"]; ok {
+		return bootstrap
+	}
+	return ""
 }
 
 type SchemaRegistryConfig struct {

@@ -136,3 +136,10 @@ func BuildPageKey(parts ...string) string {
 	}
 	return builder.String()
 }
+
+// BuildCliCommand Supported placeholders: {{bootstrap}}, {{topic}}
+func BuildCliCommand(templateStr string, bootstrap string, topic string) string {
+	result := strings.ReplaceAll(templateStr, "{{bootstrap}}", bootstrap)
+	result = strings.ReplaceAll(result, "{{topic}}", topic)
+	return result
+}

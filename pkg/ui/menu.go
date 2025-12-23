@@ -104,6 +104,10 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Cancel",
 	},
+	"cli_command": {
+		Key:   "<t>",
+		Value: "CLI consume command",
+	},
 	"q": {
 		Key:   "<q>",
 		Value: "",
@@ -187,6 +191,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"create",
 				"delete",
 				"edit",
+				"cli_command",
 			},
 			ConsumingMenu: {"forward", "backward", "res", "params", "term"},
 			ConsumerGroupsPageMenu: {

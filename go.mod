@@ -6,6 +6,7 @@ toolchain go1.24.5
 
 require (
 	dario.cat/mergo v1.0.2
+	github.com/atotto/clipboard v0.1.4
 	github.com/confluentinc/confluent-kafka-go/v2 v2.12.0
 	github.com/emirpasic/gods v1.18.1
 	github.com/gdamore/tcell/v2 v2.13.4
