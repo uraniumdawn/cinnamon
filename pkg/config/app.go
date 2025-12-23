@@ -16,16 +16,12 @@ type JqConfig struct {
 	Command []string `yaml:"command,omitempty"`
 }
 
-type CliTemplatesConfig struct {
-	ConsumeCommand string `yaml:"consume_command,omitempty"`
-}
-
 type Config struct {
 	Cinnamon struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
 		Jq               JqConfig                `yaml:"jq,omitempty"`
-		CliTemplates     CliTemplatesConfig      `yaml:"cli_templates,omitempty"`
+		CliTemplates     []string                `yaml:"cli_templates,omitempty"`
 	} `yaml:"cinnamon"`
 }
 

@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/atotto/clipboard"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/gdamore/tcell/v2"
@@ -94,24 +93,7 @@ func (app *App) Topics() {
 						if event.Key() == tcell.KeyRune && event.Rune() == 't' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
-
-							template := app.Config.Cinnamon.CliTemplates.ConsumeCommand
-
-							bootstrap := app.Selected.Cluster.GetBootstrapServers()
-							if bootstrap == "" {
-								statusLineCh <- "[red]bootstrap.servers not found in cluster config"
-								return event
-							}
-
-							command := util.BuildCliCommand(template, bootstrap, topicName)
-
-							err := clipboard.WriteAll(command)
-							if err != nil {
-								log.Error().Err(err).Msg("Failed to copy to clipboard")
-								statusLineCh <- fmt.Sprintf("[red]failed to copy to clipboard: %s", err.Error())
-							} else {
-								statusLineCh <- fmt.Sprintf("[green]Copied to clipboard: %s", command)
-							}
+							app.InitCliTemplatesModal(topicName)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {

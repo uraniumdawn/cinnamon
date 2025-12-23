@@ -12,4 +12,6 @@ cinnamon:
     - name: dev
       schema.registry.url: http://schema-registry-dev:8081
   cli_templates:
-    consume_command: kcat -b {{bootstrap}} -t {{topic}} -C
+    - kcat -b {{bootstrap}} -t {{topic}} -o beginning -f '{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n' -u | jq .
+    - kcat -b {{bootstrap}} -t {{topic}}
+

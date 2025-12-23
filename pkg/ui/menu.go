@@ -130,6 +130,7 @@ const (
 	SubjectsPageMenu         = "SubjectsPageMenu"
 	VersionsPageMenu         = "VersionsPageMenu"
 	FinalPageMenu            = "FinalPageMenu"
+	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -149,6 +150,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			CreateTopicPageMenu:     {"up", "dw", "select", "submit", "default", "close"},
 			EditTopicPageMenu:       {"up", "dw", "select", "submit", "close"},
 			DeleteTopicPageMenu:     {"confirm", "cancel"},
+			CliTemplatesPageMenu:    {"up", "dw", "select", "close"},
 			ClustersPageMenu: {
 				"up",
 				"dw",

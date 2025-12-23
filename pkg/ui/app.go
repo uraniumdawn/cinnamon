@@ -41,6 +41,7 @@ const (
 	CreateTopic      = "Create Topic"
 	DeleteTopic      = "Delete Topic"
 	EditTopic        = "Edit Topic"
+	CliTemplates     = "CLI Templates"
 )
 
 type App struct {
