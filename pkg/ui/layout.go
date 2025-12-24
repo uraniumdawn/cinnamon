@@ -22,6 +22,7 @@ type Layout struct {
 	Menu          *Menu
 	SideBar       *tview.Pages
 	Colors        *config.ColorConfig
+	StatusPopup   *StatusPopup
 }
 
 type Borders struct {
@@ -84,11 +85,15 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 
 	sideBar.AddPage("search", search, true, false)
 
+	statusPopup := NewStatusPopup(colors)
+
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
 		AddItem(registry.UI.Pages, 0, 1, true).
 		AddItem(sideBar, 1, 0, false)
+
+	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,
@@ -99,6 +104,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		SideBar:       sideBar,
 		Content:       main,
 		Colors:        colors,
+		StatusPopup:   statusPopup,
 	}
 }
 
