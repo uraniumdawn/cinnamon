@@ -34,18 +34,17 @@ func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	tv.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Status.BgColor))
 	tv.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
 
-	// Create a flex layout that positions the popup in the top-right corner with margins
 	innerFlex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(nil, 1, 0, false). // Top margin
-		AddItem(tv, 3, 0, false).  // Popup content
-		AddItem(nil, 0, 1, false)  // Spacer below
+		AddItem(nil, 0, 1, false).
+		AddItem(tv, 3, 0, false).
+		AddItem(nil, 1, 0, false)
 
 	outerFlex := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
-		AddItem(nil, 0, 2, false).       // Spacer on left (2/3 of width)
-		AddItem(innerFlex, 0, 1, false). // Popup on right (1/3 of width)
-		AddItem(nil, 2, 0, false)        // Right margin
+		AddItem(nil, 0, 2, false).
+		AddItem(innerFlex, 0, 1, false).
+		AddItem(nil, 2, 0, false)
 
 	return &StatusPopup{
 		TextView: tv,

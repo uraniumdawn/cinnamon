@@ -215,7 +215,6 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 				app.QueueUpdateDraw(func() {
 					app.Layout.StatusLine.SetText(status)
 
-					// Also show status popup if message is not empty
 					if status != "" {
 						app.ShowStatusPopup(status)
 					}
@@ -226,22 +225,19 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 }
 
 func (app *App) ShowStatusPopup(message string) {
-	// Cancel previous timer if exists
 	if app.StatusPopupHideTimer != nil {
 		app.StatusPopupHideTimer.Stop()
 	}
 
-	// Set message and show status popup
 	app.Layout.StatusPopup.SetMessage(message)
 	app.Layout.PagesRegistry.UI.Pages.ShowPage(StatusPopupPage)
 	app.Layout.PagesRegistry.UI.Pages.SendToFront(StatusPopupPage)
 
-	// Hide after 3 seconds
-	app.StatusPopupHideTimer = time.AfterFunc(StatusPopupDuration, func() {
-		app.QueueUpdateDraw(func() {
-			app.Layout.PagesRegistry.UI.Pages.HidePage(StatusPopupPage)
-		})
-	})
+	//app.StatusPopupHideTimer = time.AfterFunc(StatusPopupDuration, func() {
+	//	app.QueueUpdateDraw(func() {
+	//		app.Layout.PagesRegistry.UI.Pages.HidePage(StatusPopupPage)
+	//	})
+	//})
 }
 
 func (app *App) Run() {
