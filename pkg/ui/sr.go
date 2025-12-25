@@ -5,9 +5,40 @@
 package ui
 
 import (
+	"context"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/rs/zerolog/log"
 )
+
+const (
+	GetSchemaRegistriesEventType EventType = "srs:get"
+)
+
+var SchemaRegistriesChannel = make(chan Event)
+
+func (app *App) RunSchemaRegistriesEventHandler(ctx context.Context, in chan Event) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down Schema Registries Event Handler")
+				return
+			case event := <-in:
+				switch event.Type {
+				case GetSchemaRegistriesEventType:
+					app.QueueUpdateDraw(func() {
+						sr := app.NewSchemaRegistriesTable()
+						app.SchemaRegistriesTableInputHandler(sr)
+						app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, sr, true, false)
+						app.SwitchToPage(SchemaRegistries)
+					})
+				}
+			}
+		}
+	}()
+}
 
 func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	table := tview.NewTable()
@@ -31,4 +62,19 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 		row++
 	}
 	return table
+}
+
+func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
+	st.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := st.GetSelection()
+		name := st.GetCell(row, 0).Text
+		sr := app.SchemaRegistries[name]
+
+		if event.Key() == tcell.KeyEnter {
+			app.SelectSchemaRegistry(sr, true)
+			ClearStatus()
+		}
+
+		return event
+	})
 }

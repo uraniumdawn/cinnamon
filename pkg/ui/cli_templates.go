@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (app *App) InitCliTemplatesModal(topicName string) {
+func (app *App) CliTemplates(topicName string) {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).

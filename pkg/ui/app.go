@@ -27,7 +27,6 @@ const timeout = time.Second * 10
 const (
 	Resources        = "Resources"
 	Clusters         = "Clusters"
-	Cluster          = "Cluster"
 	SchemaRegistries = "Schema-registries"
 	Topics           = "Topics"
 	Topic            = "Topic"
@@ -127,81 +126,10 @@ func InitLogger() {
 
 var (
 	statusLineCh = make(chan string, 10)
-	commandCh    = make(chan string)
 )
 
 func ClearStatus() {
 	statusLineCh <- ""
-}
-
-func (app *App) RunCommandHandler(ctx context.Context, in chan string) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Info().Msg("Shutting down CommandHandler")
-				return
-			case command := <-in:
-				switch command {
-				case Clusters:
-					app.QueueUpdateDraw(func() {
-						app.SwitchToPage(Clusters)
-					})
-				case SchemaRegistries:
-					app.QueueUpdateDraw(func() {
-						app.SwitchToPage(SchemaRegistries)
-					})
-				case "tps", Topics:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select cluster"
-						continue
-					}
-					app.CheckInCache(
-						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics),
-						func() {
-							app.Topics()
-						},
-					)
-				case "grs", ConsumerGroups:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select cluster"
-						continue
-					}
-					app.CheckInCache(
-						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups),
-						func() {
-							app.ConsumerGroups()
-						},
-					)
-				case "nds", Nodes:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select cluster"
-						continue
-					}
-					app.CheckInCache(
-						fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes),
-						func() {
-							app.QueueUpdateDraw(func() {
-								app.Nodes()
-							})
-						},
-					)
-				case "sjs", Subjects:
-					if !app.isSchemaRegistrySelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select Schema Registry"
-						continue
-					}
-					app.CheckInCache(Subjects, func() {
-						app.Subjects()
-					})
-				case "q!":
-					app.Stop()
-				default:
-					statusLineCh <- "invalid command"
-				}
-			}
-		}
-	}()
 }
 
 func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
@@ -215,9 +143,9 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 				app.QueueUpdateDraw(func() {
 					app.Layout.StatusLine.SetText(status)
 
-					if status != "" {
+					/*if status != "" {
 						app.ShowStatusPopup(status)
-					}
+					}*/
 				})
 			}
 		}
@@ -243,8 +171,15 @@ func (app *App) ShowStatusPopup(message string) {
 func (app *App) Run() {
 	app.ApplyColors()
 	ctx, cancel := context.WithCancel(context.Background())
-	app.RunCommandHandler(ctx, commandCh)
+
+	app.RunResourcesEventHandler(ctx, ResourcesChannel)
 	app.RunStatusLineHandler(ctx, statusLineCh)
+	app.RunClusterEventHandler(ctx, ClustersChannel)
+	app.RunSchemaRegistriesEventHandler(ctx, SchemaRegistriesChannel)
+	app.RunNodesEventHandler(ctx, NodesChannel)
+	app.RunTopicsEventHandler(ctx, TopicsChannel)
+	app.RunCgroupsEventHandler(ctx, CgroupsChannel)
+	app.RunSubjectsEventHandler(ctx, SubjectsChannel)
 
 	registry := NewPagesRegistry(app.Colors)
 	app.Layout = NewLayout(registry, app.Colors)
@@ -263,15 +198,10 @@ func (app *App) Run() {
 		}
 	}
 
-	ct := app.NewClustersTable()
-	st := app.NewSchemaRegistriesTable()
-	app.SchemaRegistriesTableInputHandler(st)
-	app.ClustersTableInputHandler(ct)
+	Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
 	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
-	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app, commandCh)
-	app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
-	app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, st, true, false)
+	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(
 		OpenedPages,
@@ -289,11 +219,9 @@ func (app *App) Run() {
 		),
 	)
 
-	app.ClustersTableInputHandler(ct)
-	app.SchemaRegistriesTableInputHandler(st)
-	app.OpenPagesKeyHadler(app.Layout.PagesRegistry.UI.OpenedPages)
-	app.SearchKeyHadler(app.Layout.Search)
-	app.MainOperationKeyHadler()
+	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
+	app.SearchKeyHandler(app.Layout.Search)
+	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
 	if err != nil {
@@ -375,4 +303,18 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool)
 		}
 		app.SchemaRegistryClients[sr.Name] = newClient
 	}
+}
+
+func (app *App) NewDescription(title string) *tview.TextView {
+	desc := tview.NewTextView().
+		SetTextAlign(tview.AlignLeft).
+		SetDynamicColors(true).
+		SetWrap(true).
+		SetWordWrap(false)
+	desc.
+		SetBorder(true).
+		SetBorderPadding(0, 0, 1, 0).
+		SetTitle(title)
+	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
+	return desc
 }

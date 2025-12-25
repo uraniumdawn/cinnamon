@@ -17,8 +17,57 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	GetNodesEventType EventType = "nodes:get"
+	GetNodeEventType  EventType = "node:get"
+)
+
+var NodesChannel = make(chan Event)
+
+type NodeIdUrlPair struct {
+	Id  string
+	Url string
+}
+
+func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down Nodes Event Handler")
+				return
+			case event := <-in:
+				switch event.Type {
+				case GetNodesEventType:
+					pageName := util.BuildPageKey(app.Selected.Cluster.Name, Nodes)
+					force := event.Payload.Force
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting nodes..."
+						app.Nodes()
+					}
+				case GetNodeEventType:
+					nu := event.Payload.Data.(NodeIdUrlPair)
+					force := event.Payload.Force
+					nodeId := nu.Id
+					url := nu.Url
+					pageName := util.BuildPageKey(app.Selected.Cluster.Name, Nodes, nodeId)
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting node description..."
+						app.Node(nodeId, url)
+					}
+				}
+			}
+		}
+	}()
+}
+
 func (app *App) Nodes() {
-	statusLineCh <- "getting nodes..."
 	resultCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
 
@@ -33,25 +82,17 @@ func (app *App) Nodes() {
 				nodes := description.Nodes
 				app.QueueUpdateDraw(func() {
 					table := app.NewNodesTable(nodes)
-					table.SetTitle(
-						util.BuildTitle(Nodes, "["+strconv.Itoa(len(nodes))+"]"),
-					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+						if event.Key() == tcell.KeyCtrlU {
+							Publish(SubjectsChannel, GetNodesEventType, Payload{nil, true})
+						}
+
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							nodeId := table.GetCell(row, 0).Text
 							url := table.GetCell(row, 1).Text
-
-							app.CheckInCache(
-								util.BuildPageKey(
-									app.Selected.Cluster.Name,
-									Nodes,
-									nodeId,
-								),
-								func() {
-									app.Node(nodeId, url)
-								},
-							)
+							Publish(NodesChannel, GetNodeEventType,
+								Payload{Data: NodeIdUrlPair{nodeId, url}, Force: false})
 						}
 
 						return event
@@ -96,6 +137,12 @@ func (app *App) Node(id string, url string) {
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(util.BuildTitle(Node, url, id))
 					desc.SetText(description.String())
+					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+						if event.Key() == tcell.KeyCtrlU {
+							Publish(NodesChannel, GetNodeEventType, Payload{NodeIdUrlPair{id, url}, true})
+						}
+						return event
+					})
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Node, id),
 						desc,
@@ -136,5 +183,10 @@ func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 		table.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(node.ID)))
 		table.SetCell(i, 1, tview.NewTableCell(node.Host))
 	}
+	table.SetTitle(
+		util.BuildTitle(Nodes,
+			"["+strconv.Itoa(len(nodes))+"]",
+		),
+	)
 	return table
 }

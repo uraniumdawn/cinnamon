@@ -20,7 +20,6 @@ type Config struct {
 	Cinnamon struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
-		Jq               JqConfig                `yaml:"jq,omitempty"`
 		CliTemplates     []string                `yaml:"cli_templates,omitempty"`
 	} `yaml:"cinnamon"`
 }

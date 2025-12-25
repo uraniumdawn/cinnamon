@@ -15,6 +15,45 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	GetClustersEventType EventType = "clusters:get"
+	GetClusterEventType  EventType = "cluster:get"
+)
+
+var ClustersChannel = make(chan Event)
+
+func (app *App) RunClusterEventHandler(ctx context.Context, in chan Event) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down Cluster Event Handler")
+				return
+			case event := <-in:
+				switch event.Type {
+				case GetClustersEventType:
+					app.QueueUpdateDraw(func() {
+						ct := app.NewClustersTable()
+						app.ClustersTableInputHandler(ct)
+						app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
+						app.SwitchToPage(Clusters)
+					})
+				case GetClusterEventType:
+					pageName := util.BuildPageKey(app.Selected.Cluster.Name, "info")
+					force := event.Payload.Force
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting cluster description..."
+						app.Cluster()
+					}
+				}
+			}
+		}
+	}()
+}
+
 func (app *App) Cluster() {
 	c := app.KafkaClients[app.Selected.Cluster.Name]
 	rCh := make(chan *client.ClusterResult)
@@ -31,6 +70,12 @@ func (app *App) Cluster() {
 						util.BuildTitle(app.Selected.Cluster.Name, "info"),
 					)
 					desc.SetText(description.String())
+					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+						if event.Key() == tcell.KeyCtrlU {
+							Publish(ClustersChannel, GetClusterEventType, Payload{nil, true})
+						}
+						return event
+					})
 
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, "info"),
@@ -55,20 +100,6 @@ func (app *App) Cluster() {
 	}()
 }
 
-func (app *App) NewDescription(title string) *tview.TextView {
-	desc := tview.NewTextView().
-		SetTextAlign(tview.AlignLeft).
-		SetDynamicColors(true).
-		SetWrap(true).
-		SetWordWrap(false)
-	desc.
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0).
-		SetTitle(title)
-	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
-	return desc
-}
-
 func (app *App) NewClustersTable() *tview.Table {
 	table := tview.NewTable()
 	table.SetTitle(" Clusters ")
@@ -91,4 +122,27 @@ func (app *App) NewClustersTable() *tview.Table {
 		row++
 	}
 	return table
+}
+
+func (app *App) ClustersTableInputHandler(ct *tview.Table) {
+	ct.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := ct.GetSelection()
+		clusterName := ct.GetCell(row, 0).Text
+		cluster := app.Clusters[clusterName]
+
+		if event.Key() == tcell.KeyEnter {
+			app.SelectCluster(cluster, true)
+			ClearStatus()
+		}
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+			if !app.isClusterSelected(app.Selected) || app.Selected.Cluster.Name != clusterName {
+				statusLineCh <- "[red]to perform operation, select cluster"
+				return event
+			}
+			Publish(ClustersChannel, GetClusterEventType, Payload{Force: true})
+		}
+
+		return event
+	})
 }

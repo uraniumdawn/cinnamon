@@ -6,15 +6,63 @@ package ui
 
 import (
 	"cinnamon/pkg/util"
+	"context"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/rs/zerolog/log"
 )
 
-func (pr *PagesRegistry) NewResourcesPage(
-	app *App,
-	commandCh chan<- string,
-) tview.Primitive {
+var ResourcesChannel = make(chan string)
+
+func (app *App) RunResourcesEventHandler(ctx context.Context, in chan string) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down Resource Event Handler")
+				return
+			case event := <-in:
+				switch event {
+				case Clusters:
+					Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
+				case SchemaRegistries:
+					Publish(SchemaRegistriesChannel, GetSchemaRegistriesEventType, Payload{nil, false})
+				case "tps", Topics:
+					if !app.isClusterSelected(app.Selected) {
+						statusLineCh <- "[red]to perform operation, select cluster"
+						continue
+					}
+					Publish(TopicsChannel, GetTopicsEventType, Payload{nil, false})
+				case "grs", ConsumerGroups:
+					if !app.isClusterSelected(app.Selected) {
+						statusLineCh <- "[red]to perform operation, select cluster"
+						continue
+					}
+					Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, false})
+				case "nds", Nodes:
+					if !app.isClusterSelected(app.Selected) {
+						statusLineCh <- "[red]to perform operation, select cluster"
+						continue
+					}
+					Publish(NodesChannel, GetNodesEventType, Payload{nil, false})
+				case "sjs", Subjects:
+					if !app.isSchemaRegistrySelected(app.Selected) {
+						statusLineCh <- "[red]to perform operation, select Schema Registry"
+						continue
+					}
+					Publish(SubjectsChannel, GetSubjectsEventType, Payload{nil, false})
+				case "q!":
+					app.Stop()
+				default:
+					statusLineCh <- "invalid command"
+				}
+			}
+		}
+	}()
+}
+
+func (pr *PagesRegistry) NewResourcesPage(app *App) tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).
@@ -41,7 +89,7 @@ func (pr *PagesRegistry) NewResourcesPage(
 		resource := table.GetCell(row, 0).Text
 		if event.Key() == tcell.KeyEnter {
 			app.HideModalPage(Resources)
-			commandCh <- resource
+			ResourcesChannel <- resource
 		}
 
 		if event.Key() == tcell.KeyEsc {

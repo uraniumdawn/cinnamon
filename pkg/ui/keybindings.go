@@ -9,47 +9,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (app *App) ClustersTableInputHandler(ct *tview.Table) {
-	ct.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := ct.GetSelection()
-		clusterName := ct.GetCell(row, 0).Text
-		cluster := app.Clusters[clusterName]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectCluster(cluster, true)
-			ClearStatus()
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
-			if !app.isClusterSelected(app.Selected) || app.Selected.Cluster.Name != clusterName {
-				statusLineCh <- "[red]to perform operation, select cluster"
-				return event
-			}
-
-			statusLineCh <- "Getting cluster description results..."
-			app.Cluster()
-		}
-
-		return event
-	})
-}
-
-func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
-	st.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := st.GetSelection()
-		name := st.GetCell(row, 0).Text
-		sr := app.SchemaRegistries[name]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectSchemaRegistry(sr, true)
-			ClearStatus()
-		}
-
-		return event
-	})
-}
-
-func (app *App) OpenPagesKeyHadler(table *tview.Table) {
+func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 	table.SetInputCapture(
 		func(event *tcell.EventKey) *tcell.EventKey {
 			if event.Key() == tcell.KeyEnter {
@@ -66,7 +26,7 @@ func (app *App) OpenPagesKeyHadler(table *tview.Table) {
 	)
 }
 
-func (app *App) SearchKeyHadler(input *tview.InputField) {
+func (app *App) SearchKeyHandler(input *tview.InputField) {
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
 			app.Layout.SideBar.SwitchToPage("menu")
@@ -82,7 +42,7 @@ func (app *App) SearchKeyHadler(input *tview.InputField) {
 	})
 }
 
-func (app *App) MainOperationKeyHadler() {
+func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
 			app.ShowModalPage(Resources)

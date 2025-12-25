@@ -19,8 +19,51 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	GetCgroupsEventType EventType = "cgroups:get"
+	GetCgroupEventType  EventType = "cgroup:get"
+)
+
+var CgroupsChannel = make(chan Event)
+
+func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down Cgroups Event Handler")
+				return
+			case event := <-in:
+				switch event.Type {
+				case GetCgroupsEventType:
+					pageName := util.BuildPageKey(app.Selected.Cluster.Name, ConsumerGroups)
+					force := event.Payload.Force
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting consumer groups..."
+						app.ConsumerGroups()
+					}
+
+				case GetCgroupEventType:
+					consumerGroup := event.Payload.Data.(string)
+					force := event.Payload.Force
+					pageName := util.BuildPageKey(app.Selected.Cluster.Name, ConsumerGroups, consumerGroup)
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting consumer group description..."
+						app.ConsumerGroup(consumerGroup)
+					}
+				}
+			}
+		}
+	}()
+}
+
 func (app *App) ConsumerGroups() {
-	statusLineCh <- "getting consumer groups..."
 	resultCh := make(chan *client.ConsumerGroupsResult)
 	errorCh := make(chan error)
 
@@ -34,12 +77,6 @@ func (app *App) ConsumerGroups() {
 			case groups := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewGroupsTable(groups)
-					table.SetTitle(
-						util.BuildTitle(
-							ConsumerGroups,
-							"["+strconv.Itoa(len(groups.Valid))+"]",
-						),
-					)
 
 					app.AddToPagesRegistry(
 						util.BuildPageKey(
@@ -51,30 +88,19 @@ func (app *App) ConsumerGroups() {
 					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.ConsumerGroups()
+							Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							groupName := table.GetCell(row, 0).Text
-
-							app.CheckInCache(
-								fmt.Sprintf(
-									"%s:%s:%s",
-									app.Selected.Cluster.Name,
-									ConsumerGroup,
-									groupName,
-								),
-								func() {
-									app.ConsumerGroup(groupName)
-								},
-							)
+							Publish(CgroupsChannel, GetCgroupEventType, Payload{groupName, false})
 						}
 						return event
 					})
 
 					app.Layout.Search.SetChangedFunc(func(text string) {
-						app.FilterConsumerGroupsTable(table, groups.Valid, text)
+						filterConsumerGroupsTable(table, groups.Valid, text)
 						table.ScrollToBeginning()
 					})
 
@@ -97,7 +123,6 @@ func (app *App) ConsumerGroups() {
 }
 
 func (app *App) ConsumerGroup(name string) {
-	statusLineCh <- "getting consumer group description results..."
 	resultCh := make(chan *client.DescribeConsumerGroupResult)
 	errorCh := make(chan error)
 
@@ -116,7 +141,7 @@ func (app *App) ConsumerGroup(name string) {
 					desc.SetText(description.String())
 					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.ConsumerGroup(name)
+							Publish(CgroupsChannel, GetCgroupEventType, Payload{name, true})
 						}
 						return event
 					})
@@ -164,10 +189,17 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 		table.SetCell(i, 0, tview.NewTableCell(r.GroupID))
 		table.SetCell(i, 1, tview.NewTableCell("STATE: "+r.State.String()))
 	}
+
+	table.SetTitle(
+		util.BuildTitle(
+			ConsumerGroups,
+			"["+strconv.Itoa(len(groups.Valid))+"]",
+		),
+	)
 	return table
 }
 
-func (app *App) FilterConsumerGroupsTable(
+func filterConsumerGroupsTable(
 	table *tview.Table,
 	groupListing []kafka.ConsumerGroupListing,
 	filter string,

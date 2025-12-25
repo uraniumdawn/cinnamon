@@ -7,7 +7,6 @@ package ui
 import (
 	"bytes"
 	"cinnamon/pkg/schemaregistry"
-	"cinnamon/pkg/shell"
 	"cinnamon/pkg/util"
 	"context"
 	"encoding/json"
@@ -21,8 +20,72 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	GetSubjectsEventType EventType = "subjects:get"
+	GetVersionsEventType EventType = "versions:get"
+	GetSchemaEventType   EventType = "schema:get"
+)
+
+var SubjectsChannel = make(chan Event)
+
+type SubjectVersionPair struct {
+	Subject string
+	Version string
+}
+
+func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down Subjects Event Handler")
+				return
+			case event := <-in:
+				switch event.Type {
+				case GetSubjectsEventType:
+					pageName := util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects)
+					force := event.Payload.Force
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting subjects..."
+						app.Subjects()
+					}
+
+				case GetVersionsEventType:
+					subject := event.Payload.Data.(string)
+					force := event.Payload.Force
+					pageName := util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "versions")
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting versions..."
+						app.Versions(subject)
+					}
+
+				case GetSchemaEventType:
+					sv := event.Payload.Data.(SubjectVersionPair)
+					force := event.Payload.Force
+					v, _ := strconv.Atoi(sv.Version)
+					subject := sv.Subject
+					pageName :=
+						util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "version", sv.Version)
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						statusLineCh <- "getting schema..."
+						app.Schema(subject, v)
+					}
+				}
+			}
+		}
+	}()
+}
+
 func (app *App) Subjects() {
-	statusLineCh <- "getting subjects..."
 	resultCh := make(chan []string)
 	errorCh := make(chan error)
 
@@ -36,31 +99,22 @@ func (app *App) Subjects() {
 			case subjects := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewSubjectsTable(subjects)
-					table.SetTitle(util.BuildTitle(
-						Subjects,
-						"["+strconv.Itoa(len(subjects))+"]"))
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Subjects()
+							Publish(SubjectsChannel, GetSubjectsEventType, Payload{nil, true})
 						}
 
 						if event.Key() == tcell.KeyEnter {
 							row, _ := table.GetSelection()
 							subject := table.GetCell(row, 0).Text
-
-							app.CheckInCache(
-								util.BuildPageKey(app.Selected.SchemaRegistry.Name, "versions"),
-								func() {
-									app.Versions(subject)
-								},
-							)
+							Publish(SubjectsChannel, GetVersionsEventType, Payload{subject, false})
 						}
 
 						return event
 					})
 
 					app.Layout.Search.SetChangedFunc(func(text string) {
-						app.FilterSubjectsTable(table, subjects, text)
+						filterSubjectsTable(table, subjects, text)
 						table.ScrollToBeginning()
 					})
 
@@ -88,7 +142,6 @@ func (app *App) Subjects() {
 }
 
 func (app *App) Versions(subject string) {
-	statusLineCh <- "getting versions..."
 	resultCh := make(chan []int)
 	errorCh := make(chan error)
 
@@ -102,8 +155,12 @@ func (app *App) Versions(subject string) {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewVersionsTable(versions)
-					table.SetTitle(util.BuildTitle(subject,
-						"["+strconv.Itoa(len(versions))+"]"))
+					table.SetTitle(
+						util.BuildTitle(
+							subject,
+							"["+strconv.Itoa(len(versions))+"]",
+						),
+					)
 
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "versions"),
@@ -112,25 +169,15 @@ func (app *App) Versions(subject string) {
 					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Versions(subject)
+							Publish(SubjectsChannel, GetVersionsEventType, Payload{nil, true})
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							version := table.GetCell(row, 0).Text
-							v, _ := strconv.Atoi(version)
 
-							app.CheckInCache(
-								util.BuildPageKey(
-									app.Selected.SchemaRegistry.Name,
-									subject,
-									"version",
-									version,
-								),
-								func() {
-									app.Schema(subject, v)
-								},
-							)
+							Publish(SubjectsChannel, GetSchemaEventType,
+								Payload{SubjectVersionPair{subject, version}, false})
 						}
 
 						return event
@@ -155,7 +202,7 @@ func (app *App) Versions(subject string) {
 }
 
 func (app *App) Schema(subject string, version int) {
-	statusLineCh <- "getting schema..."
+
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
 
@@ -168,39 +215,25 @@ func (app *App) Schema(subject string, version int) {
 			select {
 			case result := <-resultCh:
 				var formattedSchema string
-				var err error
-				isJqOk := true
-
-				jqConfig := app.Config.Cinnamon.Jq
-				if jqConfig.Enable {
-					formattedSchema, err = shell.ExecuteWithInput(
-						result.Metadata.Schema,
-						jqConfig.Command,
-					)
-					if err != nil {
-						isJqOk = false
-					}
+				var pretty bytes.Buffer
+				indentErr := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
+				if indentErr != nil {
+					errorCh <- indentErr
+					cancel()
+					return
 				}
-
-				if !jqConfig.Enable || !isJqOk {
-					var pretty bytes.Buffer
-					indentErr := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
-					if indentErr != nil {
-						errorCh <- indentErr
-						cancel()
-						return
-					}
-					formattedSchema = pretty.String()
-				}
+				formattedSchema = pretty.String()
 
 				app.QueueUpdateDraw(func() {
+					v := strconv.Itoa(version)
 					desc := app.NewDescription(
-						util.BuildTitle(subject, strconv.Itoa(version)),
+						util.BuildTitle(subject, v),
 					)
 
 					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Schema(subject, version)
+							Publish(SubjectsChannel, GetSchemaEventType,
+								Payload{SubjectVersionPair{subject, v}, true})
 						}
 						return event
 					})
@@ -216,17 +249,11 @@ func (app *App) Schema(subject string, version int) {
 							app.Selected.SchemaRegistry.Name,
 							subject,
 							"version",
-							strconv.Itoa(version),
+							v,
 						),
 						desc,
 						FinalPageMenu,
 					)
-
-					if !isJqOk {
-						statusLineCh <- "[yellow]jq command failed, using default formatter"
-					} else {
-						ClearStatus()
-					}
 				})
 				cancel()
 				return
@@ -262,6 +289,12 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	for i, subject := range subjects {
 		table.SetCell(i, 0, tview.NewTableCell(subject))
 	}
+	table.SetTitle(
+		util.BuildTitle(
+			Subjects,
+			"["+strconv.Itoa(len(subjects))+"]",
+		),
+	)
 	return table
 }
 
@@ -289,7 +322,7 @@ func (app *App) NewVersionsTable(versions []int) *tview.Table {
 	return table
 }
 
-func (app *App) FilterSubjectsTable(table *tview.Table, subjects []string, filter string) {
+func filterSubjectsTable(table *tview.Table, subjects []string, filter string) {
 	table.Clear()
 
 	ranks := fuzzy.RankFind(filter, subjects)
