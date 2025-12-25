@@ -139,7 +139,11 @@ func (app *App) Node(id string, url string) {
 					desc.SetText(description.String())
 					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							Publish(NodesChannel, GetNodeEventType, Payload{NodeIdUrlPair{id, url}, true})
+							Publish(
+								NodesChannel,
+								GetNodeEventType,
+								Payload{NodeIdUrlPair{id, url}, true},
+							)
 						}
 						return event
 					})

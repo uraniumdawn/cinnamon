@@ -49,7 +49,11 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 				case GetCgroupEventType:
 					consumerGroup := event.Payload.Data.(string)
 					force := event.Payload.Force
-					pageName := util.BuildPageKey(app.Selected.Cluster.Name, ConsumerGroups, consumerGroup)
+					pageName := util.BuildPageKey(
+						app.Selected.Cluster.Name,
+						ConsumerGroups,
+						consumerGroup,
+					)
 					_, found := app.Cache.Get(pageName)
 					if found && !force {
 						app.SwitchToPage(pageName)

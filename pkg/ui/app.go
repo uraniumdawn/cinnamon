@@ -124,9 +124,7 @@ func InitLogger() {
 	log.Logger = log.Output(file)
 }
 
-var (
-	statusLineCh = make(chan string, 10)
-)
+var statusLineCh = make(chan string, 10)
 
 func ClearStatus() {
 	statusLineCh <- ""

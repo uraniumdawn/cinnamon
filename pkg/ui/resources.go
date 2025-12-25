@@ -45,7 +45,11 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 				case ClustersResourceEventType:
 					Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
 				case SchemaRegistriesResourceEventType:
-					Publish(SchemaRegistriesChannel, GetSchemaRegistriesEventType, Payload{nil, false})
+					Publish(
+						SchemaRegistriesChannel,
+						GetSchemaRegistriesEventType,
+						Payload{nil, false},
+					)
 				case "tps", TopicsResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineCh <- "[red]to perform operation, select cluster"

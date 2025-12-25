@@ -56,7 +56,11 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 				case GetVersionsEventType:
 					subject := event.Payload.Data.(string)
 					force := event.Payload.Force
-					pageName := util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "versions")
+					pageName := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"versions",
+					)
 					_, found := app.Cache.Get(pageName)
 					if found && !force {
 						app.SwitchToPage(pageName)
@@ -70,8 +74,12 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 					force := event.Payload.Force
 					v, _ := strconv.Atoi(sv.Version)
 					subject := sv.Subject
-					pageName :=
-						util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "version", sv.Version)
+					pageName := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"version",
+						sv.Version,
+					)
 					_, found := app.Cache.Get(pageName)
 					if found && !force {
 						app.SwitchToPage(pageName)
@@ -202,7 +210,6 @@ func (app *App) Versions(subject string) {
 }
 
 func (app *App) Schema(subject string, version int) {
-
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
 
