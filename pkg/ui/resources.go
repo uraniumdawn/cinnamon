@@ -22,6 +22,15 @@ const (
 	SubjectsResourceEventType         EventType = "resources:subjects"
 )
 
+var m = map[string]EventType{
+	Clusters:         ClustersResourceEventType,
+	SchemaRegistries: SchemaRegistriesResourceEventType,
+	Nodes:            NodesResourceEventType,
+	Topics:           TopicsResourceEventType,
+	ConsumerGroups:   CgroupsResourceEventType,
+	Subjects:         SubjectsResourceEventType,
+}
+
 var ResourcesChannel = make(chan Event)
 
 func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
@@ -92,15 +101,6 @@ func (pr *PagesRegistry) NewResourcesPage(app *App) tview.Primitive {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
-
-	m := map[string]EventType{
-		Clusters:         ClustersResourceEventType,
-		SchemaRegistries: SchemaRegistriesResourceEventType,
-		Nodes:            NodesResourceEventType,
-		Topics:           TopicsResourceEventType,
-		ConsumerGroups:   CgroupsResourceEventType,
-		Subjects:         SubjectsResourceEventType,
-	}
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
