@@ -13,9 +13,18 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var ResourcesChannel = make(chan string)
+const (
+	ClustersResourceEventType         EventType = "resources:clusters"
+	SchemaRegistriesResourceEventType EventType = "resources:srs"
+	TopicsResourceEventType           EventType = "resources:topics"
+	CgroupsResourceEventType          EventType = "resources:cgroups"
+	NodesResourceEventType            EventType = "resources:nodes"
+	SubjectsResourceEventType         EventType = "resources:subjects"
+)
 
-func (app *App) RunResourcesEventHandler(ctx context.Context, in chan string) {
+var ResourcesChannel = make(chan Event)
+
+func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 	go func() {
 		for {
 			select {
@@ -23,30 +32,30 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan string) {
 				log.Info().Msg("Shutting down Resource Event Handler")
 				return
 			case event := <-in:
-				switch event {
-				case Clusters:
+				switch event.Type {
+				case ClustersResourceEventType:
 					Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
-				case SchemaRegistries:
+				case SchemaRegistriesResourceEventType:
 					Publish(SchemaRegistriesChannel, GetSchemaRegistriesEventType, Payload{nil, false})
-				case "tps", Topics:
+				case "tps", TopicsResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineCh <- "[red]to perform operation, select cluster"
 						continue
 					}
 					Publish(TopicsChannel, GetTopicsEventType, Payload{nil, false})
-				case "grs", ConsumerGroups:
+				case "grs", CgroupsResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineCh <- "[red]to perform operation, select cluster"
 						continue
 					}
 					Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, false})
-				case "nds", Nodes:
+				case "nds", NodesResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
 						statusLineCh <- "[red]to perform operation, select cluster"
 						continue
 					}
 					Publish(NodesChannel, GetNodesEventType, Payload{nil, false})
-				case "sjs", Subjects:
+				case "sjs", SubjectsResourceEventType:
 					if !app.isSchemaRegistrySelected(app.Selected) {
 						statusLineCh <- "[red]to perform operation, select Schema Registry"
 						continue
@@ -84,12 +93,21 @@ func (pr *PagesRegistry) NewResourcesPage(app *App) tview.Primitive {
 		),
 	)
 
+	m := map[string]EventType{
+		Clusters:         ClustersResourceEventType,
+		SchemaRegistries: SchemaRegistriesResourceEventType,
+		Nodes:            NodesResourceEventType,
+		Topics:           TopicsResourceEventType,
+		ConsumerGroups:   CgroupsResourceEventType,
+		Subjects:         SubjectsResourceEventType,
+	}
+
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := table.GetSelection()
 		resource := table.GetCell(row, 0).Text
 		if event.Key() == tcell.KeyEnter {
 			app.HideModalPage(Resources)
-			ResourcesChannel <- resource
+			Publish(ResourcesChannel, m[resource], Payload{})
 		}
 
 		if event.Key() == tcell.KeyEsc {
