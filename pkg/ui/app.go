@@ -132,6 +132,8 @@ func ClearStatus() {
 	statusLineCh <- ""
 }
 
+var statusLineTimer *time.Timer
+
 func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 	go func() {
 		for {
@@ -142,6 +144,16 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 			case status := <-in:
 				app.QueueUpdateDraw(func() {
 					app.Layout.StatusLine.SetText(status)
+					if status != "" {
+						if statusLineTimer != nil {
+							statusLineTimer.Stop()
+						}
+						statusLineTimer = time.AfterFunc(5*time.Second, func() {
+							app.QueueUpdateDraw(func() {
+								app.Layout.StatusLine.SetText("")
+							})
+						})
+					}
 
 					/*if status != "" {
 						app.ShowStatusPopup(status)
