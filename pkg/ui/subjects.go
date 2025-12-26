@@ -109,13 +109,21 @@ func (app *App) Subjects() {
 					table := app.NewSubjectsTable(subjects)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							Publish(SubjectsChannel, GetSubjectsEventType, Payload{nil, true})
+							Publish(
+								SubjectsChannel,
+								GetSubjectsEventType,
+								Payload{nil, true},
+							)
 						}
 
 						if event.Key() == tcell.KeyEnter {
 							row, _ := table.GetSelection()
 							subject := table.GetCell(row, 0).Text
-							Publish(SubjectsChannel, GetVersionsEventType, Payload{subject, false})
+							Publish(
+								SubjectsChannel,
+								GetVersionsEventType,
+								Payload{subject, false},
+							)
 						}
 
 						return event
@@ -171,13 +179,21 @@ func (app *App) Versions(subject string) {
 					)
 
 					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.SchemaRegistry.Name, subject, "versions"),
+						util.BuildPageKey(
+							app.Selected.SchemaRegistry.Name,
+							subject,
+							"versions",
+						),
 						table,
 						VersionsPageMenu,
 					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							Publish(SubjectsChannel, GetVersionsEventType, Payload{nil, true})
+							Publish(
+								SubjectsChannel,
+								GetVersionsEventType,
+								Payload{nil, true},
+							)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {

@@ -98,7 +98,11 @@ func (app *App) ConsumerGroups() {
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							groupName := table.GetCell(row, 0).Text
-							Publish(CgroupsChannel, GetCgroupEventType, Payload{groupName, false})
+							Publish(
+								CgroupsChannel,
+								GetCgroupEventType,
+								Payload{groupName, false},
+							)
 						}
 						return event
 					})

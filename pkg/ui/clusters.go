@@ -72,7 +72,11 @@ func (app *App) Cluster() {
 					desc.SetText(description.String())
 					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							Publish(ClustersChannel, GetClusterEventType, Payload{nil, true})
+							Publish(
+								ClustersChannel,
+								GetClusterEventType,
+								Payload{nil, true},
+							)
 						}
 						return event
 					})

@@ -131,7 +131,11 @@ func (app *App) Topics() {
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
-							Publish(TopicsChannel, GetTopicEventType, Payload{topicName, false})
+							Publish(
+								TopicsChannel,
+								GetTopicEventType,
+								Payload{topicName, false},
+							)
 						}
 
 						//if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
@@ -169,8 +173,10 @@ func (app *App) Topics() {
 							rc := make(chan string)
 							sig := make(chan int, 1)
 
-							// consumer, _ := NewConsumer(app.Selected.Cluster, app.Selected.SchemaRegistry)
-							// go consumer.Consume(ConsumingParameters, topicName, rc, statusLineChannel, sig)
+							// consumer, _ := NewConsumer(app.Selected.Cluster,
+							// app.Selected.SchemaRegistry) go
+							// consumer.Consume(ConsumingParameters, topicName, rc,
+							// statusLineChannel, sig)
 
 							// args, err := util.ParseShellCommand(
 							// 	app.Selected.Cluster.Command,
@@ -178,7 +184,8 @@ func (app *App) Topics() {
 							// )
 							// if err != nil {
 							// 	log.Error().Msg("Failed to parse command")
-							// 	statusLineChannel <- "[red]Failed to parse command: " + err.Error()
+							// 	statusLineChannel <- "[red]Failed to parse command: " +
+							// err.Error()
 							// 	return event
 							// }
 
@@ -196,13 +203,16 @@ func (app *App) Topics() {
 								SetBorderPadding(0, 0, 1, 0).
 								SetTitle(fmt.Sprintf("%s", topicName))
 
-							view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-								if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
-									sig <- 1
-									sig <- 1
-								}
-								return event
-							})
+							view.SetInputCapture(
+								func(event *tcell.EventKey) *tcell.EventKey {
+									if event.Key() == tcell.KeyRune &&
+										event.Rune() == 'e' {
+										sig <- 1
+										sig <- 1
+									}
+									return event
+								},
+							)
 
 							app.AddToPagesRegistry(
 								fmt.Sprintf(
@@ -224,7 +234,11 @@ func (app *App) Topics() {
 									case _ = <-sig:
 										run = false
 									case record := <-rc:
-										_, _ = fmt.Fprintf(view, "%s\n\n", record)
+										_, _ = fmt.Fprintf(
+											view,
+											"%s\n\n",
+											record,
+										)
 										app.QueueUpdateDraw(func() {
 											view.ScrollToEnd()
 										})

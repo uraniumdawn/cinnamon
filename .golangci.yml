@@ -51,6 +51,13 @@ issues:
   exclude-use-default: false
 
 formatters:
+  settings:
+    golines:
+      max-len: 120
+      tab-len: 8
+      shorten-comments: true
+      reformat-tags: false
+      chain-split-dots: true
   enable:
     - gofumpt
     - goimports

@@ -31,7 +31,12 @@ func (app *App) RunSchemaRegistriesEventHandler(ctx context.Context, in chan Eve
 					app.QueueUpdateDraw(func() {
 						sr := app.NewSchemaRegistriesTable()
 						app.SchemaRegistriesTableInputHandler(sr)
-						app.Layout.PagesRegistry.UI.Pages.AddPage(SchemaRegistries, sr, true, false)
+						app.Layout.PagesRegistry.UI.Pages.AddPage(
+							SchemaRegistries,
+							sr,
+							true,
+							false,
+						)
 						app.SwitchToPage(SchemaRegistries)
 					})
 				}
