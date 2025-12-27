@@ -108,7 +108,7 @@ func (r *TopicResult) String() string {
 			sorted.Put(k, v)
 		}
 
-		sorted.Each(func(key, value any) {
+		sorted.Each(func(_, value any) {
 			e := value.(kafka.ConfigEntryResult)
 			_, err := fmt.Fprintf(
 				w,
@@ -179,11 +179,11 @@ func (r *DescribeConsumerGroupResult) String() string {
 	sorted.Each(func(key, value interface{}) {
 		tp := key.(TopicPartition)
 		offsets := value.(kafka.Offset)
-		consumerId := "-"
+		consumerID := "-"
 		host := "-"
 		member, ok := members[tp]
 		if ok {
-			consumerId = member.ConsumerID
+			consumerID = member.ConsumerID
 			host = member.Host
 		}
 		_, err := fmt.Fprintf(
@@ -194,7 +194,7 @@ func (r *DescribeConsumerGroupResult) String() string {
 			offsets,
 			r.logEndOffsets[tp],
 			r.lag[tp],
-			consumerId,
+			consumerID,
 			host,
 		)
 		if err != nil {

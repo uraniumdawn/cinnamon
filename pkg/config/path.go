@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// CinnamonEnvConfigDir is the environment variable name for custom config directory.
 	CinnamonEnvConfigDir = "CINNAMON_CONFIG_DIR"
 )
 
@@ -19,6 +20,7 @@ func isEnvSet(env string) bool {
 	return os.Getenv(env) != ""
 }
 
+// GetConfigPath returns the path to the application configuration file.
 func GetConfigPath() (string, error) {
 	var configDir string
 	switch {

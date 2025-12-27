@@ -1,0 +1,88 @@
+version: 2
+
+project_name: cinnamon
+
+env:
+  - CGO_ENABLED=1
+
+builds:
+  - id: linux
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version=v{{.Version}}
+      - -s -w -X main.commit={{.Commit}}
+      - -s -w -X main.date={{.Date}}
+
+  - id: osx
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version=v{{.Version}}
+      - -s -w -X main.commit={{.Commit}}
+      - -s -w -X main.date={{.Date}}
+
+  - id: windows
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version=v{{.Version}}
+      - -s -w -X main.commit={{.Commit}}
+      - -s -w -X main.date={{.Date}}
+
+archives:
+  - name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}amd64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+
+checksum:
+  name_template: "checksums.sha256"
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - name: cinnamon
+    repository:
+      owner: uraniumdawn
+      name: homebrew-cinnamon
+    commit_author:
+      name: uraniumdawn
+      email: sirozhaua@gmail.com
+    directory: Formula
+    homepage: https://github.com/uraniumdawn/cinnamon
+    description: Terminal UI for Apache Kafka
+    test: |
+      system "cinnamon --version"
+
+sboms:
+  - artifacts: archive

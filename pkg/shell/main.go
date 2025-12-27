@@ -2,6 +2,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+// Package shell provides functionality for executing shell commands.
 package shell
 
 import (
@@ -15,7 +16,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func Execute(args []string, rc chan string, e chan string, sig chan int) {
+// Execute runs a shell command and streams output to channels.
+func Execute(args []string, rc, e chan string, sig chan int) {
 	cmd := exec.Command(args[0], args[1:]...)
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -82,9 +84,12 @@ func Execute(args []string, rc chan string, e chan string, sig chan int) {
 		}
 	}()
 
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		log.Error().Err(err).Msg("failed to wait for command")
+	}
 }
 
+// ExecuteWithInput runs a command with the given input and returns the output.
 func ExecuteWithInput(input string, args []string) (string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = strings.NewReader(input)

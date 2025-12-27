@@ -5,24 +5,29 @@
 package ui
 
 import (
-	"cinnamon/pkg/config"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
 const (
-	StatusPopupPage     = "status_popup"
+	// StatusPopupPage is the page name for the status popup.
+	StatusPopupPage = "status_popup"
+	// StatusPopupDuration is the duration for which the status popup is shown.
 	StatusPopupDuration = 3 * time.Second
 )
 
+// StatusPopup displays temporary status messages to the user.
 type StatusPopup struct {
 	TextView *tview.TextView
 	Flex     *tview.Flex
 	Timer    *time.Timer
 }
 
+// NewStatusPopup creates a new status popup with the given color configuration.
 func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	tv := tview.NewTextView()
 	tv.SetDynamicColors(true)
@@ -52,6 +57,7 @@ func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	}
 }
 
+// SetMessage sets the message displayed in the status popup.
 func (s *StatusPopup) SetMessage(message string) {
 	s.TextView.SetText(message)
 }

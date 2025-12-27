@@ -2,11 +2,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+// Package util provides utility functions for the cinnamon application.
 package util
 
 import (
 	"bytes"
-	"cinnamon/pkg/config"
 	"encoding/csv"
 	"os"
 	"strconv"
@@ -14,6 +14,8 @@ import (
 	"text/template"
 
 	"github.com/rivo/tview"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
 func ParseShellCommand(templateStr, topic string) ([]string, error) {
@@ -39,7 +41,9 @@ func ParseShellCommand(templateStr, topic string) ([]string, error) {
 
 func TableToCSV(fileName string, table *tview.Table) {
 	file, _ := os.Create(fileName)
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
@@ -55,7 +59,7 @@ func TableToCSV(fileName string, table *tview.Table) {
 				record = append(record, "")
 			}
 		}
-		writer.Write(record)
+		_ = writer.Write(record)
 	}
 }
 
@@ -88,6 +92,7 @@ func GetInt64(inputField *tview.InputField) int64 {
 	return res
 }
 
+// GetInt32 parses an int32 from an input field, returns -1 if empty or invalid.
 func GetInt32(inputField *tview.InputField) int32 {
 	text := inputField.GetText()
 	if text == "" {
@@ -97,6 +102,7 @@ func GetInt32(inputField *tview.InputField) int32 {
 	return int32(res)
 }
 
+// ToClustersMap converts a config cluster slice to a map keyed by name.
 func ToClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
 	clusterMap := make(map[string]*config.ClusterConfig)
 	for _, cluster := range cfg.Cinnamon.Clusters {
@@ -105,6 +111,7 @@ func ToClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
 	return clusterMap
 }
 
+// ToSchemaRegistryMap converts a schema registry slice to a map keyed by name.
 func ToSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryConfig {
 	srMap := make(map[string]*config.SchemaRegistryConfig)
 	for _, sr := range cfg.Cinnamon.SchemaRegistries {
@@ -113,6 +120,7 @@ func ToSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryCo
 	return srMap
 }
 
+// BuildTitle creates a formatted title string from parts separated by colons.
 func BuildTitle(parts ...string) string {
 	var builder strings.Builder
 	builder.WriteString(" ")
@@ -126,6 +134,7 @@ func BuildTitle(parts ...string) string {
 	return builder.String()
 }
 
+// BuildPageKey creates a page key string from parts separated by colons.
 func BuildPageKey(parts ...string) string {
 	var builder strings.Builder
 	for i, part := range parts {
@@ -138,7 +147,7 @@ func BuildPageKey(parts ...string) string {
 }
 
 // BuildCliCommand Supported placeholders: {{bootstrap}}, {{topic}}
-func BuildCliCommand(templateStr string, bootstrap string, topic string) string {
+func BuildCliCommand(templateStr, bootstrap, topic string) string {
 	result := strings.ReplaceAll(templateStr, "{{bootstrap}}", bootstrap)
 	result = strings.ReplaceAll(result, "{{topic}}", topic)
 	return result

@@ -30,13 +30,13 @@ func (app *App) SearchKeyHandler(input *tview.InputField) {
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
 			app.Layout.SideBar.SwitchToPage("menu")
-			app.Application.SetFocus(app.Layout.PagesRegistry.UI.Pages)
+			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
 		}
 
 		if event.Key() == tcell.KeyEsc {
 			app.Layout.Search.SetText("")
 			app.Layout.SideBar.SwitchToPage("menu")
-			app.Application.SetFocus(app.Layout.PagesRegistry.UI.Pages)
+			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
 		}
 		return event
 	})

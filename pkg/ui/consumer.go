@@ -5,7 +5,6 @@
 package ui
 
 import (
-	"cinnamon/pkg/config"
 	"encoding/binary"
 	"fmt"
 	"strings"
@@ -15,6 +14,8 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/riferrei/srclient"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
 type Consumer struct {
@@ -98,7 +99,7 @@ func NewConsumer(
 		return nil, err
 	}
 
-	client := srclient.NewSchemaRegistryClient(registryConfig.SchemaRegistryUrl)
+	client := srclient.NewSchemaRegistryClient(registryConfig.SchemaRegistryURL)
 	client.SetCredentials(
 		registryConfig.SchemaRegistryUsername,
 		registryConfig.SchemaRegistryPassword,

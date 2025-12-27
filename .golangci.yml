@@ -4,51 +4,28 @@ run:
   tests: true
 
 linters:
-  exclusions:
-    # these presets where present in the v1 version of golangci-lint
-    # it's interesting to keep them when migrating, but removing them should be the goal
-    presets:
-      # exclude check on comments format in godoc
-      # These are common false positives in poor code
-      # you should not use this on recent code you write from scratch
-      # More information: https://golangci-lint.run/usage/false-positives/#comments
-      - comments
-
-      # Common false positives
-      # feel free to remove this if you don't have any false positives
-      # More information: https://golangci-lint.run/usage/false-positives/#common-false-positives
-      - common-false-positives
-
-      # std-error-handling is a set of rules that avoid reporting unhandled errors on common functions/methods
-      # More information: https://golangci-lint.run/usage/false-positives/#std-error-handling
-      - std-error-handling
-
-  # some linters are enabled by default
-  # https://golangci-lint.run/usage/linters/
-  #
-  # enable some extra linters
   enable:
-    # Errcheck is a program for checking for unchecked errors in Go code.
     - errcheck
-
-    # Vet examines Go source code and reports suspicious constructs.
     - govet
-
-    # Detects when assignments to existing variables are not used.
     - ineffassign
-
-    # It's a set of rules from staticcheck. See https://staticcheck.io/
     - staticcheck
-
-    # Checks Go code for unused constants, variables, functions and types.
     - unused
-
-    # Fast, configurable, extensible, flexible, and beautiful linter for Go.
-    # Drop-in replacement of golint.
     - revive
-
-issues:
-  exclude-use-default: false
+  settings:
+    revive:
+      severity: warning
+      rules:
+        - name: atomic
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: time-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: superfluous-else
 
 formatters:
   settings:
@@ -58,7 +35,8 @@ formatters:
       shorten-comments: true
       reformat-tags: false
       chain-split-dots: true
+    gofumpt:
+      extra-rules: true
   enable:
     - gofumpt
-    - goimports
     - golines

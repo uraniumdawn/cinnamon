@@ -5,14 +5,16 @@
 package ui
 
 import (
-	"cinnamon/pkg/config"
-	"cinnamon/pkg/util"
 	"strconv"
 	"time"
 
 	"github.com/rivo/tview"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
+// PagesRegistry manages the application's pages, navigation history, and page-menu mappings.
 type PagesRegistry struct {
 	UI               *UI
 	PageMenuMap      map[string]string
@@ -20,15 +22,18 @@ type PagesRegistry struct {
 	CurrentPageIndex int
 }
 
+// UI contains the main UI components including pages and opened pages table.
 type UI struct {
 	Pages       *tview.Pages
 	OpenedPages *tview.Table
 	Main        tview.Primitive
 }
 
+// Expiration is the default cache expiration time.
 const Expiration = time.Minute * 5
 
-func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
+// NewPagesRegistry creates a new pages registry.
+func NewPagesRegistry(_ *config.ColorConfig) *PagesRegistry {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).

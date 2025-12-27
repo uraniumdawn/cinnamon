@@ -6,8 +6,6 @@ package ui
 
 import (
 	"bytes"
-	"cinnamon/pkg/schemaregistry"
-	"cinnamon/pkg/util"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,21 +16,30 @@ import (
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const (
+	// GetSubjectsEventType is the event type for fetching subjects.
 	GetSubjectsEventType EventType = "subjects:get"
+	// GetVersionsEventType is the event type for fetching versions.
 	GetVersionsEventType EventType = "versions:get"
-	GetSchemaEventType   EventType = "schema:get"
+	// GetSchemaEventType is the event type for fetching a schema.
+	GetSchemaEventType EventType = "schema:get"
 )
 
+// SubjectsChannel is the channel for subject events.
 var SubjectsChannel = make(chan Event)
 
+// SubjectVersionPair represents a subject and version pair.
 type SubjectVersionPair struct {
 	Subject string
 	Version string
 }
 
+// RunSubjectsEventHandler processes subject events from the channel.
 func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 	go func() {
 		for {
@@ -93,6 +100,7 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 	}()
 }
 
+// Subjects fetches and displays the list of schema subjects.
 func (app *App) Subjects() {
 	resultCh := make(chan []string)
 	errorCh := make(chan error)
@@ -157,6 +165,7 @@ func (app *App) Subjects() {
 	}()
 }
 
+// Versions fetches and displays the versions for a specific subject.
 func (app *App) Versions(subject string) {
 	resultCh := make(chan []int)
 	errorCh := make(chan error)
@@ -225,6 +234,7 @@ func (app *App) Versions(subject string) {
 	}()
 }
 
+// Schema fetches and displays a specific schema version for a subject.
 func (app *App) Schema(subject string, version int) {
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
@@ -294,6 +304,7 @@ func (app *App) Schema(subject string, version int) {
 	}()
 }
 
+// NewSubjectsTable creates a table displaying schema subjects.
 func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
@@ -321,6 +332,7 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	return table
 }
 
+// NewVersionsTable creates a table displaying schema versions.
 func (app *App) NewVersionsTable(versions []int) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).

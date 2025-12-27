@@ -2,6 +2,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+// Package config provides configuration management for the cinnamon application.
 package config
 
 import (
@@ -37,14 +38,16 @@ func (c *ClusterConfig) GetBootstrapServers() string {
 	return ""
 }
 
+// SchemaRegistryConfig holds Schema Registry connection properties.
 type SchemaRegistryConfig struct {
 	Name                   string `yaml:"name"`
-	SchemaRegistryUrl      string `yaml:"schema.registry.url"`
+	SchemaRegistryURL      string `yaml:"schema.registry.url"`
 	SchemaRegistryUsername string `yaml:"schema.registry.sasl.username,omitempty"`
 	SchemaRegistryPassword string `yaml:"schema.registry.sasl.password,omitempty"`
 	Selected               bool   `yaml:"selected,omitempty"`
 }
 
+// LoadAppConfig loads the application configuration from the config file.
 func LoadAppConfig() (*Config, error) {
 	configPath, err := GetConfigPath()
 	if err != nil {
@@ -67,6 +70,7 @@ func LoadAppConfig() (*Config, error) {
 	return config, nil
 }
 
+// Save writes the current configuration back to the config file.
 func (c *Config) Save() error {
 	configPath, err := GetConfigPath()
 	if err != nil {

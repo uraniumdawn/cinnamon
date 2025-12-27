@@ -5,13 +5,14 @@
 package ui
 
 import (
-	"cinnamon/pkg/util"
 	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 type Parameters struct {
@@ -112,7 +113,7 @@ func (app *App) InitConsumingParams() {
 	// keep order
 	inputFields := []*tview.InputField{lnr, st, so, partition, filter}
 	for _, inf := range inputFields {
-		inf.SetDoneFunc(func(key tcell.Key) {
+		inf.SetDoneFunc(func(_ tcell.Key) {
 			app.SetFocus(selection)
 		})
 	}

@@ -2,18 +2,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+// Package ui provides the terminal user interface for the cinnamon application.
 package ui
 
 import (
-	"cinnamon/pkg/client"
-	"cinnamon/pkg/config"
-	"cinnamon/pkg/schemaregistry"
-	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -21,6 +17,11 @@ import (
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/config"
+	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const timeout = time.Second * 10
@@ -54,7 +55,6 @@ type App struct {
 	Selected              Selected
 	Config                *config.Config
 	Colors                *config.ColorConfig
-	mu                    sync.RWMutex
 	ModalHideTimer        *time.Timer
 	StatusPopupHideTimer  *time.Timer
 }

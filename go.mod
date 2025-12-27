@@ -1,4 +1,4 @@
-module cinnamon
+module github.com/uraniumdawn/cinnamon
 
 go 1.24.0
 
@@ -21,7 +21,6 @@ require (
 )
 
 require (
-	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect

@@ -78,6 +78,7 @@ func loadUserColorConfig(configDir string) (*ColorConfig, error) {
 	return userConfig, nil
 }
 
+// LoadColorConfig loads and merges color configuration from default and user files.
 func LoadColorConfig() (*ColorConfig, error) {
 	configPath, err := GetConfigPath()
 	if err != nil {

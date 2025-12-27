@@ -5,8 +5,6 @@
 package ui
 
 import (
-	"cinnamon/pkg/client"
-	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"sort"
@@ -19,6 +17,9 @@ import (
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const (
@@ -201,7 +202,7 @@ func (app *App) Topics() {
 							view.
 								SetBorder(true).
 								SetBorderPadding(0, 0, 1, 0).
-								SetTitle(fmt.Sprintf("%s", topicName))
+								SetTitle(topicName)
 
 							view.SetInputCapture(
 								func(event *tcell.EventKey) *tcell.EventKey {
@@ -231,7 +232,7 @@ func (app *App) Topics() {
 								}()
 								for run {
 									select {
-									case _ = <-sig:
+									case <-sig:
 										run = false
 									case record := <-rc:
 										_, _ = fmt.Fprintf(
@@ -830,7 +831,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	app.Layout.PagesRegistry.UI.Pages.AddPage(EditTopic, modal, true, false)
 }
 
-func populateTable(table *tview.Table, row int, t string, partitions int, replicas int) {
+func populateTable(table *tview.Table, row int, t string, partitions, replicas int) {
 	table.SetCell(row, 0, tview.NewTableCell(t))
 	table.SetCell(row, 1, tview.NewTableCell("P: "+strconv.Itoa(partitions)))
 	table.SetCell(row, 2, tview.NewTableCell("R: "+strconv.Itoa(replicas)))

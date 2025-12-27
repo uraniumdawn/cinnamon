@@ -5,8 +5,6 @@
 package ui
 
 import (
-	"cinnamon/pkg/client"
-	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"strconv"
@@ -15,20 +13,28 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const (
+	// GetNodesEventType is the event type for fetching nodes.
 	GetNodesEventType EventType = "nodes:get"
-	GetNodeEventType  EventType = "node:get"
+	// GetNodeEventType is the event type for fetching a specific node.
+	GetNodeEventType EventType = "node:get"
 )
 
+// NodesChannel is the channel for node events.
 var NodesChannel = make(chan Event)
 
-type NodeIdUrlPair struct {
-	Id  string
-	Url string
+// NodeIDURLPair represents a node ID and URL pair.
+type NodeIDURLPair struct {
+	ID  string
+	URL string
 }
 
+// RunNodesEventHandler processes node events from the channel.
 func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
 	go func() {
 		for {
@@ -49,17 +55,17 @@ func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
 						app.Nodes()
 					}
 				case GetNodeEventType:
-					nu := event.Payload.Data.(NodeIdUrlPair)
+					nu := event.Payload.Data.(NodeIDURLPair)
 					force := event.Payload.Force
-					nodeId := nu.Id
-					url := nu.Url
-					pageName := util.BuildPageKey(app.Selected.Cluster.Name, Nodes, nodeId)
+					nodeID := nu.ID
+					url := nu.URL
+					pageName := util.BuildPageKey(app.Selected.Cluster.Name, Nodes, nodeID)
 					_, found := app.Cache.Get(pageName)
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
 						statusLineCh <- "getting node description..."
-						app.Node(nodeId, url)
+						app.Node(nodeID, url)
 					}
 				}
 			}
@@ -67,6 +73,7 @@ func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
 	}()
 }
 
+// Nodes fetches and displays the list of Kafka nodes.
 func (app *App) Nodes() {
 	resultCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
@@ -89,10 +96,10 @@ func (app *App) Nodes() {
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
-							nodeId := table.GetCell(row, 0).Text
+							nodeID := table.GetCell(row, 0).Text
 							url := table.GetCell(row, 1).Text
 							Publish(NodesChannel, GetNodeEventType,
-								Payload{Data: NodeIdUrlPair{nodeId, url}, Force: false})
+								Payload{Data: NodeIDURLPair{nodeID, url}, Force: false})
 						}
 
 						return event
@@ -121,7 +128,8 @@ func (app *App) Nodes() {
 	}()
 }
 
-func (app *App) Node(id string, url string) {
+// Node fetches and displays details for a specific Kafka node.
+func (app *App) Node(id, url string) {
 	statusLineCh <- "getting node description results..."
 	resultCh := make(chan *client.ResourceResult)
 	errorCh := make(chan error)
@@ -142,7 +150,7 @@ func (app *App) Node(id string, url string) {
 							Publish(
 								NodesChannel,
 								GetNodeEventType,
-								Payload{NodeIdUrlPair{id, url}, true},
+								Payload{NodeIDURLPair{id, url}, true},
 							)
 						}
 						return event
@@ -170,6 +178,7 @@ func (app *App) Node(id string, url string) {
 	}()
 }
 
+// NewNodesTable creates a table displaying Kafka nodes.
 func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).

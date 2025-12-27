@@ -13,11 +13,14 @@ import (
 )
 
 const (
+	// GetSchemaRegistriesEventType is the event type for fetching schema registries.
 	GetSchemaRegistriesEventType EventType = "srs:get"
 )
 
+// SchemaRegistriesChannel is the channel for schema registry events.
 var SchemaRegistriesChannel = make(chan Event)
 
+// RunSchemaRegistriesEventHandler processes schema registry events from the channel.
 func (app *App) RunSchemaRegistriesEventHandler(ctx context.Context, in chan Event) {
 	go func() {
 		for {
@@ -45,6 +48,7 @@ func (app *App) RunSchemaRegistriesEventHandler(ctx context.Context, in chan Eve
 	}()
 }
 
+// NewSchemaRegistriesTable creates a table displaying schema registries.
 func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	table := tview.NewTable()
 	table.SetTitle(" Schema Registry URLs ")
@@ -63,12 +67,13 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	for _, sr := range app.SchemaRegistries {
 		table.
 			SetCell(row, 0, tview.NewTableCell(sr.Name)).
-			SetCell(row, 1, tview.NewTableCell(sr.SchemaRegistryUrl))
+			SetCell(row, 1, tview.NewTableCell(sr.SchemaRegistryURL))
 		row++
 	}
 	return table
 }
 
+// SchemaRegistriesTableInputHandler sets up input handling for the schema registries table.
 func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
 	st.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := st.GetSelection()

@@ -5,12 +5,13 @@
 package ui
 
 import (
-	"cinnamon/pkg/config"
 	"fmt"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
 type Layout struct {

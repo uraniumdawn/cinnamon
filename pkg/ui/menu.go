@@ -1,10 +1,11 @@
 package ui
 
 import (
-	"cinnamon/pkg/config"
 	"fmt"
 
 	"github.com/rivo/tview"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
 type Menu struct {

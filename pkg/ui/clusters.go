@@ -5,14 +5,15 @@
 package ui
 
 import (
-	"cinnamon/pkg/client"
-	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const (

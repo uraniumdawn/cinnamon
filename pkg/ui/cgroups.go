@@ -5,8 +5,6 @@
 package ui
 
 import (
-	"cinnamon/pkg/client"
-	"cinnamon/pkg/util"
 	"context"
 	"fmt"
 	"sort"
@@ -17,15 +15,22 @@ import (
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const (
+	// GetCgroupsEventType is the event type for fetching consumer groups.
 	GetCgroupsEventType EventType = "cgroups:get"
-	GetCgroupEventType  EventType = "cgroup:get"
+	// GetCgroupEventType is the event type for fetching a specific consumer group.
+	GetCgroupEventType EventType = "cgroup:get"
 )
 
+// CgroupsChannel is the channel for consumer group events.
 var CgroupsChannel = make(chan Event)
 
+// RunCgroupsEventHandler processes consumer group events from the channel.
 func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 	go func() {
 		for {
@@ -67,6 +72,7 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 	}()
 }
 
+// ConsumerGroups fetches and displays the list of consumer groups.
 func (app *App) ConsumerGroups() {
 	resultCh := make(chan *client.ConsumerGroupsResult)
 	errorCh := make(chan error)
@@ -130,6 +136,7 @@ func (app *App) ConsumerGroups() {
 	}()
 }
 
+// ConsumerGroup fetches and displays details for a specific consumer group.
 func (app *App) ConsumerGroup(name string) {
 	resultCh := make(chan *client.DescribeConsumerGroupResult)
 	errorCh := make(chan error)
@@ -180,6 +187,7 @@ func (app *App) ConsumerGroup(name string) {
 	}()
 }
 
+// NewGroupsTable creates a table displaying consumer groups.
 func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
@@ -193,7 +201,7 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 		),
 	)
 
-	for i, r := range groups.ListConsumerGroupsResult.Valid {
+	for i, r := range groups.Valid {
 		table.SetCell(i, 0, tview.NewTableCell(r.GroupID))
 		table.SetCell(i, 1, tview.NewTableCell("STATE: "+r.State.String()))
 	}

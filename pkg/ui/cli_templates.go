@@ -5,15 +5,17 @@
 package ui
 
 import (
-	"cinnamon/pkg/util"
 	"fmt"
 
 	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
+// CliTemplates displays CLI command templates for a specific topic.
 func (app *App) CliTemplates(topicName string) {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
