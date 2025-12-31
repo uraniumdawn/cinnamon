@@ -78,9 +78,9 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	search := tview.NewInputField().
 		SetLabel(fmt.Sprintf("[%s]Search:", colors.Cinnamon.Label.FgColor))
 
-	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Label.BgColor))
+	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 	sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
-	sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Status.BgColor))
+	sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 	cluster.SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor))
 	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
 

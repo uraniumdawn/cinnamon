@@ -49,7 +49,7 @@ var keys = map[string]Pair{
 		Key:   "<Ctrl+p>",
 		Value: "Opened Pages",
 	},
-	"filter": {
+	"search": {
 		Key:   "</>",
 		Value: "Search",
 	},
@@ -189,7 +189,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"backward",
 				"opened",
 				"dsc",
-				"filter",
+				"search",
 				"upd",
 				"create",
 				"delete",
@@ -206,7 +206,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"backward",
 				"opened",
 				"dsc",
-				"filter",
+				"search",
 				"upd",
 			},
 			SubjectsPageMenu: {
@@ -217,7 +217,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 				"backward",
 				"opened",
-				"filter",
+				"search",
 				"upd",
 			},
 			VersionsPageMenu: {

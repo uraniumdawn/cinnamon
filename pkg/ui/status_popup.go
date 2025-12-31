@@ -36,7 +36,7 @@ func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	tv.SetWordWrap(true)
 	tv.SetBorder(true)
 	tv.SetBorderPadding(0, 0, 1, 1)
-	tv.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Status.BgColor))
+	tv.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 	tv.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
 
 	innerFlex := tview.NewFlex().
