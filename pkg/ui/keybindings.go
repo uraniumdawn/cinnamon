@@ -49,10 +49,12 @@ func (app *App) MainOperationKeyHandler() {
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			app.Layout.SideBar.SwitchToPage("search")
-			app.SetFocus(app.Layout.Search)
-			statusLineCh <- ""
-			return nil
+			if app.IsCurrentPageSearchable() {
+				app.Layout.SideBar.SwitchToPage("search")
+				app.SetFocus(app.Layout.Search)
+				statusLineCh <- ""
+				return nil
+			}
 		}
 
 		if event.Key() == tcell.KeyCtrlP {
@@ -70,3 +72,4 @@ func (app *App) MainOperationKeyHandler() {
 		return event
 	})
 }
+

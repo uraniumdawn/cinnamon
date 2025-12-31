@@ -18,6 +18,7 @@ import (
 type PagesRegistry struct {
 	UI               *UI
 	PageMenuMap      map[string]string
+	SearchablePages  []string
 	History          []string
 	CurrentPageIndex int
 }
@@ -49,10 +50,12 @@ func NewPagesRegistry(_ *config.ColorConfig) *PagesRegistry {
 			Main:        util.NewModal(table),
 		},
 		PageMenuMap:      make(map[string]string),
+		SearchablePages:  []string{},
 		CurrentPageIndex: -1,
 	}
 
 	registry.SetupPageMenus()
+	registry.SetupSearchablePages()
 
 	return registry
 }
@@ -67,6 +70,14 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
 	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
+}
+
+func (pr *PagesRegistry) SetupSearchablePages() {
+	pr.SearchablePages = []string{
+		TopicsPageMenu,
+		ConsumerGroupsPageMenu,
+		StatusPopupPage,
+	}
 }
 
 func (app *App) CheckInCache(name string, onAbsent func()) {
@@ -179,3 +190,16 @@ func (app *App) HideModalPage(pageName string) {
 		app.Layout.Menu.SetMenu(menu)
 	}
 }
+
+func (app *App) IsCurrentPageSearchable() bool {
+	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[currentPage]; ok {
+		for _, searchablePage := range app.Layout.PagesRegistry.SearchablePages {
+			if menu == searchablePage {
+				return true
+			}
+		}
+	}
+	return false
+}
+
