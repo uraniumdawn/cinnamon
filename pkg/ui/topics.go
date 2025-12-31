@@ -120,7 +120,7 @@ func (app *App) Topics() {
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Topics),
 						table,
-						TopicsPageMenu,
+						TopicsPageMenu, true,
 					)
 
 					// app.InitConsumingParams()
@@ -224,6 +224,7 @@ func (app *App) Topics() {
 								),
 								view,
 								ConsumingMenu,
+								false,
 							)
 							run := true
 							go func() {
@@ -298,7 +299,7 @@ func (app *App) Topic(name string) {
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Topic, name),
 						desc,
-						FinalPageMenu,
+						FinalPageMenu, false,
 					)
 					ClearStatus()
 				})

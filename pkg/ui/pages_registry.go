@@ -55,7 +55,6 @@ func NewPagesRegistry(_ *config.ColorConfig) *PagesRegistry {
 	}
 
 	registry.SetupPageMenus()
-	registry.SetupSearchablePages()
 
 	return registry
 }
@@ -72,14 +71,6 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
 }
 
-func (pr *PagesRegistry) SetupSearchablePages() {
-	pr.SearchablePages = []string{
-		TopicsPageMenu,
-		ConsumerGroupsPageMenu,
-		StatusPopupPage,
-	}
-}
-
 func (app *App) CheckInCache(name string, onAbsent func()) {
 	_, found := app.Cache.Get(name)
 	if found {
@@ -93,6 +84,7 @@ func (app *App) AddToPagesRegistry(
 	name string,
 	component tview.Primitive,
 	menu string,
+	searchable bool,
 ) {
 	registry := app.Layout.PagesRegistry
 	registry.PageMenuMap[name] = menu
@@ -115,6 +107,21 @@ func (app *App) AddToPagesRegistry(
 
 		registry.History = append(registry.History[:registry.CurrentPageIndex+1], name)
 		registry.CurrentPageIndex++
+	}
+
+	// Add to searchable pages if specified
+	if searchable {
+		// Check if not already in the list
+		found := false
+		for _, p := range registry.SearchablePages {
+			if p == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			registry.SearchablePages = append(registry.SearchablePages, name)
+		}
 	}
 
 	app.Cache.Set(name, name, Expiration)
@@ -193,13 +200,11 @@ func (app *App) HideModalPage(pageName string) {
 
 func (app *App) IsCurrentPageSearchable() bool {
 	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
-	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[currentPage]; ok {
-		for _, searchablePage := range app.Layout.PagesRegistry.SearchablePages {
-			if menu == searchablePage {
-				return true
-			}
+
+	for _, searchablePage := range app.Layout.PagesRegistry.SearchablePages {
+		if currentPage == searchablePage {
+			return true
 		}
 	}
 	return false
 }
-

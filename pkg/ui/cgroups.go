@@ -94,7 +94,7 @@ func (app *App) ConsumerGroups() {
 							ConsumerGroups,
 						),
 						table,
-						ConsumerGroupsPageMenu,
+						ConsumerGroupsPageMenu, true,
 					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
@@ -167,7 +167,7 @@ func (app *App) ConsumerGroup(name string) {
 							name,
 						),
 						desc,
-						FinalPageMenu,
+						FinalPageMenu, false,
 					)
 					ClearStatus()
 				})

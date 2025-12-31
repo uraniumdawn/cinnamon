@@ -145,7 +145,7 @@ func (app *App) Subjects() {
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects),
 						table,
-						SubjectsPageMenu,
+						SubjectsPageMenu, true,
 					)
 					ClearStatus()
 				})
@@ -194,7 +194,7 @@ func (app *App) Versions(subject string) {
 							"versions",
 						),
 						table,
-						VersionsPageMenu,
+						VersionsPageMenu, false,
 					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
@@ -285,7 +285,7 @@ func (app *App) Schema(subject string, version int) {
 							v,
 						),
 						desc,
-						FinalPageMenu,
+						FinalPageMenu, false,
 					)
 				})
 				cancel()

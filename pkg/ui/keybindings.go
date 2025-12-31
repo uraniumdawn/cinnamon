@@ -72,4 +72,3 @@ func (app *App) MainOperationKeyHandler() {
 		return event
 	})
 }
-
