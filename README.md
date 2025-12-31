@@ -194,6 +194,31 @@ cinnamon:
   foreground: "#839496"
 ```
 
+**Gruvbox Dark:**
+```yaml
+cinnamon:
+  cluster:
+    fgColor: "#EBDBB2"
+    bgColor: "#282828"
+  status:
+    fgColor: "#928374"
+    bgColor: "#282828"
+  label:
+    fgColor: "#FE8019"
+    bgColor: "#282828"
+  keybinding:
+    key: "#928374"
+    value: "#A89984"
+  selection:
+    fgColor: "#282828"
+    bgColor: "#FABD2F"
+  placeholder: "#928374"
+  title: "#FE8019"
+  border: "#EBDBB2"
+  background: "#282828"
+  foreground: "#EBDBB2"
+```
+
 ### Key Features
 
 #### Cluster Management
