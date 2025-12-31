@@ -44,7 +44,7 @@ type ColorConfig struct {
 }
 
 func loadDefaultColorConfig() (*ColorConfig, error) {
-	data, err := os.ReadFile("style.yaml")
+	data, err := os.ReadFile("default_style.yaml")
 	if err != nil {
 		log.Error().Err(err).Msg("error reading default style.yaml")
 		return nil, err
