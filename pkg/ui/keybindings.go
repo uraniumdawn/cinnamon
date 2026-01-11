@@ -29,13 +29,13 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 func (app *App) SearchKeyHandler(input *tview.InputField) {
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
-			app.Layout.SideBar.SwitchToPage("menu")
+			app.HideModalPage(SearchModalPage)
 			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.Layout.Search.SetText("")
-			app.Layout.SideBar.SwitchToPage("menu")
+			input.SetText("")
+			app.HideModalPage(SearchModalPage)
 			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
 		}
 		return event
@@ -50,8 +50,8 @@ func (app *App) MainOperationKeyHandler() {
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
 			if app.IsCurrentPageSearchable() {
-				app.Layout.SideBar.SwitchToPage("search")
-				app.SetFocus(app.Layout.Search)
+				app.ShowModalPage(SearchModalPage)
+				app.SetFocus(app.Layout.SearchModal.Input)
 				statusLineCh <- ""
 				return nil
 			}
@@ -61,11 +61,11 @@ func (app *App) MainOperationKeyHandler() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.Layout.Search.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.Layout.SearchModal.Input.HasFocus() {
 			app.Backward()
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.Layout.Search.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.Layout.SearchModal.Input.HasFocus() {
 			app.Forward()
 		}
 

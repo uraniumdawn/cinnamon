@@ -132,6 +132,7 @@ const (
 	VersionsPageMenu         = "VersionsPageMenu"
 	FinalPageMenu            = "FinalPageMenu"
 	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
+	SearchPageMenu           = "SearchPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -152,6 +153,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			EditTopicPageMenu:       {"up", "dw", "select", "submit", "close"},
 			DeleteTopicPageMenu:     {"confirm", "cancel"},
 			CliTemplatesPageMenu:    {"up", "dw", "select", "close"},
+			SearchPageMenu:          {"select", "cancel"},
 			ClustersPageMenu: {
 				"up",
 				"dw",
@@ -237,27 +239,36 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 }
 
 func (m *Menu) SetMenu(menu string) {
-	col := 0
 	m.Content.Clear()
 	if keyBindings, ok := (*m.Map)[menu]; ok {
-		for i, binding := range *keyBindings {
+		row := 0
+		col := 0
+		maxRowsPerColumn := 2
+
+		for _, binding := range *keyBindings {
 			if value, exists := keys[binding]; exists {
 				keyColor := m.Colors.Cinnamon.Keybinding.Key
 				valueColor := m.Colors.Cinnamon.Keybinding.Value
 
+				// Calculate the current column offset (each column takes 2 cells: key and value)
+				colOffset := col * 2
+
 				m.Content.SetCell(
-					0,
-					col,
+					row,
+					colOffset,
 					tview.NewTableCell(fmt.Sprintf("[%s]%s", keyColor, value.Key)),
 				)
 				m.Content.SetCell(
-					0,
-					col+1,
+					row,
+					colOffset+1,
 					tview.NewTableCell(fmt.Sprintf("[%s]%s", valueColor, value.Value)),
 				)
-				col += 2
-				if i < len(*keyBindings)-1 {
-					m.Content.SetCell(0, col, tview.NewTableCell("|"))
+
+				row++
+
+				// If we've reached the max rows per column, move to the next column
+				if row >= maxRowsPerColumn {
+					row = 0
 					col++
 				}
 			}

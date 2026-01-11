@@ -18,7 +18,7 @@ type Layout struct {
 	PagesRegistry *PagesRegistry
 	StatusLine    *tview.TextView
 	Cluster       *tview.TextView
-	Search        *tview.InputField
+	SearchModal   *Search
 	Content       *tview.Flex
 	Menu          *Menu
 	SideBar       *tview.Pages
@@ -65,7 +65,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	cluster := tview.NewTextView()
 	cluster.SetTitle(" Selected Cluster: ")
 	cluster.SetTitleAlign(tview.AlignLeft)
-	//cluster.SetLabel(fmt.Sprintf("[%s]Clusters:", colors.Cinnamon.Label.FgColor))
+	// cluster.SetLabel(fmt.Sprintf("[%s]Clusters:", colors.Cinnamon.Label.FgColor))
 	cluster.SetWordWrap(true).SetWrap(true)
 	cluster.SetBorder(true)
 	cluster.SetBorderPadding(0, 0, 1, 0)
@@ -86,26 +86,24 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	sideBar := tview.NewPages()
 	menu := NewMenu(colors)
 	sideBar.AddPage("menu", menu.Flex, true, true)
-	search := tview.NewInputField().
-		SetLabel(fmt.Sprintf("[%s]Search:", colors.Cinnamon.Label.FgColor))
 
-	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	sideBar.AddPage("search", search, true, false)
+	searchModal := NewSearchModal(colors)
 	statusPopup := NewStatusPopup(colors)
 
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(header, 0, 1, false).
 		AddItem(registry.UI.Pages, 0, 15, true).
-		AddItem(sideBar, 1, 0, false)
+		AddItem(sideBar, 2, 0, false)
 
 	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
+	registry.UI.Pages.AddPage(SearchModalPage, searchModal.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,
 		StatusLine:    sl,
 		Cluster:       cluster,
-		Search:        search,
+		SearchModal:   searchModal,
 		Menu:          menu,
 		SideBar:       sideBar,
 		Content:       main,
