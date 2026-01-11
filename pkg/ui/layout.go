@@ -52,14 +52,25 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	InitBorders()
 
 	sl := tview.NewTextView()
+	sl.SetTitle(" Status Line: ")
+	sl.SetTitleAlign(tview.AlignLeft)
 	sl.SetWrap(true).SetWordWrap(true)
-	sl.SetTextAlign(tview.AlignRight).SetBorder(false)
+	sl.SetTextAlign(tview.AlignLeft).SetBorder(true)
 	sl.SetDynamicColors(true)
 	sl.SetWordWrap(true).SetWrap(true)
+	sl.SetBorderPadding(0, 0, 1, 0)
+	sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
+	sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 
 	cluster := tview.NewTextView()
-	cluster.SetLabel(fmt.Sprintf("[%s]Clusters:", colors.Cinnamon.Label.FgColor))
+	cluster.SetTitle(" Selected Cluster: ")
+	cluster.SetTitleAlign(tview.AlignLeft)
+	//cluster.SetLabel(fmt.Sprintf("[%s]Clusters:", colors.Cinnamon.Label.FgColor))
 	cluster.SetWordWrap(true).SetWrap(true)
+	cluster.SetBorder(true)
+	cluster.SetBorderPadding(0, 0, 1, 0)
+	cluster.SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor))
+	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
 
 	header := tview.NewFlex()
 	header.SetDirection(tview.FlexColumn)
@@ -79,19 +90,13 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		SetLabel(fmt.Sprintf("[%s]Search:", colors.Cinnamon.Label.FgColor))
 
 	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
-	sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	cluster.SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor))
-	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
-
 	sideBar.AddPage("search", search, true, false)
-
 	statusPopup := NewStatusPopup(colors)
 
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(header, 1, 0, false).
-		AddItem(registry.UI.Pages, 0, 1, true).
+		AddItem(header, 0, 1, false).
+		AddItem(registry.UI.Pages, 0, 15, true).
 		AddItem(sideBar, 1, 0, false)
 
 	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
