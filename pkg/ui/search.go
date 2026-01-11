@@ -11,7 +11,7 @@ import (
 	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
-const SearchModalPage = "Search"
+const SearchPage = "Search"
 
 type Search struct {
 	Input *tview.InputField

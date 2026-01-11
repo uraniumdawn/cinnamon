@@ -146,16 +146,16 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 						if statusLineTimer != nil {
 							statusLineTimer.Stop()
 						}
-						statusLineTimer = time.AfterFunc(5*time.Second, func() {
-							app.QueueUpdateDraw(func() {
-								app.Layout.StatusLine.SetText("")
-							})
-						})
+						//statusLineTimer = time.AfterFunc(5*time.Second, func() {
+						//	app.QueueUpdateDraw(func() {
+						//		app.Layout.StatusLine.SetText("")
+						//	})
+						//})
 					}
 
-					/*if status != "" {
+					if status != "" {
 						app.ShowStatusPopup(status)
-					}*/
+					}
 				})
 			}
 		}
@@ -171,11 +171,11 @@ func (app *App) ShowStatusPopup(message string) {
 	app.Layout.PagesRegistry.UI.Pages.ShowPage(StatusPopupPage)
 	app.Layout.PagesRegistry.UI.Pages.SendToFront(StatusPopupPage)
 
-	//app.StatusPopupHideTimer = time.AfterFunc(StatusPopupDuration, func() {
-	//	app.QueueUpdateDraw(func() {
-	//		app.Layout.PagesRegistry.UI.Pages.HidePage(StatusPopupPage)
-	//	})
-	//})
+	app.StatusPopupHideTimer = time.AfterFunc(StatusPopupDuration, func() {
+		app.QueueUpdateDraw(func() {
+			app.Layout.PagesRegistry.UI.Pages.HidePage(StatusPopupPage)
+		})
+	})
 }
 
 func (app *App) Run() {

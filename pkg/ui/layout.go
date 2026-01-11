@@ -19,7 +19,7 @@ type Layout struct {
 	StatusLine    *tview.TextView
 	Cluster       *tview.TextView
 	SearchModal   *Search
-	Content       *tview.Flex
+	Content       tview.Primitive
 	Menu          *Menu
 	SideBar       *tview.Pages
 	Colors        *config.ColorConfig
@@ -97,7 +97,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		AddItem(sideBar, 2, 0, false)
 
 	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
-	registry.UI.Pages.AddPage(SearchModalPage, searchModal.Flex, true, false)
+	registry.UI.Pages.AddPage(SearchPage, searchModal.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,

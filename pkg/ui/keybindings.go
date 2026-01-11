@@ -29,13 +29,13 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 func (app *App) SearchKeyHandler(input *tview.InputField) {
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
-			app.HideModalPage(SearchModalPage)
+			app.HideModalPage(SearchPage)
 			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
 		}
 
 		if event.Key() == tcell.KeyEsc {
 			input.SetText("")
-			app.HideModalPage(SearchModalPage)
+			app.HideModalPage(SearchPage)
 			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
 		}
 		return event
@@ -50,7 +50,7 @@ func (app *App) MainOperationKeyHandler() {
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
 			if app.IsCurrentPageSearchable() {
-				app.ShowModalPage(SearchModalPage)
+				app.ShowModalPage(SearchPage)
 				app.SetFocus(app.Layout.SearchModal.Input)
 				statusLineCh <- ""
 				return nil
