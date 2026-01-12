@@ -8,6 +8,7 @@ package util
 import (
 	"bytes"
 	"encoding/csv"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -151,4 +152,13 @@ func BuildCliCommand(templateStr, bootstrap, topic string) string {
 	result := strings.ReplaceAll(templateStr, "{{bootstrap}}", bootstrap)
 	result = strings.ReplaceAll(result, "{{topic}}", topic)
 	return result
+}
+
+// SetSearchableTableTitle sets the title of a tview.Table with an optional filter.
+func SetSearchableTableTitle(table *tview.Table, title, filter string) {
+	if filter != "" {
+		table.SetTitle(fmt.Sprintf("%s[grey]/%s ", title, filter))
+	} else {
+		table.SetTitle(title)
+	}
 }

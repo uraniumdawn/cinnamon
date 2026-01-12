@@ -117,7 +117,7 @@ func (app *App) ConsumerGroups() {
 
 					app.AssignSearch(func(text string) {
 						filterConsumerGroupsTable(table, groups.Valid, text)
-						table.SetTitle(title + " [grey]/" + text)
+						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
 

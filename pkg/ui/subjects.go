@@ -148,7 +148,7 @@ func (app *App) Subjects() {
 
 					app.AssignSearch(func(text string) {
 						filterSubjectsTable(table, subjects, text)
-						table.SetTitle(title + " [grey]/" + text)
+						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
 

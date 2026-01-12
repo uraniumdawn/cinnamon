@@ -256,7 +256,7 @@ func (app *App) Topics() {
 
 					app.AssignSearch(func(text string) {
 						filterTopicsTable(table, topics.Result, text)
-						table.SetTitle(title + " [grey]/" + text)
+						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
 
