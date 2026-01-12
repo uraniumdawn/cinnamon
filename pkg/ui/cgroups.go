@@ -87,7 +87,9 @@ func (app *App) ConsumerGroups() {
 			case groups := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewGroupsTable(groups)
-
+					title := util.BuildTitle(ConsumerGroups,
+						"["+strconv.Itoa(len(groups.Valid))+"]")
+					table.SetTitle(title)
 					app.AddToPagesRegistry(
 						util.BuildPageKey(
 							app.Selected.Cluster.Name,
@@ -113,8 +115,9 @@ func (app *App) ConsumerGroups() {
 						return event
 					})
 
-					app.Layout.Search.SetChangedFunc(func(text string) {
+					app.AssignSearch(func(text string) {
 						filterConsumerGroupsTable(table, groups.Valid, text)
+						table.SetTitle(title + " [grey]/" + text)
 						table.ScrollToBeginning()
 					})
 
@@ -206,12 +209,6 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 		table.SetCell(i, 1, tview.NewTableCell("STATE: "+r.State.String()))
 	}
 
-	table.SetTitle(
-		util.BuildTitle(
-			ConsumerGroups,
-			"["+strconv.Itoa(len(groups.Valid))+"]",
-		),
-	)
 	return table
 }
 

@@ -26,34 +26,25 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 	)
 }
 
-func (app *App) SearchKeyHandler(input *tview.InputField) {
-	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
-			app.HideModalPage(SearchPage)
-			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
-		}
-
-		if event.Key() == tcell.KeyEsc {
-			input.SetText("")
-			app.HideModalPage(SearchPage)
-			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)
-		}
-		return event
-	})
-}
-
 func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
-			app.ShowModalPage(Resources)
+			if !app.IsSearchInFocus() {
+				app.ShowModalPage(Resources)
+			}
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			if app.IsCurrentPageSearchable() {
-				app.Layout.ShowInlineSearch()
-				app.SetFocus(app.Layout.Search)
-				statusLineCh <- ""
-				return nil
+			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+			for _, searchablePage := range app.Layout.PagesRegistry.SearchablePages {
+				if currentPage == searchablePage {
+					if _, ok := app.Layout.Search[currentPage]; ok {
+						app.Layout.ShowInlineSearch(currentPage)
+						app.SetFocus(app.Layout.Search[currentPage])
+						statusLineCh <- ""
+						return nil
+					}
+				}
 			}
 		}
 
@@ -61,20 +52,20 @@ func (app *App) MainOperationKeyHandler() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.Layout.Search.HasFocus() &&
-			!app.Layout.Search.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
 			app.Backward()
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.Layout.Search.HasFocus() &&
-			!app.Layout.Search.HasFocus() {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
 			app.Forward()
 		}
 
 		return event
 	})
+}
 
-	app.Layout.Search.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+func (app *App) SearchKeyHandler(input *tview.InputField) {
+	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
 			app.Layout.HideInlineSearch()
 			app.SetFocus(app.Layout.PagesRegistry.UI.Pages)

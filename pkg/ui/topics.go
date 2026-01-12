@@ -116,7 +116,9 @@ func (app *App) Topics() {
 			case topics := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewTopicsTable(topics)
-
+					title := util.BuildTitle(Topics,
+						"["+strconv.Itoa(len(topics.Result))+"]")
+					table.SetTitle(title)
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Topics),
 						table,
@@ -252,8 +254,9 @@ func (app *App) Topics() {
 						return event
 					})
 
-					app.Layout.Search.SetChangedFunc(func(text string) {
+					app.AssignSearch(func(text string) {
 						filterTopicsTable(table, topics.Result, text)
+						table.SetTitle(title + " [grey]/" + text)
 						table.ScrollToBeginning()
 					})
 
@@ -702,12 +705,6 @@ func (app *App) NewTopicsTable(topics *client.TopicsResult) *tview.Table {
 		populateTable(table, row, t, partitions, replicas)
 		row++
 	})
-	table.SetTitle(
-		util.BuildTitle(
-			Topics,
-			"["+strconv.Itoa(len(topics.Result))+"]",
-		),
-	)
 
 	return table
 }

@@ -14,7 +14,7 @@ import (
 type Layout struct {
 	PagesRegistry *PagesRegistry
 	Cluster       *tview.Table
-	Search        *tview.InputField
+	Search        map[string]*tview.InputField
 	Content       *tview.Flex
 	Header        *tview.Flex
 	Menu          *Menu
@@ -44,23 +44,17 @@ type Borders struct {
 	BottomRightFocus rune
 }
 
+const (
+	headerHeight   = 3
+	mainProportion = 15
+	searchHeight   = 1
+)
+
 func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	InitBorders()
 
-	// sl := tview.NewTextView()
-	// sl.SetTitle(" Status Line: ")
-	// sl.SetTitleAlign(tview.AlignLeft)
-	// sl.SetWrap(true).SetWordWrap(true)
-	// sl.SetTextAlign(tview.AlignLeft).SetBorder(true)
-	// sl.SetDynamicColors(true)
-	// sl.SetWordWrap(true).SetWrap(true)
-	// sl.SetBorderPadding(0, 0, 1, 0)
-	// sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
-	// sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-
 	cluster := tview.NewTable()
 	cluster.SetTitleAlign(tview.AlignLeft)
-	cluster.SetBorderPadding(0, 0, 1, 0)
 	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
 	cluster.SetSelectable(false, false)
 
@@ -96,25 +90,25 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 
 	statusPopup := NewStatusPopup(colors)
 
-	search := tview.NewInputField()
-	search.SetTitleAlign(tview.AlignLeft)
-	search.SetBorderPadding(0, 0, 1, 0)
-	search.SetLabel("Search: ")
-	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
-	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	// search := tview.NewInputField()
+	// search.SetTitleAlign(tview.AlignLeft)
+	// search.SetBorderPadding(0, 0, 1, 0)
+	// search.SetLabel("Search: ")
+	// search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
+	// search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	// search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(header, 3, 0, false).
-		AddItem(registry.UI.Pages, 0, 15, true)
+		AddItem(header, headerHeight, 0, false).
+		AddItem(registry.UI.Pages, 0, mainProportion, true)
 
 	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,
 		Cluster:       cluster,
-		Search:        search,
+		Search:        make(map[string]*tview.InputField),
 		Menu:          menu,
 		Content:       main,
 		Header:        header,
@@ -160,17 +154,4 @@ func (l *Layout) SetSelected(cluster *config.ClusterConfig, sr *config.SchemaReg
 
 	l.Cluster.GetCell(0, 1).SetText(clusterName)
 	l.Cluster.GetCell(1, 1).SetText(srName)
-}
-
-func (l *Layout) ShowInlineSearch() {
-	l.Content.Clear()
-	l.Content.AddItem(l.Header, 3, 0, false)                 // header
-	l.Content.AddItem(l.Search, 1, 0, false)                 // search input
-	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, 15, true) // pages
-}
-
-func (l *Layout) HideInlineSearch() {
-	l.Content.Clear()
-	l.Content.AddItem(l.Header, 3, 0, false)                 // header
-	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, 15, true) // pages
 }

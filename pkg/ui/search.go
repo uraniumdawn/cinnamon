@@ -18,6 +18,8 @@ type Search struct {
 	Flex  *tview.Flex
 }
 
+// NewSearchModal creates a new search modal with the given color configuration.
+// Deprecated: use inline search instead.
 func NewSearchModal(colors *config.ColorConfig) *Search {
 	input := tview.NewInputField()
 	input.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
@@ -46,4 +48,44 @@ func NewSearchModal(colors *config.ColorConfig) *Search {
 		Input: input,
 		Flex:  flex,
 	}
+}
+
+func NewInlineSearch(colors *config.ColorConfig) *tview.InputField {
+	search := tview.NewInputField()
+	search.SetTitleAlign(tview.AlignLeft)
+	search.SetLabel("Search: ")
+	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
+	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	return search
+}
+
+func (app *App) AssignSearch(onSearch func(text string)) {
+	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+	search := NewInlineSearch(app.Layout.Colors)
+	search.SetChangedFunc(onSearch)
+	app.SearchKeyHandler(search)
+	app.Layout.Search[currentPage] = search
+}
+
+func (app *App) IsSearchInFocus() bool {
+	for _, i := range app.Layout.Search {
+		if i.HasFocus() {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *Layout) ShowInlineSearch(currentPage string) {
+	l.Content.Clear()
+	l.Content.AddItem(l.Header, headerHeight, 0, false)
+	l.Content.AddItem(l.Search[currentPage], searchHeight, 0, false)
+	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, mainProportion, true)
+}
+
+func (l *Layout) HideInlineSearch() {
+	l.Content.Clear()
+	l.Content.AddItem(l.Header, headerHeight, 0, false)
+	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, mainProportion, true)
 }

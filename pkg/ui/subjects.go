@@ -115,6 +115,9 @@ func (app *App) Subjects() {
 			case subjects := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewSubjectsTable(subjects)
+					title := util.BuildTitle(Subjects,
+						"["+strconv.Itoa(len(subjects))+"]")
+					table.SetTitle(title)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(
@@ -137,16 +140,18 @@ func (app *App) Subjects() {
 						return event
 					})
 
-					app.Layout.Search.SetChangedFunc(func(text string) {
-						filterSubjectsTable(table, subjects, text)
-						table.ScrollToBeginning()
-					})
-
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects),
 						table,
 						SubjectsPageMenu, true,
 					)
+
+					app.AssignSearch(func(text string) {
+						filterSubjectsTable(table, subjects, text)
+						table.SetTitle(title + " [grey]/" + text)
+						table.ScrollToBeginning()
+					})
+
 					ClearStatus()
 				})
 				cancel()
@@ -323,12 +328,7 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	for i, subject := range subjects {
 		table.SetCell(i, 0, tview.NewTableCell(subject))
 	}
-	table.SetTitle(
-		util.BuildTitle(
-			Subjects,
-			"["+strconv.Itoa(len(subjects))+"]",
-		),
-	)
+
 	return table
 }
 

@@ -230,7 +230,6 @@ func (app *App) Run() {
 	)
 
 	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
-	app.SearchKeyHandler(app.Layout.Search)
 	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
