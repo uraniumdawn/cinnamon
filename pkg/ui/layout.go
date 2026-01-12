@@ -13,13 +13,13 @@ import (
 
 type Layout struct {
 	PagesRegistry *PagesRegistry
-	Cluster *tview.Table
-	Search      *tview.InputField
-	Content     *tview.Flex
-	Header      *tview.Flex
-	Menu        *Menu
-	Colors      *config.ColorConfig
-	StatusPopup *StatusPopup
+	Cluster       *tview.Table
+	Search        *tview.InputField
+	Content       *tview.Flex
+	Header        *tview.Flex
+	Menu          *Menu
+	Colors        *config.ColorConfig
+	StatusPopup   *StatusPopup
 }
 
 type Borders struct {
