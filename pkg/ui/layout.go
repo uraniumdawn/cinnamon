@@ -5,9 +5,6 @@
 package ui
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
@@ -16,14 +13,13 @@ import (
 
 type Layout struct {
 	PagesRegistry *PagesRegistry
-	StatusLine    *tview.TextView
-	Cluster       *tview.TextView
-	SearchModal   *Search
-	Content       tview.Primitive
-	Menu          *Menu
-	SideBar       *tview.Pages
-	Colors        *config.ColorConfig
-	StatusPopup   *StatusPopup
+	Cluster *tview.Table
+	Search      *tview.InputField
+	Content     *tview.Flex
+	Header      *tview.Flex
+	Menu        *Menu
+	Colors      *config.ColorConfig
+	StatusPopup *StatusPopup
 }
 
 type Borders struct {
@@ -51,62 +47,77 @@ type Borders struct {
 func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	InitBorders()
 
-	sl := tview.NewTextView()
-	sl.SetTitle(" Status Line: ")
-	sl.SetTitleAlign(tview.AlignLeft)
-	sl.SetWrap(true).SetWordWrap(true)
-	sl.SetTextAlign(tview.AlignLeft).SetBorder(true)
-	sl.SetDynamicColors(true)
-	sl.SetWordWrap(true).SetWrap(true)
-	sl.SetBorderPadding(0, 0, 1, 0)
-	sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
-	sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	// sl := tview.NewTextView()
+	// sl.SetTitle(" Status Line: ")
+	// sl.SetTitleAlign(tview.AlignLeft)
+	// sl.SetWrap(true).SetWordWrap(true)
+	// sl.SetTextAlign(tview.AlignLeft).SetBorder(true)
+	// sl.SetDynamicColors(true)
+	// sl.SetWordWrap(true).SetWrap(true)
+	// sl.SetBorderPadding(0, 0, 1, 0)
+	// sl.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
+	// sl.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 
-	cluster := tview.NewTextView()
-	cluster.SetTitle(" Selected Cluster: ")
+	cluster := tview.NewTable()
 	cluster.SetTitleAlign(tview.AlignLeft)
-	// cluster.SetLabel(fmt.Sprintf("[%s]Clusters:", colors.Cinnamon.Label.FgColor))
-	cluster.SetWordWrap(true).SetWrap(true)
-	cluster.SetBorder(true)
 	cluster.SetBorderPadding(0, 0, 1, 0)
-	cluster.SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor))
 	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
+	cluster.SetSelectable(false, false)
 
+	cluster.SetCell(0, 0, tview.NewTableCell("Cluster:").
+		SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
+		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+		SetExpansion(0))
+	cluster.SetCell(0, 1, tview.NewTableCell("").
+		SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor)).
+		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+		SetExpansion(1))
+
+	cluster.SetCell(1, 0, tview.NewTableCell("Schema Registry:").
+		SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
+		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+		SetExpansion(0))
+	cluster.SetCell(1, 1, tview.NewTableCell("").
+		SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor)).
+		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+		SetExpansion(1))
+
+	menu := NewMenu(colors)
 	header := tview.NewFlex()
 	header.SetDirection(tview.FlexColumn)
 
-	info := tview.NewFlex()
-	info.SetBorder(false)
-	info.SetDirection(tview.FlexColumn)
-	info.AddItem(cluster, 0, 1, false)
-	info.AddItem(sl, 0, 1, false)
+	context := tview.NewFlex()
+	context.SetBorder(false)
+	context.SetDirection(tview.FlexColumn)
+	context.AddItem(cluster, 0, 1, false)
+	context.AddItem(menu.Flex, 0, 3, false)
 
-	header.AddItem(info, 0, 3, false)
+	header.AddItem(context, 0, 4, false)
 
-	sideBar := tview.NewPages()
-	menu := NewMenu(colors)
-	sideBar.AddPage("menu", menu.Flex, true, true)
-
-	searchModal := NewSearchModal(colors)
 	statusPopup := NewStatusPopup(colors)
+
+	search := tview.NewInputField()
+	search.SetTitleAlign(tview.AlignLeft)
+	search.SetBorderPadding(0, 0, 1, 0)
+	search.SetLabel("Search: ")
+	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
+	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(header, 0, 1, false).
-		AddItem(registry.UI.Pages, 0, 15, true).
-		AddItem(sideBar, 2, 0, false)
+		AddItem(header, 3, 0, false).
+		AddItem(registry.UI.Pages, 0, 15, true)
 
 	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
-	registry.UI.Pages.AddPage(SearchPage, searchModal.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,
-		StatusLine:    sl,
 		Cluster:       cluster,
-		SearchModal:   searchModal,
+		Search:        search,
 		Menu:          menu,
-		SideBar:       sideBar,
 		Content:       main,
+		Header:        header,
 		Colors:        colors,
 		StatusPopup:   statusPopup,
 	}
@@ -137,18 +148,29 @@ func InitBorders() {
 }
 
 func (l *Layout) SetSelected(cluster *config.ClusterConfig, sr *config.SchemaRegistryConfig) {
-	var parts []string
+	clusterName := ""
+	srName := ""
+
 	if cluster != nil {
-		parts = append(
-			parts,
-			fmt.Sprintf("[%s]", cluster.Name),
-		)
+		clusterName = cluster.Name
 	}
 	if sr != nil {
-		parts = append(
-			parts,
-			fmt.Sprintf("[%s]", sr.Name),
-		)
+		srName = sr.Name
 	}
-	l.Cluster.SetText(strings.Join(parts, " "))
+
+	l.Cluster.GetCell(0, 1).SetText(clusterName)
+	l.Cluster.GetCell(1, 1).SetText(srName)
+}
+
+func (l *Layout) ShowInlineSearch() {
+	l.Content.Clear()
+	l.Content.AddItem(l.Header, 3, 0, false)                 // header
+	l.Content.AddItem(l.Search, 1, 0, false)                 // search input
+	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, 15, true) // pages
+}
+
+func (l *Layout) HideInlineSearch() {
+	l.Content.Clear()
+	l.Content.AddItem(l.Header, 3, 0, false)                 // header
+	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, 15, true) // pages
 }

@@ -31,7 +31,7 @@ type StatusPopup struct {
 func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	tv := tview.NewTextView()
 	tv.SetDynamicColors(true)
-	tv.SetTextAlign(tview.AlignLeft)
+	tv.SetTextAlign(tview.AlignRight)
 	tv.SetWrap(true)
 	tv.SetWordWrap(true)
 	tv.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))

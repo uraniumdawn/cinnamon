@@ -137,7 +137,7 @@ func (app *App) Subjects() {
 						return event
 					})
 
-					app.Layout.SearchModal.Input.SetChangedFunc(func(text string) {
+					app.Layout.Search.SetChangedFunc(func(text string) {
 						filterSubjectsTable(table, subjects, text)
 						table.ScrollToBeginning()
 					})

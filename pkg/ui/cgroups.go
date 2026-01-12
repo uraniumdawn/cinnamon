@@ -113,7 +113,7 @@ func (app *App) ConsumerGroups() {
 						return event
 					})
 
-					app.Layout.SearchModal.Input.SetChangedFunc(func(text string) {
+					app.Layout.Search.SetChangedFunc(func(text string) {
 						filterConsumerGroupsTable(table, groups.Valid, text)
 						table.ScrollToBeginning()
 					})

@@ -252,7 +252,7 @@ func (app *App) Topics() {
 						return event
 					})
 
-					app.Layout.SearchModal.Input.SetChangedFunc(func(text string) {
+					app.Layout.Search.SetChangedFunc(func(text string) {
 						filterTopicsTable(table, topics.Result, text)
 						table.ScrollToBeginning()
 					})

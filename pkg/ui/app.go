@@ -141,7 +141,7 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 				return
 			case status := <-in:
 				app.QueueUpdateDraw(func() {
-					app.Layout.StatusLine.SetText(status)
+					// app.Layout.StatusLine.SetText(status)
 					if status != "" {
 						if statusLineTimer != nil {
 							statusLineTimer.Stop()
@@ -230,7 +230,7 @@ func (app *App) Run() {
 	)
 
 	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
-	app.SearchKeyHandler(app.Layout.SearchModal.Input)
+	app.SearchKeyHandler(app.Layout.Search)
 	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()

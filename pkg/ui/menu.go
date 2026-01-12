@@ -243,7 +243,7 @@ func (m *Menu) SetMenu(menu string) {
 	if keyBindings, ok := (*m.Map)[menu]; ok {
 		row := 0
 		col := 0
-		maxRowsPerColumn := 2
+		maxRowsPerColumn := 3
 
 		for _, binding := range *keyBindings {
 			if value, exists := keys[binding]; exists {
