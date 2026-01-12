@@ -651,7 +651,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 		for {
 			select {
 			case <-resultCh:
-				statusLineCh <- "topic has been deleted"
+				statusLineCh <- fmt.Sprintf("topic '%s' has been deleted", name)
 				cancel()
 				return
 			case err := <-errorCh:

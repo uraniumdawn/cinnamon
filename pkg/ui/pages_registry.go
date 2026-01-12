@@ -69,6 +69,7 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
 	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
+	pr.PageMenuMap[StatusHistoryPage] = StatusHistoryPageMenu
 }
 
 func (app *App) CheckInCache(name string, onAbsent func()) {

@@ -26,6 +26,17 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 	)
 }
 
+func (app *App) StatusHistoryKeyHandler(view *tview.TextView) {
+	view.SetInputCapture(
+		func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				app.HideModalPage(StatusHistoryPage)
+			}
+			return event
+		},
+	)
+}
+
 func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
@@ -50,6 +61,10 @@ func (app *App) MainOperationKeyHandler() {
 
 		if event.Key() == tcell.KeyCtrlP {
 			app.ShowModalPage(OpenedPages)
+		}
+
+		if event.Key() == tcell.KeyCtrlO {
+			app.ShowModalPage(StatusHistoryPage)
 		}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {

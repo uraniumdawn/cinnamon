@@ -15,9 +15,9 @@ import (
 
 const (
 	// StatusPopupPage is the page name for the status popup.
-	StatusPopupPage = "status_popup"
+	StatusPopupPage = "Status Popup"
 	// StatusPopupDuration is the duration for which the status popup is shown.
-	StatusPopupDuration = 3 * time.Second
+	StatusPopupDuration = 5 * time.Second
 )
 
 // StatusPopup displays temporary status messages to the user.
@@ -31,9 +31,9 @@ type StatusPopup struct {
 func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	tv := tview.NewTextView()
 	tv.SetDynamicColors(true)
-	tv.SetTextAlign(tview.AlignRight)
 	tv.SetWrap(true)
 	tv.SetWordWrap(true)
+	tv.SetTextAlign(tview.AlignLeft)
 	tv.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
 	tv.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
 
@@ -42,9 +42,9 @@ func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 		AddItem(nil, 1, 0, false).
 		AddItem(tview.NewFlex().
 			SetDirection(tview.FlexColumn).
-			AddItem(nil, 0, 1, false).
-			AddItem(tv, 40, 0, false).
-			AddItem(nil, 1, 0, false), 3, 0, false).
+			AddItem(nil, 0, 7, false).
+			AddItem(tv, 0, 3, false).
+			AddItem(nil, 1, 0, false), 5, 0, false).
 		AddItem(nil, 0, 1, false)
 
 	return &StatusPopup{

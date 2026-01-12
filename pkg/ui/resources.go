@@ -94,7 +94,7 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 }
 
 // NewResourcesPage creates a new resources page showing available Kafka resources.
-func (pr *PagesRegistry) NewResourcesPage(app *App) tview.Primitive {
+func (app *App) NewResourcesPage() tview.Primitive {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).

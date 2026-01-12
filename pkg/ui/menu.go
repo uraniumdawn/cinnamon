@@ -132,6 +132,7 @@ const (
 	VersionsPageMenu         = "VersionsPageMenu"
 	FinalPageMenu            = "FinalPageMenu"
 	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
+	StatusHistoryPageMenu = "StatusHistoryPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -230,7 +231,8 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"upd",
 			},
-			FinalPageMenu: {"res", "forward", "backward", "opened", "upd"},
+			StatusHistoryPageMenu: {"close"},
+			FinalPageMenu:         {"res", "forward", "backward", "opened", "upd"},
 		},
 		Colors: colors,
 	}

@@ -20,6 +20,7 @@ type Layout struct {
 	Menu          *Menu
 	Colors        *config.ColorConfig
 	StatusPopup   *StatusPopup
+	StatusHistory *StatusHistory
 }
 
 type Borders struct {
@@ -86,17 +87,10 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	context.AddItem(cluster, 0, 1, false)
 	context.AddItem(menu.Flex, 0, 3, false)
 
-	header.AddItem(context, 0, 4, false)
+	header.AddItem(context, 0, 3, false)
 
 	statusPopup := NewStatusPopup(colors)
-
-	// search := tview.NewInputField()
-	// search.SetTitleAlign(tview.AlignLeft)
-	// search.SetBorderPadding(0, 0, 1, 0)
-	// search.SetLabel("Search: ")
-	// search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
-	// search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	// search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	statusHistory := NewStatusHistory(colors)
 
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
@@ -104,6 +98,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		AddItem(registry.UI.Pages, 0, mainProportion, true)
 
 	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
+	registry.UI.Pages.AddPage(StatusHistoryPage, statusHistory.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,
@@ -114,6 +109,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		Header:        header,
 		Colors:        colors,
 		StatusPopup:   statusPopup,
+		StatusHistory: statusHistory,
 	}
 }
 

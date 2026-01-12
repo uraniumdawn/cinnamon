@@ -141,16 +141,11 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 				return
 			case status := <-in:
 				app.QueueUpdateDraw(func() {
-					// app.Layout.StatusLine.SetText(status)
 					if status != "" {
+						app.Layout.StatusHistory.AddEntry(status)
 						if statusLineTimer != nil {
 							statusLineTimer.Stop()
 						}
-						//statusLineTimer = time.AfterFunc(5*time.Second, func() {
-						//	app.QueueUpdateDraw(func() {
-						//		app.Layout.StatusLine.SetText("")
-						//	})
-						//})
 					}
 
 					if status != "" {
@@ -211,7 +206,7 @@ func (app *App) Run() {
 	Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
 	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
-	resourcesPage := app.Layout.PagesRegistry.NewResourcesPage(app)
+	resourcesPage := app.NewResourcesPage()
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(
 		OpenedPages,
@@ -230,6 +225,7 @@ func (app *App) Run() {
 	)
 
 	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
+	app.StatusHistoryKeyHandler(app.Layout.StatusHistory.View)
 	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
