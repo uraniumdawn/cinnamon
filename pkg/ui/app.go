@@ -119,9 +119,18 @@ func InitLogger() {
 		os.Exit(1)
 	}
 
+	// Use ConsoleWriter for human-readable, canonical log format
+	consoleWriter := zerolog.ConsoleWriter{
+		Out:        file,
+		TimeFormat: time.RFC3339,
+		NoColor:    true, // Set to true if colors are not desired in log file
+	}
+
 	os.Stderr = file
 	os.Stdout = file
-	log.Logger = log.Output(file)
+
+	// Add caller information (file and line number) to all log entries
+	log.Logger = log.Output(consoleWriter).With().Caller().Logger()
 }
 
 var statusLineCh = make(chan string, 10)
@@ -137,7 +146,7 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debug().Msg("shutting down status line handler")
+				log.Info().Msg("shutting down status line handler")
 				return
 			case status := <-in:
 				app.QueueUpdateDraw(func() {

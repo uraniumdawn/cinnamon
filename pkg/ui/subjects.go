@@ -225,7 +225,7 @@ func (app *App) Versions(subject string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to list subject's versions")
 				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
@@ -296,7 +296,7 @@ func (app *App) Schema(subject string, version int) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to list subject's versions")
 				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
 				cancel()
 				return

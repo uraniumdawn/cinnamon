@@ -28,7 +28,7 @@ func (app *App) RunClusterEventHandler(ctx context.Context, in chan Event) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Cluster Event Handler")
+				log.Debug().Msg("shutting down cluster event handler")
 				return
 			case event := <-in:
 				switch event.Type {
@@ -46,7 +46,6 @@ func (app *App) RunClusterEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting cluster description..."
 						app.Cluster()
 					}
 				}
@@ -59,6 +58,7 @@ func (app *App) Cluster() {
 	c := app.KafkaClients[app.Selected.Cluster.Name]
 	rCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
+	statusLineCh <- "getting cluster description..."
 	c.DescribeCluster(rCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -92,7 +92,7 @@ func (app *App) Cluster() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("failed to describe cluster")
+				log.Error().Err(err).Send()
 				statusLineCh <- fmt.Sprintf("[red]failed to describe cluster: %s", err.Error())
 				cancel()
 				return

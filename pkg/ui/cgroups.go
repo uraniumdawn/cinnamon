@@ -36,7 +36,7 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Cgroups Event Handler")
+				log.Debug().Msg("shutting down cgroups event handler")
 				return
 			case event := <-in:
 				switch event.Type {
@@ -125,7 +125,7 @@ func (app *App) ConsumerGroups() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to list consumer groups")
 				statusLineCh <- fmt.Sprintf("[red]failed to list consumer groups: %s", err.Error())
 				cancel()
 				return
@@ -177,7 +177,7 @@ func (app *App) ConsumerGroup(name string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to describe consumer group")
 				statusLineCh <- fmt.Sprintf("[red]failed to describe consumer group: %s", err.Error())
 				cancel()
 				return

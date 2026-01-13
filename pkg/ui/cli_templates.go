@@ -55,7 +55,7 @@ func (app *App) CliTemplates(topicName string) {
 				command := util.BuildCliCommand(templateCmd, bootstrap, topicName)
 				err := clipboard.WriteAll(command)
 				if err != nil {
-					log.Error().Err(err).Msg("Failed to copy to clipboard")
+					log.Error().Err(err).Send()
 					statusLineCh <- fmt.Sprintf("[red]failed to copy to clipboard: %s", err.Error())
 				}
 

@@ -26,7 +26,7 @@ func (app *App) RunSchemaRegistriesEventHandler(ctx context.Context, in chan Eve
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Schema Registries Event Handler")
+				log.Debug().Msg("shutting down schema-registries event handler")
 				return
 			case event := <-in:
 				switch event.Type {

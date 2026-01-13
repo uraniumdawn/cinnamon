@@ -50,7 +50,7 @@ func (r *Record) String() string {
 
 	val, err := json.Marshal(record)
 	if err != nil {
-		log.Error().Err(err).Msg("Error marshalling record")
+		log.Error().Err(err).Msg("error marshalling record")
 	}
 
 	return string(val)
@@ -127,7 +127,7 @@ func (c *Consumer) Consume(
 	for run {
 		select {
 		case sig := <-sigCh:
-			log.Info().Msgf("Caught signal %d for Consumer terminating", sig)
+			log.Info().Msgf("caught signal %d for consumer terminating", sig)
 			run = false
 		default:
 			ev := c.KafkaConsumer.Poll(100)
@@ -153,8 +153,8 @@ func (c *Consumer) Consume(
 				}
 				resultCh <- record
 			case kafka.Error:
-				log.Error().Err(err).Msgf("Error: %v", e)
-				statusLineCh <- fmt.Sprintf("[red]Error: %v", e)
+				log.Error().Err(err).Msgf("error: %v", e)
+				statusLineCh <- fmt.Sprintf("[red]error: %v", e)
 			default:
 				// do nothing
 			}
@@ -179,8 +179,8 @@ func (c *Consumer) FromAvro(ev kafka.Event, statusLineCh chan<- string) ([]byte,
 
 	j, err := json.Marshal(r)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to marshal JSON")
-		statusLineCh <- "Failed to marshal JSON"
+		log.Error().Err(err).Msg("failed to marshal JSON")
+		statusLineCh <- "failed to marshal JSON"
 	}
 	return j, schemaID
 }

@@ -6,10 +6,10 @@
 package schemaregistry
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
+	"github.com/rs/zerolog/log"
 
 	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
@@ -32,7 +32,7 @@ func NewSchemaRegistryClient(config *config.SchemaRegistryConfig) (*Client, erro
 		config.SchemaRegistryUsername,
 		config.SchemaRegistryPassword))
 	if err != nil {
-		fmt.Printf("Failed to create schema registry client: %s\n", err)
+		log.Err(err).Msg("failed to connect to schema registry")
 		return nil, err
 	}
 

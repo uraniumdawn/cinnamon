@@ -40,7 +40,7 @@ func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Nodes Event Handler")
+				log.Debug().Msg("shutting down nodes event handler")
 				return
 			case event := <-in:
 				switch event.Type {
@@ -51,7 +51,6 @@ func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting nodes..."
 						app.Nodes()
 					}
 				case GetNodeEventType:
@@ -64,7 +63,6 @@ func (app *App) RunNodesEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting node description..."
 						app.Node(nodeID, url)
 					}
 				}
@@ -79,6 +77,7 @@ func (app *App) Nodes() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "getting nodes..."
 	c.DescribeCluster(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -115,12 +114,12 @@ func (app *App) Nodes() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to describe cluster")
+				log.Error().Err(err).Msg("failed to describe cluster")
 				statusLineCh <- fmt.Sprintf("[red]failed to describe cluster: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while describing cluster")
+				log.Error().Msg("timeout while describing cluster")
 				statusLineCh <- "[red]timeout while describing cluster"
 				return
 			}
@@ -130,11 +129,11 @@ func (app *App) Nodes() {
 
 // Node fetches and displays details for a specific Kafka node.
 func (app *App) Node(id, url string) {
-	statusLineCh <- "getting node description results..."
 	resultCh := make(chan *client.ResourceResult)
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "getting node description..."
 	c.DescribeNode(id, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

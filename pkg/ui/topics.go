@@ -264,7 +264,7 @@ func (app *App) Topics() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to list topics")
 				statusLineCh <- fmt.Sprintf("[red]failed to list topics: %s", err.Error())
 				cancel()
 				return
@@ -309,7 +309,7 @@ func (app *App) Topic(name string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to describe topic")
 				statusLineCh <- fmt.Sprintf("[red]failed to describe topic: %s", err.Error())
 				cancel()
 				return
@@ -514,7 +514,7 @@ func (app *App) CreateTopicResultHandler(
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to create topic")
 				statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
 				cancel()
 				return
@@ -547,7 +547,7 @@ func (app *App) UpdateTopic(topicName string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to fetch topic config")
 				statusLineCh <- fmt.Sprintf("[red]failed to fetch topic config: %s", err.Error())
 				cancel()
 				return
@@ -580,7 +580,7 @@ func (app *App) UpdateTopicResultHandler(
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to update topic configuration")
 				statusLineCh <- fmt.Sprintf("[red]failed to update topic configuration: %s", err.Error())
 				cancel()
 				return
@@ -639,7 +639,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err)
+				log.Error().Err(err).Msg("failed to delete topic")
 				statusLineCh <- fmt.Sprintf("[red]failed to delete topic: %s", err.Error())
 				cancel()
 				return

@@ -47,7 +47,7 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Resource Event Handler")
+				log.Debug().Msg("shutting down resource event handler")
 				return
 			case event := <-in:
 				switch event.Type {

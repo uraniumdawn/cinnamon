@@ -22,7 +22,7 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		errMsg := "Failed to get stdout: " + err.Error()
+		errMsg := "failed to get stdout: " + err.Error()
 		e <- errMsg
 		log.Error().Err(err).Msg(errMsg)
 		return
@@ -30,14 +30,14 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		errMsg := "Failed to get stderr: " + err.Error()
+		errMsg := "failed to get stderr: " + err.Error()
 		e <- errMsg
 		log.Error().Err(err).Msg(errMsg)
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		errMsg := "Failed to start command: " + err.Error()
+		errMsg := "failed to start command: " + err.Error()
 		e <- errMsg
 		log.Error().Err(err).Msg(errMsg)
 		return
@@ -49,7 +49,7 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 			rc <- scanner.Text()
 		}
 		if err := scanner.Err(); err != nil {
-			e <- "Error reading stdout: " + err.Error()
+			e <- "error reading stdout: " + err.Error()
 		}
 	}()
 
@@ -59,7 +59,7 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 			e <- scanner.Text()
 		}
 		if err := scanner.Err(); err != nil {
-			e <- "Error reading stderr: " + err.Error()
+			e <- "error reading stderr: " + err.Error()
 		}
 	}()
 
@@ -68,7 +68,7 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 			if s == 1 {
 				err := cmd.Process.Signal(syscall.SIGTERM)
 				if err != nil {
-					e <- "Failed to send SIGTERM: " + err.Error()
+					e <- "failed to send SIGTERM: " + err.Error()
 					log.Error().Err(err).Msg("SIGTERM failed")
 					return
 				}
@@ -77,7 +77,7 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 				time.AfterFunc(5*time.Second, func() {
 					if err := cmd.Process.Kill(); err == nil {
 						e <- "Command forcefully killed after timeout."
-						log.Warn().Msg("Command killed after timeout")
+						log.Warn().Msg("command killed after timeout")
 					}
 				})
 			}
