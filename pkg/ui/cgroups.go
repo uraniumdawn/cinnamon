@@ -47,7 +47,6 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting consumer groups..."
 						app.ConsumerGroups()
 					}
 
@@ -63,7 +62,6 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting consumer group description..."
 						app.ConsumerGroup(consumerGroup)
 					}
 				}
@@ -78,6 +76,7 @@ func (app *App) ConsumerGroups() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "getting consumer groups..."
 	c.ConsumerGroups(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -126,13 +125,13 @@ func (app *App) ConsumerGroups() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to list topics")
-				statusLineCh <- fmt.Sprintf("[red]failed to list topics: %s", err.Error())
+				log.Error().Err(err)
+				statusLineCh <- fmt.Sprintf("[red]failed to list consumer groups: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while to list topics")
-				statusLineCh <- "[red]timeout while to list topics"
+				log.Error().Msg("timeout while to list consumer groups")
+				statusLineCh <- "[red]timeout while to list consumer groups"
 				return
 			}
 		}
@@ -145,6 +144,7 @@ func (app *App) ConsumerGroup(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "getting consumer group description..."
 	c.DescribeConsumerGroup(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -177,12 +177,12 @@ func (app *App) ConsumerGroup(name string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to describe consumer group")
+				log.Error().Err(err)
 				statusLineCh <- fmt.Sprintf("[red]failed to describe consumer group: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while describing consumer group")
+				log.Error().Msg("timeout while describing consumer group")
 				statusLineCh <- "[red]timeout while describing consumer group"
 				return
 			}

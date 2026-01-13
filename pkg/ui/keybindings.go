@@ -63,9 +63,10 @@ func (app *App) MainOperationKeyHandler() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		if event.Key() == tcell.KeyCtrlO {
-			app.ShowModalPage(StatusHistoryPage)
-		}
+		// Disable
+		//if event.Key() == tcell.KeyCtrlO {
+		//	app.ShowModalPage(StatusHistoryPage)
+		//}
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
 			app.Backward()

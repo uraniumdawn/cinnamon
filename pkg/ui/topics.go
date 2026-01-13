@@ -38,7 +38,7 @@ func (app *App) RunTopicsEventHandler(ctx context.Context, in chan Event) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Topics Event Handler")
+				log.Debug().Msg("shutting down topics event handler")
 				return
 			case event := <-in:
 				switch event.Type {
@@ -49,7 +49,6 @@ func (app *App) RunTopicsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting topics..."
 						app.Topics()
 					}
 
@@ -61,7 +60,6 @@ func (app *App) RunTopicsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting topic description..."
 						app.Topic(topicName)
 					}
 
@@ -107,6 +105,7 @@ func (app *App) Topics() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "getting topics..."
 	c.Topics(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -265,12 +264,12 @@ func (app *App) Topics() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to list topics")
+				log.Error().Err(err)
 				statusLineCh <- fmt.Sprintf("[red]failed to list topics: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while to list topics")
+				log.Error().Msg("timeout while to list topics")
 				statusLineCh <- "[red]timeout while to list topics"
 				return
 			}
@@ -283,6 +282,7 @@ func (app *App) Topic(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "getting topic description..."
 	c.DescribeTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -309,12 +309,12 @@ func (app *App) Topic(name string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to describe topic")
+				log.Error().Err(err)
 				statusLineCh <- fmt.Sprintf("[red]failed to describe topic: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while describing topic")
+				log.Error().Msg("timeout while describing topic")
 				statusLineCh <- "[red]timeout while describing topic"
 				return
 			}
@@ -498,11 +498,11 @@ func (app *App) CreateTopicResultHandler(
 	replicationFactor int,
 	config map[string]string,
 ) {
-	statusLineCh <- "creating topic..."
 	resultCh := make(chan bool)
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "creating topic..."
 	c.CreateTopic(name, numPartitions, replicationFactor, config, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -510,21 +510,16 @@ func (app *App) CreateTopicResultHandler(
 		for {
 			select {
 			case <-resultCh:
-				statusLineCh <- "topic has been created"
+				statusLineCh <- fmt.Sprintf("topic '%s' has been created", name)
 				cancel()
 				return
 			case err := <-errorCh:
-				if err != nil {
-					log.Error().Err(err).Msg("Failed to create topic")
-					statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
-				} else {
-					log.Error().Msg("Failed to create topic: unknown error")
-					statusLineCh <- "[red]failed to create topic: unknown error"
-				}
+				log.Error().Err(err)
+				statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while creating topics")
+				log.Error().Msg("timeout while creating topics")
 				statusLineCh <- "[red]timeout while creating topics"
 				return
 			}
@@ -533,11 +528,11 @@ func (app *App) CreateTopicResultHandler(
 }
 
 func (app *App) UpdateTopic(topicName string) {
-	statusLineCh <- "fetching topic configuration..."
 	resultCh := make(chan *client.TopicResult)
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "fetching topic configuration..."
 	c.DescribeTopic(topicName, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -548,22 +543,16 @@ func (app *App) UpdateTopic(topicName string) {
 				app.QueueUpdateDraw(func() {
 					app.NewUpdateTopicModal(topicName, topicResult)
 					app.ShowModalPage(EditTopic)
-					statusLineCh <- "ready to edit topic"
 				})
 				cancel()
 				return
 			case err := <-errorCh:
-				if err != nil {
-					log.Error().Err(err).Msg("Failed to fetch topic config")
-					statusLineCh <- fmt.Sprintf("[red]failed to fetch topic config: %s", err.Error())
-				} else {
-					log.Error().Msg("Failed to fetch topic config: unknown error")
-					statusLineCh <- "[red]failed to fetch topic config: unknown error"
-				}
+				log.Error().Err(err)
+				statusLineCh <- fmt.Sprintf("[red]failed to fetch topic config: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while fetching topic config")
+				log.Error().Msg("timeout while fetching topic config")
 				statusLineCh <- "[red]timeout while fetching topic config"
 				return
 			}
@@ -575,11 +564,11 @@ func (app *App) UpdateTopicResultHandler(
 	name string,
 	config map[string]string,
 ) {
-	statusLineCh <- "updating topic config..."
 	resultCh := make(chan bool)
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "updating topic configuration..."
 	c.UpdateTopicConfig(name, config, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -587,21 +576,16 @@ func (app *App) UpdateTopicResultHandler(
 		for {
 			select {
 			case <-resultCh:
-				statusLineCh <- "topic config has been updated"
+				statusLineCh <- fmt.Sprintf("topic '%s' config has been updated", name)
 				cancel()
 				return
 			case err := <-errorCh:
-				if err != nil {
-					log.Error().Err(err).Msg("Failed to update topic config")
-					statusLineCh <- fmt.Sprintf("[red]failed to update topic config: %s", err.Error())
-				} else {
-					log.Error().Msg("Failed to update topic config: unknown error")
-					statusLineCh <- "[red]failed to update topic config: unknown error"
-				}
+				log.Error().Err(err)
+				statusLineCh <- fmt.Sprintf("[red]failed to update topic configuration: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while updating topic config")
+				log.Error().Msg("timeout while updating topic config")
 				statusLineCh <- "[red]timeout while updating topic config"
 				return
 			}
@@ -639,11 +623,11 @@ func (app *App) DeleteTopic(topicName string) {
 }
 
 func (app *App) DeleteTopicResultHandler(name string) {
-	statusLineCh <- "deleting topic..."
 	resultCh := make(chan bool)
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
+	statusLineCh <- "deleting topic..."
 	c.DeleteTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -655,17 +639,12 @@ func (app *App) DeleteTopicResultHandler(name string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				if err != nil {
-					log.Error().Err(err).Msg("Failed to delete topic")
-					statusLineCh <- fmt.Sprintf("[red]failed to delete topic: %s", err.Error())
-				} else {
-					log.Error().Msg("Failed to delete topic: unknown error")
-					statusLineCh <- "[red]failed to delete topic: unknown error"
-				}
+				log.Error().Err(err)
+				statusLineCh <- fmt.Sprintf("[red]failed to delete topic: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while deleting topic")
+				log.Error().Msg("timeout while deleting topic")
 				statusLineCh <- "[red]timeout while deleting topic"
 				return
 			}

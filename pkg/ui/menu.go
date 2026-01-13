@@ -132,7 +132,7 @@ const (
 	VersionsPageMenu         = "VersionsPageMenu"
 	FinalPageMenu            = "FinalPageMenu"
 	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
-	StatusHistoryPageMenu = "StatusHistoryPageMenu"
+	StatusHistoryPageMenu    = "StatusHistoryPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {

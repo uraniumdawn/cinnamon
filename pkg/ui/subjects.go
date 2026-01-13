@@ -45,7 +45,7 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down Subjects Event Handler")
+				log.Debug().Msg("shutting down subjects event handler")
 				return
 			case event := <-in:
 				switch event.Type {
@@ -56,7 +56,6 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting subjects..."
 						app.Subjects()
 					}
 
@@ -72,7 +71,6 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting versions..."
 						app.Versions(subject)
 					}
 
@@ -91,7 +89,6 @@ func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
 					if found && !force {
 						app.SwitchToPage(pageName)
 					} else {
-						statusLineCh <- "getting schema..."
 						app.Schema(subject, v)
 					}
 				}
@@ -106,6 +103,7 @@ func (app *App) Subjects() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
+	statusLineCh <- "getting subjects..."
 	c.Subjects(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -157,12 +155,12 @@ func (app *App) Subjects() {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to list subjects")
+				log.Error().Err(err).Msg("failed to list subjects")
 				statusLineCh <- fmt.Sprintf("[red]failed to list subjects: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while to list subjects")
+				log.Error().Msg("timeout while to list subjects")
 				statusLineCh <- "[red]timeout while to list subjects"
 				return
 			}
@@ -176,6 +174,7 @@ func (app *App) Versions(subject string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
+	statusLineCh <- "getting subject's versions..."
 	c.VersionsBySubject(subject, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -226,7 +225,7 @@ func (app *App) Versions(subject string) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("failed to list subject's versions")
+				log.Error().Err(err)
 				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
@@ -245,6 +244,7 @@ func (app *App) Schema(subject string, version int) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
+	statusLineCh <- "getting schema..."
 	c.Schema(subject, version, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -296,13 +296,13 @@ func (app *App) Schema(subject string, version int) {
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to list subject's versions")
+				log.Error().Err(err)
 				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while to list subject's versions")
-				statusLineCh <- "[red]Ttmeout while to list subject's versions"
+				log.Error().Msg("timeout while to list subject's versions")
+				statusLineCh <- "[red]tmeout while to list subject's versions"
 				return
 			}
 		}

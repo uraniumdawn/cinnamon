@@ -137,7 +137,7 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info().Msg("Shutting down StatusLineHandler")
+				log.Debug().Msg("shutting down status line handler")
 				return
 			case status := <-in:
 				app.QueueUpdateDraw(func() {
@@ -230,10 +230,10 @@ func (app *App) Run() {
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed Application execution")
+		log.Error().Err(err).Msg("failed application execution")
 	}
 	cancel()
-	log.Info().Msg("Application terminated")
+	log.Info().Msg("application terminated")
 }
 
 func (app *App) ApplyColors() {
