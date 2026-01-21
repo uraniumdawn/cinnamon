@@ -82,10 +82,12 @@ func (l *Layout) ShowInlineSearch(currentPage string) {
 	l.Content.AddItem(l.Header, headerHeight, 0, false)
 	l.Content.AddItem(l.Search[currentPage], searchHeight, 0, false)
 	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, mainProportion, true)
+	l.Content.AddItem(l.StatusBar, 1, 0, false)
 }
 
 func (l *Layout) HideInlineSearch() {
 	l.Content.Clear()
 	l.Content.AddItem(l.Header, headerHeight, 0, false)
 	l.Content.AddItem(l.PagesRegistry.UI.Pages, 0, mainProportion, true)
+	l.Content.AddItem(l.StatusBar, 1, 0, false)
 }

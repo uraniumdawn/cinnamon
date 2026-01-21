@@ -119,8 +119,9 @@ func (app *App) NewClustersTable() *tview.Table {
 		),
 	)
 
+	// Iterate over the config slice to preserve order from config file
 	row := 0
-	for _, cluster := range app.Clusters {
+	for _, cluster := range app.Config.Cinnamon.Clusters {
 		table.
 			SetCell(row, 0, tview.NewTableCell(cluster.Name)).
 			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"]))

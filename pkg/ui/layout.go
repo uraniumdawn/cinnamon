@@ -19,7 +19,8 @@ type Layout struct {
 	Header        *tview.Flex
 	Menu          *Menu
 	Colors        *config.ColorConfig
-	StatusPopup   *StatusPopup
+	StatusLine    *tview.TextView
+	StatusBar     *tview.Flex
 	StatusHistory *StatusHistory
 }
 
@@ -89,15 +90,33 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 
 	header.AddItem(context, 0, 3, false)
 
-	statusPopup := NewStatusPopup(colors)
+	statusLine := tview.NewTextView()
+	statusLine.SetDynamicColors(true)
+	statusLine.SetWrap(false)
+	statusLine.SetTextAlign(tview.AlignLeft)
+	statusLine.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Status.BgColor))
+	statusLine.SetTextColor(tcell.GetColor(colors.Cinnamon.Status.FgColor))
+
+	statusLabel := tview.NewTextView()
+	statusLabel.SetDynamicColors(true)
+	statusLabel.SetText(" » ")
+	statusLabel.SetTextAlign(tview.AlignLeft)
+	statusLabel.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Status.BgColor))
+	statusLabel.SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
+
+	statusBar := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(statusLabel, 3, 0, false).
+		AddItem(statusLine, 0, 1, false)
+
 	statusHistory := NewStatusHistory(colors)
 
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(header, headerHeight, 0, false).
-		AddItem(registry.UI.Pages, 0, mainProportion, true)
+		AddItem(registry.UI.Pages, 0, mainProportion, true).
+		AddItem(statusBar, 1, 0, false)
 
-	registry.UI.Pages.AddPage(StatusPopupPage, statusPopup.Flex, true, false)
 	registry.UI.Pages.AddPage(StatusHistoryPage, statusHistory.Flex, true, false)
 
 	return &Layout{
@@ -108,7 +127,8 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		Content:       main,
 		Header:        header,
 		Colors:        colors,
-		StatusPopup:   statusPopup,
+		StatusLine:    statusLine,
+		StatusBar:     statusBar,
 		StatusHistory: statusHistory,
 	}
 }

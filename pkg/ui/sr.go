@@ -63,8 +63,9 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 		),
 	)
 
+	// Iterate over the config slice to preserve order from config file
 	row := 0
-	for _, sr := range app.SchemaRegistries {
+	for _, sr := range app.Config.Cinnamon.SchemaRegistries {
 		table.
 			SetCell(row, 0, tview.NewTableCell(sr.Name)).
 			SetCell(row, 1, tview.NewTableCell(sr.SchemaRegistryURL))

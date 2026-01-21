@@ -511,6 +511,7 @@ func (app *App) CreateTopicResultHandler(
 			select {
 			case <-resultCh:
 				statusLineCh <- fmt.Sprintf("topic '%s' has been created", name)
+				Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 				cancel()
 				return
 			case err := <-errorCh:
@@ -636,6 +637,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 			select {
 			case <-resultCh:
 				statusLineCh <- fmt.Sprintf("topic '%s' has been deleted", name)
+				Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 				cancel()
 				return
 			case err := <-errorCh:

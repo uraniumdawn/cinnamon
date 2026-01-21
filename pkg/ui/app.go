@@ -56,7 +56,6 @@ type App struct {
 	Config                *config.Config
 	Colors                *config.ColorConfig
 	ModalHideTimer        *time.Timer
-	StatusPopupHideTimer  *time.Timer
 }
 
 type Selected struct {
@@ -152,34 +151,28 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
 				app.QueueUpdateDraw(func() {
 					if status != "" {
 						app.Layout.StatusHistory.AddEntry(status)
+						app.Layout.StatusLine.SetText(status)
+
+						// Auto-clear after 5 seconds
 						if statusLineTimer != nil {
 							statusLineTimer.Stop()
 						}
-					}
-
-					if status != "" {
-						app.ShowStatusPopup(status)
+						statusLineTimer = time.AfterFunc(5*time.Second, func() {
+							app.QueueUpdateDraw(func() {
+								app.Layout.StatusLine.SetText("")
+							})
+						})
+					} else {
+						// Clear status line immediately
+						app.Layout.StatusLine.SetText("")
+						if statusLineTimer != nil {
+							statusLineTimer.Stop()
+						}
 					}
 				})
 			}
 		}
 	}()
-}
-
-func (app *App) ShowStatusPopup(message string) {
-	if app.StatusPopupHideTimer != nil {
-		app.StatusPopupHideTimer.Stop()
-	}
-
-	app.Layout.StatusPopup.SetMessage(message)
-	app.Layout.PagesRegistry.UI.Pages.ShowPage(StatusPopupPage)
-	app.Layout.PagesRegistry.UI.Pages.SendToFront(StatusPopupPage)
-
-	app.StatusPopupHideTimer = time.AfterFunc(StatusPopupDuration, func() {
-		app.QueueUpdateDraw(func() {
-			app.Layout.PagesRegistry.UI.Pages.HidePage(StatusPopupPage)
-		})
-	})
 }
 
 func (app *App) Run() {
