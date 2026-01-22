@@ -19,23 +19,91 @@ import (
 	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
-func ParseShellCommand(templateStr, topic string) ([]string, error) {
+func ParseShellCommand(templateStr, topic, bootstrap string) ([]string, error) {
+	// Replace user-friendly {{bootstrap}} and {{topic}} with Go template syntax
+	templateStr = strings.ReplaceAll(templateStr, "{{bootstrap}}", "{{.bootstrap}}")
+	templateStr = strings.ReplaceAll(templateStr, "{{topic}}", "{{.topic}}")
+
 	tmpl, err := template.New("cmd").Parse(templateStr)
 	if err != nil {
 		return nil, err
 	}
 
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, map[string]string{"topic": topic})
+	err = tmpl.Execute(&buf, map[string]string{
+		"topic":     topic,
+		"bootstrap": bootstrap,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	expanded := buf.String()
 
-	// Split into args — use Fields to split on spaces
-	// If you need quotes preserved, use shellwords or shlex logic
-	args := strings.Fields(expanded)
+	// Split into args with proper quote handling
+	args, err := splitShellArgs(expanded)
+	if err != nil {
+		return nil, err
+	}
+
+	return args, nil
+}
+
+// splitShellArgs splits a command string into arguments, respecting quotes
+func splitShellArgs(s string) ([]string, error) {
+	var args []string
+	var current strings.Builder
+	var inSingleQuote, inDoubleQuote bool
+	var escaped bool
+
+	for i, r := range s {
+		if escaped {
+			current.WriteRune(r)
+			escaped = false
+			continue
+		}
+
+		switch r {
+		case '\\':
+			if inSingleQuote {
+				// Backslash in single quotes is literal
+				current.WriteRune(r)
+			} else {
+				// Mark next character as escaped
+				escaped = true
+			}
+		case '\'':
+			if inDoubleQuote {
+				current.WriteRune(r)
+			} else {
+				inSingleQuote = !inSingleQuote
+			}
+		case '"':
+			if inSingleQuote {
+				current.WriteRune(r)
+			} else {
+				inDoubleQuote = !inDoubleQuote
+			}
+		case ' ', '\t', '\n':
+			if inSingleQuote || inDoubleQuote {
+				current.WriteRune(r)
+			} else if current.Len() > 0 {
+				args = append(args, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+
+		// Check if we're at the end of the string
+		if i == len(s)-1 && current.Len() > 0 {
+			args = append(args, current.String())
+		}
+	}
+
+	if inSingleQuote || inDoubleQuote {
+		return nil, fmt.Errorf("unmatched quote in command")
+	}
 
 	return args, nil
 }

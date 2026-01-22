@@ -7,9 +7,8 @@ package shell
 
 import (
 	"bufio"
-	"bytes"
+	"errors"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 
@@ -43,14 +42,19 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 		return
 	}
 
+	// Channel to track when output reading is complete
+	done := make(chan bool, 2)
+
 	go func() {
 		scanner := bufio.NewScanner(stdoutPipe)
 		for scanner.Scan() {
 			rc <- scanner.Text()
 		}
+		// Only report error if it's not due to pipe being closed
 		if err := scanner.Err(); err != nil {
-			e <- "error reading stdout: " + err.Error()
+			log.Debug().Err(err).Msg("stdout scanner finished")
 		}
+		done <- true
 	}()
 
 	go func() {
@@ -58,50 +62,58 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 		for scanner.Scan() {
 			e <- scanner.Text()
 		}
+		// Only report error if it's not due to pipe being closed
 		if err := scanner.Err(); err != nil {
-			e <- "error reading stderr: " + err.Error()
+			log.Debug().Err(err).Msg("stderr scanner finished")
 		}
+		done <- true
 	}()
 
+	// Handle termination signals
 	go func() {
 		for s := range sig {
 			if s == 1 {
-				err := cmd.Process.Signal(syscall.SIGTERM)
-				if err != nil {
-					e <- "failed to send SIGTERM: " + err.Error()
-					log.Error().Err(err).Msg("SIGTERM failed")
-					return
-				}
-				e <- "SIGTERM sent. Waiting for graceful shutdown..."
-
-				time.AfterFunc(5*time.Second, func() {
-					if err := cmd.Process.Kill(); err == nil {
-						e <- "Command forcefully killed after timeout."
-						log.Warn().Msg("command killed after timeout")
+				// Send SIGTERM for graceful shutdown
+				if cmd.Process != nil {
+					err := cmd.Process.Signal(syscall.SIGTERM)
+					if err != nil {
+						log.Error().Err(err).Msg("SIGTERM failed")
+					} else {
+						log.Info().Msg("SIGTERM sent to process")
 					}
-				})
+
+					// Set up force kill after timeout
+					time.AfterFunc(5*time.Second, func() {
+						if cmd.Process != nil {
+							if err := cmd.Process.Kill(); err == nil {
+								log.Warn().Msg("process killed after timeout")
+							}
+						}
+					})
+				}
+				return
 			}
 		}
 	}()
 
+	// Wait for command to finish
 	if err := cmd.Wait(); err != nil {
-		log.Error().Err(err).Msg("failed to wait for command")
+		// Only log if it's not a signal-related exit
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				if status.Signaled() {
+					log.Debug().
+						Str("signal", status.Signal().String()).
+						Msg("process terminated by signal")
+				} else {
+					log.Debug().Int("code", status.ExitStatus()).Msg("process exited")
+				}
+			}
+		}
 	}
-}
 
-// ExecuteWithInput runs a command with the given input and returns the output.
-func ExecuteWithInput(input string, args []string) (string, error) {
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	if err != nil {
-		log.Error().Err(err).Str("stderr", stderr.String()).Msg("failed to run command with input")
-		return stderr.String(), err
-	}
-	return out.String(), nil
+	// Wait for both output readers to finish
+	<-done
+	<-done
 }

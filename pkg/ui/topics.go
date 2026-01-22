@@ -17,7 +17,6 @@ import (
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
-
 	"github.com/uraniumdawn/cinnamon/pkg/client"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
@@ -156,98 +155,10 @@ func (app *App) Topics() {
 							app.ShowModalPage(DeleteTopic)
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
-							row, _ := table.GetSelection()
-							topicName := table.GetCell(row, 0).Text
-							app.UpdateTopic(topicName)
-						}
-
 						if event.Key() == tcell.KeyRune && event.Rune() == 't' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.CliTemplates(topicName)
-						}
-
-						if event.Key() == tcell.KeyRune && event.Rune() == 'r' {
-							statusLineCh <- "consuming records..."
-							row, _ := table.GetSelection()
-							topicName := table.GetCell(row, 0).Text
-							rc := make(chan string)
-							sig := make(chan int, 1)
-
-							// consumer, _ := NewConsumer(app.Selected.Cluster,
-							// app.Selected.SchemaRegistry) go
-							// consumer.Consume(ConsumingParameters, topicName, rc,
-							// statusLineChannel, sig)
-
-							// args, err := util.ParseShellCommand(
-							// 	app.Selected.Cluster.Command,
-							// 	topicName,
-							// )
-							// if err != nil {
-							// 	log.Error().Msg("Failed to parse command")
-							// 	statusLineChannel <- "[red]Failed to parse command: " +
-							// err.Error()
-							// 	return event
-							// }
-
-							// go shell.Execute(args, rc, statusLineChannel, sig)
-
-							view := tview.NewTextView().
-								SetTextAlign(tview.AlignLeft).
-								SetDynamicColors(true).
-								SetWrap(true).
-								SetWordWrap(true).
-								SetMaxLines(1000).
-								SetScrollable(true)
-							view.
-								SetBorder(true).
-								SetBorderPadding(0, 0, 1, 0).
-								SetTitle(topicName)
-
-							view.SetInputCapture(
-								func(event *tcell.EventKey) *tcell.EventKey {
-									if event.Key() == tcell.KeyRune &&
-										event.Rune() == 'e' {
-										sig <- 1
-										sig <- 1
-									}
-									return event
-								},
-							)
-
-							app.AddToPagesRegistry(
-								fmt.Sprintf(
-									"%s:%s:%s:consume",
-									app.Selected.Cluster.Name,
-									Topic,
-									topicName,
-								),
-								view,
-								ConsumingMenu,
-								false,
-							)
-							run := true
-							go func() {
-								defer func() {
-									statusLineCh <- "consuming terminated"
-								}()
-								for run {
-									select {
-									case <-sig:
-										run = false
-									case record := <-rc:
-										_, _ = fmt.Fprintf(
-											view,
-											"%s\n\n",
-											record,
-										)
-										app.QueueUpdateDraw(func() {
-											view.ScrollToEnd()
-										})
-									}
-								}
-							}()
 						}
 
 						return event

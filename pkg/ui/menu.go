@@ -105,9 +105,21 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Cancel",
 	},
-	"cli_command": {
+	"cli_commands": {
 		Key:   "<t>",
-		Value: "CLI consume command",
+		Value: "CLI commands",
+	},
+	"execute_cli": {
+		Key:   "<e>",
+		Value: "Execute CLI command",
+	},
+	"copy_cli": {
+		Key:   "<c>",
+		Value: "Copy CLI command",
+	},
+	"terminate_cli": {
+		Key:   "<t>",
+		Value: "Terminate CLI command",
 	},
 	"q": {
 		Key:   "<q>",
@@ -122,8 +134,6 @@ const (
 	SchemaRegistriesPageMenu = "SchemaRegistriesPageMenu"
 	NodesPageMenu            = "NodesPageMenu"
 	TopicsPageMenu           = "TopicsPageMenu"
-	ConsumingMenu            = "ConsumingMenu"
-	ConsumingParamsPageMenu  = "ConsumingParamsPageMenu"
 	CreateTopicPageMenu      = "CreateTopicPageMenu"
 	DeleteTopicPageMenu      = "DeleteTopicPageMenu"
 	EditTopicPageMenu        = "EditTopicPageMenu"
@@ -132,6 +142,7 @@ const (
 	VersionsPageMenu         = "VersionsPageMenu"
 	FinalPageMenu            = "FinalPageMenu"
 	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
+	CliExecutePageMenu       = "CliExecutePageMenu"
 	StatusHistoryPageMenu    = "StatusHistoryPageMenu"
 )
 
@@ -146,13 +157,12 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			ResourcesPageMenu:       {"up", "dw", "select", "close"},
-			OpenedPagesMenu:         {"up", "dw", "select", "close"},
-			ConsumingParamsPageMenu: {"up", "dw", "select", "default", "close"},
-			CreateTopicPageMenu:     {"up", "dw", "select", "submit", "default", "close"},
-			EditTopicPageMenu:       {"up", "dw", "select", "submit", "close"},
-			DeleteTopicPageMenu:     {"confirm", "cancel"},
-			CliTemplatesPageMenu:    {"up", "dw", "select", "close"},
+			ResourcesPageMenu:    {"up", "dw", "select", "close"},
+			OpenedPagesMenu:      {"up", "dw", "select", "close"},
+			CreateTopicPageMenu:  {"up", "dw", "select", "submit", "default", "close"},
+			EditTopicPageMenu:    {"up", "dw", "select", "submit", "close"},
+			DeleteTopicPageMenu:  {"confirm", "cancel"},
+			CliTemplatesPageMenu: {"up", "dw", "copy_cli", "execute_cli", "close"},
 			ClustersPageMenu: {
 				"up",
 				"dw",
@@ -195,9 +205,9 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"create",
 				"delete",
 				"edit",
-				"cli_command",
+				"cli_commands",
 			},
-			ConsumingMenu: {"forward", "backward", "res", "params", "term"},
+			CliExecutePageMenu: {"terminate_cli"},
 			ConsumerGroupsPageMenu: {
 				"up",
 				"dw",

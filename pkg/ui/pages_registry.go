@@ -64,7 +64,6 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[SchemaRegistries] = SchemaRegistriesPageMenu
 	pr.PageMenuMap[Resources] = ResourcesPageMenu
 	pr.PageMenuMap[OpenedPages] = OpenedPagesMenu
-	pr.PageMenuMap[ConsumingParams] = ConsumingParamsPageMenu
 	pr.PageMenuMap[CreateTopic] = CreateTopicPageMenu
 	pr.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
 	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
