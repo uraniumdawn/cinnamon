@@ -132,6 +132,12 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 			statusLineCh <- "stopping command execution..."
 			return nil
 		}
+		if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
+			sig <- 2
+			statusLineCh <- "killing process and closing..."
+			app.RemoveFromPagesRegistry(pageName)
+			return nil
+		}
 		return event
 	})
 

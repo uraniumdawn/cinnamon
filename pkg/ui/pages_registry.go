@@ -208,3 +208,59 @@ func (app *App) IsCurrentPageSearchable() bool {
 	}
 	return false
 }
+
+func (app *App) RemoveFromPagesRegistry(name string) {
+	registry := app.Layout.PagesRegistry
+
+	// Remove from Pages
+	registry.UI.Pages.RemovePage(name)
+
+	// Remove from PageMenuMap
+	delete(registry.PageMenuMap, name)
+
+	// Remove from OpenedPages table
+	for i := 0; i < registry.UI.OpenedPages.GetRowCount(); i++ {
+		cell := registry.UI.OpenedPages.GetCell(i, 1)
+		if cell != nil && cell.Text == name {
+			registry.UI.OpenedPages.RemoveRow(i)
+			// Re-number remaining rows
+			for j := i; j < registry.UI.OpenedPages.GetRowCount(); j++ {
+				registry.UI.OpenedPages.SetCell(j, 0, tview.NewTableCell(strconv.Itoa(j)))
+			}
+			break
+		}
+	}
+
+	// Remove from History
+	for i, h := range registry.History {
+		if h == name {
+			registry.History = append(registry.History[:i], registry.History[i+1:]...)
+			if registry.CurrentPageIndex >= i && registry.CurrentPageIndex > 0 {
+				registry.CurrentPageIndex--
+			}
+			break
+		}
+	}
+
+	// Remove from SearchablePages
+	for i, p := range registry.SearchablePages {
+		if p == name {
+			registry.SearchablePages = append(
+				registry.SearchablePages[:i],
+				registry.SearchablePages[i+1:]...)
+			break
+		}
+	}
+
+	// Remove from cache
+	app.Cache.Delete(name)
+
+	// Switch to previous page if available
+	if len(registry.History) > 0 {
+		if registry.CurrentPageIndex >= len(registry.History) {
+			registry.CurrentPageIndex = len(registry.History) - 1
+		}
+		prevPage := registry.History[registry.CurrentPageIndex]
+		app.SwitchToPage(prevPage)
+	}
+}

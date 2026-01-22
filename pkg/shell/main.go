@@ -93,6 +93,17 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 				}
 				return
 			}
+			if s == 2 {
+				// Send SIGKILL for immediate termination
+				if cmd.Process != nil {
+					if err := cmd.Process.Kill(); err != nil {
+						log.Error().Err(err).Msg("SIGKILL failed")
+					} else {
+						log.Info().Msg("SIGKILL sent to process")
+					}
+				}
+				return
+			}
 		}
 	}()
 
