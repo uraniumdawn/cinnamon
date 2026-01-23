@@ -104,7 +104,7 @@ func (app *App) Topics() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "getting topics..."
+	SendStatusInfinite("getting topics...")
 	c.Topics(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -176,12 +176,12 @@ func (app *App) Topics() {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list topics")
-				statusLineCh <- fmt.Sprintf("[red]failed to list topics: %s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to list topics: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list topics")
-				statusLineCh <- "[red]timeout while to list topics"
+				SendStatusWithDefaultTTL("[red]timeout while to list topics")
 				return
 			}
 		}
@@ -193,7 +193,7 @@ func (app *App) Topic(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "getting topic description..."
+	SendStatusInfinite("getting topic description...")
 	c.DescribeTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -221,12 +221,12 @@ func (app *App) Topic(name string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe topic")
-				statusLineCh <- fmt.Sprintf("[red]failed to describe topic: %s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to describe topic: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing topic")
-				statusLineCh <- "[red]timeout while describing topic"
+				SendStatusWithDefaultTTL("[red]timeout while describing topic")
 				return
 			}
 		}
@@ -372,7 +372,7 @@ retention.ms=604800000`).
 			params.Config = parseConfig(configTextArea.GetText())
 
 			if err := params.validate(); err != nil {
-				statusLineCh <- fmt.Sprintf("[red]%s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]%s", err.Error()))
 				return event
 			}
 
@@ -413,7 +413,7 @@ func (app *App) CreateTopicResultHandler(
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "creating topic..."
+	SendStatusInfinite("creating topic...")
 	c.CreateTopic(name, numPartitions, replicationFactor, config, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -421,18 +421,18 @@ func (app *App) CreateTopicResultHandler(
 		for {
 			select {
 			case <-resultCh:
-				statusLineCh <- fmt.Sprintf("topic '%s' has been created", name)
+				SendStatusWithDefaultTTL(fmt.Sprintf("topic '%s' has been created", name))
 				Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to create topic")
-				statusLineCh <- fmt.Sprintf("[red]failed to create topic: %s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to create topic: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while creating topics")
-				statusLineCh <- "[red]timeout while creating topics"
+				SendStatusWithDefaultTTL("[red]timeout while creating topics")
 				return
 			}
 		}
@@ -444,7 +444,7 @@ func (app *App) UpdateTopic(topicName string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "fetching topic configuration..."
+	SendStatusInfinite("fetching topic configuration...")
 	c.DescribeTopic(topicName, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -460,12 +460,14 @@ func (app *App) UpdateTopic(topicName string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to fetch topic config")
-				statusLineCh <- fmt.Sprintf("[red]failed to fetch topic config: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to fetch topic config: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while fetching topic config")
-				statusLineCh <- "[red]timeout while fetching topic config"
+				SendStatusWithDefaultTTL("[red]timeout while fetching topic config")
 				return
 			}
 		}
@@ -480,7 +482,7 @@ func (app *App) UpdateTopicResultHandler(
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "updating topic configuration..."
+	SendStatusInfinite("updating topic configuration...")
 	c.UpdateTopicConfig(name, config, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -488,17 +490,19 @@ func (app *App) UpdateTopicResultHandler(
 		for {
 			select {
 			case <-resultCh:
-				statusLineCh <- fmt.Sprintf("topic '%s' config has been updated", name)
+				SendStatusWithDefaultTTL(fmt.Sprintf("topic '%s' config has been updated", name))
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to update topic configuration")
-				statusLineCh <- fmt.Sprintf("[red]failed to update topic configuration: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to update topic configuration: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while updating topic config")
-				statusLineCh <- "[red]timeout while updating topic config"
+				SendStatusWithDefaultTTL("[red]timeout while updating topic config")
 				return
 			}
 		}
@@ -539,7 +543,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "deleting topic..."
+	SendStatusInfinite("deleting topic...")
 	c.DeleteTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -547,18 +551,18 @@ func (app *App) DeleteTopicResultHandler(name string) {
 		for {
 			select {
 			case <-resultCh:
-				statusLineCh <- fmt.Sprintf("topic '%s' has been deleted", name)
+				SendStatusWithDefaultTTL(fmt.Sprintf("topic '%s' has been deleted", name))
 				Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to delete topic")
-				statusLineCh <- fmt.Sprintf("[red]failed to delete topic: %s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to delete topic: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while deleting topic")
-				statusLineCh <- "[red]timeout while deleting topic"
+				SendStatusWithDefaultTTL("[red]timeout while deleting topic")
 				return
 			}
 		}

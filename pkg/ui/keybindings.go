@@ -52,7 +52,7 @@ func (app *App) MainOperationKeyHandler() {
 					if _, ok := app.Layout.Search[currentPage]; ok {
 						app.Layout.ShowInlineSearch(currentPage)
 						app.SetFocus(app.Layout.Search[currentPage])
-						statusLineCh <- ""
+						SendStatusWithDefaultTTL("")
 						return nil
 					}
 				}

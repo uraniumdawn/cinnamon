@@ -61,32 +61,34 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 					)
 				case "tps", TopicsResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select cluster"
+						SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
 						continue
 					}
 					Publish(TopicsChannel, GetTopicsEventType, Payload{nil, false})
 				case "grs", CgroupsResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select cluster"
+						SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
 						continue
 					}
 					Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, false})
 				case "nds", NodesResourceEventType:
 					if !app.isClusterSelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select cluster"
+						SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
 						continue
 					}
 					Publish(NodesChannel, GetNodesEventType, Payload{nil, false})
 				case "sjs", SubjectsResourceEventType:
 					if !app.isSchemaRegistrySelected(app.Selected) {
-						statusLineCh <- "[red]to perform operation, select Schema Registry"
+						SendStatusWithDefaultTTL(
+							"[red]to perform operation, select Schema Registry",
+						)
 						continue
 					}
 					Publish(SubjectsChannel, GetSubjectsEventType, Payload{nil, false})
 				case "q!":
 					app.Stop()
 				default:
-					statusLineCh <- "invalid command"
+					SendStatusWithDefaultTTL("invalid command")
 				}
 			}
 		}

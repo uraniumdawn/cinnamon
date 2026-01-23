@@ -9,14 +9,17 @@ import (
 	"bufio"
 	"errors"
 	"os/exec"
+	"sync"
 	"syscall"
-	"time"
 
 	"github.com/rs/zerolog/log"
 )
 
 // Execute runs a shell command and streams output to channels.
-func Execute(args []string, rc, e chan string, sig chan int) {
+// processDone receives exit codes following Unix convention:
+// 0=success, 1-127=process error codes, 128+N=killed by signal N
+// (e.g., 143=SIGTERM, 137=SIGKILL)
+func Execute(args []string, rc, e chan string, sig chan syscall.Signal, processDone chan int) {
 	cmd := exec.Command(args[0], args[1:]...)
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -42,10 +45,15 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 		return
 	}
 
-	// Channel to track when output reading is complete
-	done := make(chan bool, 2)
+	var wg sync.WaitGroup
+	wg.Add(2) // Two goroutines: stdout and stderr readers
+
+	// Track which signal was received
+	var receivedSignal syscall.Signal
+	var signalOnce sync.Once
 
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stdoutPipe)
 		for scanner.Scan() {
 			rc <- scanner.Text()
@@ -54,10 +62,10 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 		if err := scanner.Err(); err != nil {
 			log.Debug().Err(err).Msg("stdout scanner finished")
 		}
-		done <- true
 	}()
 
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stderrPipe)
 		for scanner.Scan() {
 			e <- scanner.Text()
@@ -66,65 +74,91 @@ func Execute(args []string, rc, e chan string, sig chan int) {
 		if err := scanner.Err(); err != nil {
 			log.Debug().Err(err).Msg("stderr scanner finished")
 		}
-		done <- true
 	}()
 
 	// Handle termination signals
 	go func() {
 		for s := range sig {
-			if s == 1 {
-				// Send SIGTERM for graceful shutdown
-				if cmd.Process != nil {
-					err := cmd.Process.Signal(syscall.SIGTERM)
-					if err != nil {
-						log.Error().Err(err).Msg("SIGTERM failed")
-					} else {
-						log.Info().Msg("SIGTERM sent to process")
-					}
+			signalOnce.Do(func() {
+				if cmd.Process == nil {
+					return
+				}
 
-					// Set up force kill after timeout
-					time.AfterFunc(5*time.Second, func() {
-						if cmd.Process != nil {
-							if err := cmd.Process.Kill(); err == nil {
-								log.Warn().Msg("process killed after timeout")
-							}
-						}
-					})
+				// Store the received signal
+				receivedSignal = s
+
+				// Send the signal to the process
+				err := cmd.Process.Signal(s)
+				if err != nil {
+					errMsg := s.String() + " failed: " + err.Error()
+					e <- errMsg
+					log.Error().Err(err).Str("signal", s.String()).Msg("signal failed")
+				} else {
+					log.Info().Str("signal", s.String()).Msg("signal sent to process")
 				}
-				return
-			}
-			if s == 2 {
-				// Send SIGKILL for immediate termination
-				if cmd.Process != nil {
-					if err := cmd.Process.Kill(); err != nil {
-						log.Error().Err(err).Msg("SIGKILL failed")
-					} else {
-						log.Info().Msg("SIGKILL sent to process")
-					}
-				}
-				return
+			})
+			// Notify user if they try to send another signal
+			if receivedSignal != 0 {
+				e <- "Signal already sent, process is terminating..."
 			}
 		}
 	}()
 
 	// Wait for command to finish
-	if err := cmd.Wait(); err != nil {
-		// Only log if it's not a signal-related exit
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-				if status.Signaled() {
-					log.Debug().
-						Str("signal", status.Signal().String()).
-						Msg("process terminated by signal")
-				} else {
-					log.Debug().Int("code", status.ExitStatus()).Msg("process exited")
-				}
-			}
-		}
-	}
+	waitErr := cmd.Wait()
 
 	// Wait for both output readers to finish
-	<-done
-	<-done
+	wg.Wait()
+
+	// Determine exit code based on how process terminated
+	var exitCode int
+
+	// Check if user sent a signal
+	if receivedSignal != 0 {
+		exitCode = 128 + int(receivedSignal)
+		log.Debug().
+			Str("signal", receivedSignal.String()).
+			Int("exitCode", exitCode).
+			Msg("process terminated by user signal")
+	} else if waitErr == nil {
+		// Process completed successfully
+		exitCode = 0
+	} else {
+		// Process failed - extract exit code
+		exitCode = extractExitCode(waitErr)
+	}
+
+	// Signal that the process has terminated and all output has been consumed
+	if processDone != nil {
+		processDone <- exitCode
+	}
+}
+
+// extractExitCode extracts the exit code from a command wait error
+func extractExitCode(err error) int {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		return 1 // Generic error
+	}
+
+	status, ok := exitErr.Sys().(syscall.WaitStatus)
+	if !ok {
+		return 1 // Couldn't get status
+	}
+
+	if status.Signaled() {
+		// Process was killed by a signal (not from user)
+		signal := status.Signal()
+		exitCode := 128 + int(signal)
+		log.Debug().
+			Str("signal", signal.String()).
+			Int("exitCode", exitCode).
+			Msg("process terminated by signal")
+		return exitCode
+	}
+
+	// Process exited with error code
+	exitCode := status.ExitStatus()
+	log.Debug().Int("exitCode", exitCode).Msg("process exited with error")
+	return exitCode
 }

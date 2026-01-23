@@ -103,7 +103,7 @@ func (app *App) Subjects() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
-	statusLineCh <- "getting subjects..."
+	SendStatusInfinite("getting subjects...")
 	c.Subjects(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -156,12 +156,12 @@ func (app *App) Subjects() {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list subjects")
-				statusLineCh <- fmt.Sprintf("[red]failed to list subjects: %s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to list subjects: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list subjects")
-				statusLineCh <- "[red]timeout while to list subjects"
+				SendStatusWithDefaultTTL("[red]timeout while to list subjects")
 				return
 			}
 		}
@@ -174,7 +174,7 @@ func (app *App) Versions(subject string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
-	statusLineCh <- "getting subject's versions..."
+	SendStatusInfinite("getting subject's versions...")
 	c.VersionsBySubject(subject, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -226,12 +226,14 @@ func (app *App) Versions(subject string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list subject's versions")
-				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list subject's versions")
-				statusLineCh <- "[red]timeout while to list subject's versions"
+				SendStatusWithDefaultTTL("[red]timeout while to list subject's versions")
 				return
 			}
 		}
@@ -244,7 +246,7 @@ func (app *App) Schema(subject string, version int) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
-	statusLineCh <- "getting schema..."
+	SendStatusInfinite("getting schema...")
 	c.Schema(subject, version, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -280,7 +282,7 @@ func (app *App) Schema(subject string, version int) {
 					_, err := writer.Write([]byte(formattedSchema))
 					if err != nil {
 						log.Error().Err(err).Msg("failed to write formatted schema")
-						statusLineCh <- "[red]failed to write formatted schema"
+						SendStatusWithDefaultTTL("[red]failed to write formatted schema")
 					}
 					app.AddToPagesRegistry(
 						util.BuildPageKey(
@@ -297,12 +299,14 @@ func (app *App) Schema(subject string, version int) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list subject's versions")
-				statusLineCh <- fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list subject's versions")
-				statusLineCh <- "[red]tmeout while to list subject's versions"
+				SendStatusWithDefaultTTL("[red]tmeout while to list subject's versions")
 				return
 			}
 		}

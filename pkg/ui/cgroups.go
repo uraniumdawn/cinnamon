@@ -76,7 +76,7 @@ func (app *App) ConsumerGroups() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "getting consumer groups..."
+	SendStatusInfinite("getting consumer groups...")
 	c.ConsumerGroups(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -126,12 +126,14 @@ func (app *App) ConsumerGroups() {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list consumer groups")
-				statusLineCh <- fmt.Sprintf("[red]failed to list consumer groups: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to list consumer groups: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list consumer groups")
-				statusLineCh <- "[red]timeout while to list consumer groups"
+				SendStatusWithDefaultTTL("[red]timeout while to list consumer groups")
 				return
 			}
 		}
@@ -144,7 +146,7 @@ func (app *App) ConsumerGroup(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "getting consumer group description..."
+	SendStatusInfinite("getting consumer group description...")
 	c.DescribeConsumerGroup(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -178,12 +180,14 @@ func (app *App) ConsumerGroup(name string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe consumer group")
-				statusLineCh <- fmt.Sprintf("[red]failed to describe consumer group: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to describe consumer group: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing consumer group")
-				statusLineCh <- "[red]timeout while describing consumer group"
+				SendStatusWithDefaultTTL("[red]timeout while describing consumer group")
 				return
 			}
 		}

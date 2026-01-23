@@ -77,7 +77,7 @@ func (app *App) Nodes() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "getting nodes..."
+	SendStatusInfinite("getting nodes...")
 	c.DescribeCluster(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -115,12 +115,14 @@ func (app *App) Nodes() {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe cluster")
-				statusLineCh <- fmt.Sprintf("[red]failed to describe cluster: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to describe cluster: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing cluster")
-				statusLineCh <- "[red]timeout while describing cluster"
+				SendStatusWithDefaultTTL("[red]timeout while describing cluster")
 				return
 			}
 		}
@@ -133,7 +135,7 @@ func (app *App) Node(id, url string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	statusLineCh <- "getting node description..."
+	SendStatusInfinite("getting node description...")
 	c.DescribeNode(id, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -165,12 +167,12 @@ func (app *App) Node(id, url string) {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to describe node")
-				statusLineCh <- fmt.Sprintf("[red]failed to describe node: %s", err.Error())
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to describe node: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing node")
-				statusLineCh <- "[red]timeout while describing node"
+				SendStatusWithDefaultTTL("[red]timeout while describing node")
 				return
 			}
 		}

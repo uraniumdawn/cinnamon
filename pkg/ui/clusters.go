@@ -58,7 +58,7 @@ func (app *App) Cluster() {
 	c := app.KafkaClients[app.Selected.Cluster.Name]
 	rCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
-	statusLineCh <- "getting cluster description..."
+	SendStatusInfinite("getting cluster description...")
 	c.DescribeCluster(rCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -93,12 +93,14 @@ func (app *App) Cluster() {
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Send()
-				statusLineCh <- fmt.Sprintf("[red]failed to describe cluster: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to describe cluster: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing cluster")
-				statusLineCh <- "[red]timeout while describing cluster"
+				SendStatusWithDefaultTTL("[red]timeout while describing cluster")
 				return
 			}
 		}
@@ -143,7 +145,7 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 
 		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 			if !app.isClusterSelected(app.Selected) || app.Selected.Cluster.Name != clusterName {
-				statusLineCh <- "[red]to perform operation, select cluster"
+				SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
 				return event
 			}
 			Publish(ClustersChannel, GetClusterEventType, Payload{Force: true})

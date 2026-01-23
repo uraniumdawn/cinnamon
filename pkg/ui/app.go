@@ -132,55 +132,12 @@ func InitLogger() {
 	log.Logger = log.Output(consoleWriter).With().Caller().Logger()
 }
 
-var statusLineCh = make(chan string, 10)
-
-func ClearStatus() {
-	statusLineCh <- ""
-}
-
-var statusLineTimer *time.Timer
-
-func (app *App) RunStatusLineHandler(ctx context.Context, in chan string) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Info().Msg("shutting down status line handler")
-				return
-			case status := <-in:
-				app.QueueUpdateDraw(func() {
-					if status != "" {
-						app.Layout.StatusHistory.AddEntry(status)
-						app.Layout.StatusLine.SetText(status)
-
-						// Auto-clear after 5 seconds
-						if statusLineTimer != nil {
-							statusLineTimer.Stop()
-						}
-						statusLineTimer = time.AfterFunc(5*time.Second, func() {
-							app.QueueUpdateDraw(func() {
-								app.Layout.StatusLine.SetText("")
-							})
-						})
-					} else {
-						// Clear status line immediately
-						app.Layout.StatusLine.SetText("")
-						if statusLineTimer != nil {
-							statusLineTimer.Stop()
-						}
-					}
-				})
-			}
-		}
-	}()
-}
-
 func (app *App) Run() {
 	app.ApplyColors()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	app.RunResourcesEventHandler(ctx, ResourcesChannel)
-	app.RunStatusLineHandler(ctx, statusLineCh)
+	app.RunStatusLineHandler(ctx, StatusLineCh)
 	app.RunClusterEventHandler(ctx, ClustersChannel)
 	app.RunSchemaRegistriesEventHandler(ctx, SchemaRegistriesChannel)
 	app.RunNodesEventHandler(ctx, NodesChannel)

@@ -6,6 +6,8 @@ package ui
 
 import (
 	"fmt"
+	"syscall"
+	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell/v2"
@@ -34,7 +36,7 @@ func (app *App) CliTemplates(topicName string) {
 
 	bootstrap := app.Selected.Cluster.GetBootstrapServers()
 	if bootstrap == "" {
-		statusLineCh <- "[red]bootstrap.servers not found in cluster config"
+		SendStatusWithDefaultTTL("[red]bootstrap.servers not found in cluster config")
 		return
 	}
 
@@ -57,7 +59,9 @@ func (app *App) CliTemplates(topicName string) {
 				err := clipboard.WriteAll(command)
 				if err != nil {
 					log.Error().Err(err).Send()
-					statusLineCh <- fmt.Sprintf("[red]failed to copy to clipboard: %s", err.Error())
+					SendStatusWithDefaultTTL(
+						fmt.Sprintf("[red]failed to copy to clipboard: %s", err.Error()),
+					)
 				}
 			}
 			return nil
@@ -84,18 +88,18 @@ func (app *App) CliTemplates(topicName string) {
 func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	bootstrap := app.Selected.Cluster.GetBootstrapServers()
 	if bootstrap == "" {
-		statusLineCh <- "[red]bootstrap servers not configured"
+		SendStatusWithDefaultTTL("[red]bootstrap servers not configured")
 		log.Error().Msg("bootstrap servers not configured")
 		return
 	}
 
 	command := util.BuildCliCommand(commandTemplate, bootstrap, topicName)
-	log.Info().Str("command", command).Msg("executing CLI command")
-	statusLineCh <- fmt.Sprintf("executing command for topic '%s'...", topicName)
+	SendStatusInfinite(fmt.Sprintf("executing command for topic '%s'...", topicName))
 
 	rc := make(chan string, 100)
 	errCh := make(chan string, 10)
-	sig := make(chan int, 1)
+	sig := make(chan syscall.Signal, 1)
+	processDone := make(chan int, 1)
 
 	view := tview.NewTextView().
 		SetTextAlign(tview.AlignLeft).
@@ -128,14 +132,13 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 
 	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == 't' {
-			sig <- 1
-			statusLineCh <- "stopping command execution..."
+			sig <- syscall.SIGTERM
+			SendStatusWithDefaultTTL("stopping command execution...")
 			return nil
 		}
 		if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
-			sig <- 2
-			statusLineCh <- "killing process and closing..."
-			app.RemoveFromPagesRegistry(pageName)
+			sig <- syscall.SIGKILL
+			SendStatusWithDefaultTTL("killing process and closing...")
 			return nil
 		}
 		return event
@@ -143,7 +146,29 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 
 	// Execute command through shell to support pipes, redirects, etc.
 	args := []string{"sh", "-c", command}
-	go shell.Execute(args, rc, errCh, sig)
+	go shell.Execute(args, rc, errCh, sig, processDone)
+
+	// Listen for process termination
+	// Exit codes follow Unix convention: 0=success, 1-127=error, 128+N=killed by signal N
+	go func() {
+		exitCode := <-processDone
+		switch {
+		case exitCode == 0:
+			SendStatus("process completed successfully (exit code 0)", 2*time.Second)
+		case exitCode == 143: // 128 + 15 (SIGTERM)
+			SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second)
+		case exitCode == 137: // 128 + 9 (SIGKILL)
+			app.RemoveFromPagesRegistry(pageName)
+			SendStatus("process killed (SIGKILL)", 2*time.Second)
+		case exitCode >= 128:
+			// Killed by other signal
+			signal := exitCode - 128
+			SendStatus(fmt.Sprintf("process killed by signal %d", signal), 2*time.Second)
+		default:
+			// Process error (exit code 1-127)
+			SendStatus(fmt.Sprintf("process failed with exit code %d", exitCode), 2*time.Second)
+		}
+	}()
 
 	go func() {
 		for {
