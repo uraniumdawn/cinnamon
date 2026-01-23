@@ -28,6 +28,7 @@ type StatusPopup struct {
 }
 
 // NewStatusPopup creates a new status popup with the given color configuration.
+// Deprecated: use StatusView instead.
 func NewStatusPopup(colors *config.ColorConfig) *StatusPopup {
 	tv := tview.NewTextView()
 	tv.SetDynamicColors(true)

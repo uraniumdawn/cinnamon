@@ -155,7 +155,7 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 				})
 			case errMsg := <-errCh:
 				app.QueueUpdateDraw(func() {
-					_, _ = fmt.Fprintf(view, "[red]Error: %s[-]\n", errMsg)
+					_, _ = fmt.Fprintf(view, "%s\n", errMsg)
 					view.ScrollToEnd()
 				})
 			}
