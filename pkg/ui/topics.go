@@ -104,7 +104,7 @@ func (app *App) Topics() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("getting topics...")
+	SendStatusInfinite("getting topics")
 	c.Topics(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -193,7 +193,7 @@ func (app *App) Topic(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("getting topic description...")
+	SendStatusInfinite("getting topic description")
 	c.DescribeTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -413,7 +413,7 @@ func (app *App) CreateTopicResultHandler(
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("creating topic...")
+	SendStatusInfinite("creating topic")
 	c.CreateTopic(name, numPartitions, replicationFactor, config, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -444,7 +444,7 @@ func (app *App) UpdateTopic(topicName string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("fetching topic configuration...")
+	SendStatusInfinite("fetching topic configuration")
 	c.DescribeTopic(topicName, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -482,7 +482,7 @@ func (app *App) UpdateTopicResultHandler(
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("updating topic configuration...")
+	SendStatusInfinite("updating topic configuration")
 	c.UpdateTopicConfig(name, config, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -543,7 +543,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("deleting topic...")
+	SendStatusInfinite("deleting topic")
 	c.DeleteTopic(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

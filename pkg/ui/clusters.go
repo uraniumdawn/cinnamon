@@ -58,7 +58,7 @@ func (app *App) Cluster() {
 	c := app.KafkaClients[app.Selected.Cluster.Name]
 	rCh := make(chan *client.ClusterResult)
 	errorCh := make(chan error)
-	SendStatusInfinite("getting cluster description...")
+	SendStatusInfinite("getting cluster description")
 	c.DescribeCluster(rCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

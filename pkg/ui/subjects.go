@@ -246,7 +246,7 @@ func (app *App) Schema(subject string, version int) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentSchemaRegistryClient()
-	SendStatusInfinite("getting schema...")
+	SendStatusInfinite("getting schema")
 	c.Schema(subject, version, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

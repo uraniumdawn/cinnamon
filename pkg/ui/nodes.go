@@ -135,7 +135,7 @@ func (app *App) Node(id, url string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("getting node description...")
+	SendStatusInfinite("getting node description")
 	c.DescribeNode(id, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

@@ -76,7 +76,7 @@ func (app *App) ConsumerGroups() {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("getting consumer groups...")
+	SendStatusInfinite("getting consumer groups")
 	c.ConsumerGroups(resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
@@ -146,7 +146,7 @@ func (app *App) ConsumerGroup(name string) {
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("getting consumer group description...")
+	SendStatusInfinite("getting consumer group description")
 	c.DescribeConsumerGroup(name, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

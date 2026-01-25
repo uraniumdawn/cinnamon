@@ -22,8 +22,7 @@ type Status struct {
 var (
 	StatusLineCh    = make(chan Status, 10)
 	statusLineTimer *time.Timer
-
-	SpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	SpinnerFrames   = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 )
 
 // SendStatus sends a status message with the given TTL and spinner control

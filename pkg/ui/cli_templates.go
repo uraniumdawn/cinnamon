@@ -129,7 +129,6 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	pageName := util.BuildPageKey(command)
 	app.AddToPagesRegistry(pageName, view, CliExecutePageMenu, false)
 
-	// Spinner configuration (thread-safe using atomic)
 	spinnerIndex := 0
 	var isProcessActive int32 = 1 // 1 = active, 0 = inactive
 
@@ -158,7 +157,7 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 				return nil
 			}
 			sig <- syscall.SIGTERM
-			SendStatusInfinite("stopping execution...")
+			SendStatusInfinite("stopping execution")
 			return nil
 		}
 		if event.Key() == tcell.KeyCtrlK {
@@ -167,9 +166,18 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 				return nil
 			}
 			sig <- syscall.SIGKILL
-			SendStatusInfinite("killing process...")
+			SendStatusInfinite("killing process")
 			return nil
 		}
+		if event.Key() == tcell.KeyCtrlD {
+			if atomic.LoadInt32(&isProcessActive) == 1 {
+				SendStatus("process in not finished yet", 2*time.Second, false)
+				return nil
+			}
+			app.RemoveFromPagesRegistry(pageName)
+			return nil
+		}
+
 		return event
 	})
 
@@ -200,7 +208,6 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 				case exitCode == 143: // 128 + 15 (SIGTERM)
 					SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second, false)
 				case exitCode == 137: // 128 + 9 (SIGKILL)
-					app.RemoveFromPagesRegistry(pageName)
 					SendStatus("process killed (SIGKILL)", 2*time.Second, false)
 				case exitCode >= 128:
 					// Killed by other signal
