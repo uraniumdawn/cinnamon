@@ -58,7 +58,6 @@ func Execute(args []string, rc, e chan string, sig chan syscall.Signal, processD
 		for scanner.Scan() {
 			rc <- scanner.Text()
 		}
-		// Only report error if it's not due to pipe being closed
 		if err := scanner.Err(); err != nil {
 			log.Debug().Err(err).Msg("stdout scanner finished")
 		}
@@ -68,9 +67,9 @@ func Execute(args []string, rc, e chan string, sig chan syscall.Signal, processD
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderrPipe)
 		for scanner.Scan() {
-			e <- scanner.Text()
+			// Send stderr lines to the same record channel
+			rc <- scanner.Text()
 		}
-		// Only report error if it's not due to pipe being closed
 		if err := scanner.Err(); err != nil {
 			log.Debug().Err(err).Msg("stderr scanner finished")
 		}
@@ -84,10 +83,7 @@ func Execute(args []string, rc, e chan string, sig chan syscall.Signal, processD
 					return
 				}
 
-				// Store the received signal
 				receivedSignal = s
-
-				// Send the signal to the process
 				err := cmd.Process.Signal(s)
 				if err != nil {
 					errMsg := s.String() + " failed: " + err.Error()
@@ -96,21 +92,13 @@ func Execute(args []string, rc, e chan string, sig chan syscall.Signal, processD
 				} else {
 					log.Info().Str("signal", s.String()).Msg("signal sent to process")
 				}
+				return
 			})
-			// Notify user if they try to send another signal
-			if receivedSignal != 0 {
-				e <- "Signal already sent, process is terminating..."
-			}
 		}
 	}()
 
-	// Wait for command to finish
 	waitErr := cmd.Wait()
-
-	// Wait for both output readers to finish
 	wg.Wait()
-
-	// Determine exit code based on how process terminated
 	var exitCode int
 
 	// Check if user sent a signal
@@ -147,7 +135,6 @@ func extractExitCode(err error) int {
 	}
 
 	if status.Signaled() {
-		// Process was killed by a signal (not from user)
 		signal := status.Signal()
 		exitCode := 128 + int(signal)
 		log.Debug().

@@ -6,6 +6,7 @@ package ui
 
 import (
 	"fmt"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -94,7 +95,6 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	}
 
 	command := util.BuildCliCommand(commandTemplate, bootstrap, topicName)
-	SendStatusInfinite(fmt.Sprintf("executing command for topic '%s'...", topicName))
 
 	rc := make(chan string, 100)
 	errCh := make(chan string, 10)
@@ -115,30 +115,60 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	view.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
 
-	// Truncate title if command length exceeds 80% of screen width
-	title := fmt.Sprintf(" Executing: %s ", command)
+	// Prepare base title (truncate if needed)
+	baseTitle := command
 	_, _, screenWidth, _ := app.Layout.Content.GetRect()
 	if screenWidth == 0 {
 		screenWidth = 120 // default fallback
 	}
-	maxTitleLen := int(float64(screenWidth) * 0.8)
-	if len(title) > maxTitleLen && maxTitleLen > 4 {
-		title = title[:maxTitleLen-3] + "..."
+	maxTitleLen := int(float64(screenWidth)*0.8) - 6 // Reserve space for spinner
+	if len(baseTitle) > maxTitleLen && maxTitleLen > 4 {
+		baseTitle = baseTitle[:maxTitleLen-3] + "..."
 	}
-	view.SetTitle(title)
 
 	pageName := util.BuildPageKey(command)
 	app.AddToPagesRegistry(pageName, view, CliExecutePageMenu, false)
 
+	// Spinner configuration (thread-safe using atomic)
+	spinnerChars := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	spinnerIndex := 0
+	var isProcessActive int32 = 1 // 1 = active, 0 = inactive
+
+	// Spinner goroutine
+	go func() {
+		ticker := time.NewTicker(80 * time.Millisecond)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if atomic.LoadInt32(&isProcessActive) == 0 {
+				return
+			}
+			app.QueueUpdateDraw(func() {
+				if atomic.LoadInt32(&isProcessActive) == 1 {
+					view.SetTitle(fmt.Sprintf(" %s %s ", spinnerChars[spinnerIndex], baseTitle))
+				}
+			})
+			spinnerIndex = (spinnerIndex + 1) % len(spinnerChars)
+		}
+	}()
+
 	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == 't' {
+			if atomic.LoadInt32(&isProcessActive) == 0 {
+				SendStatus("process already finished", 2*time.Second)
+				return nil
+			}
 			sig <- syscall.SIGTERM
-			SendStatusWithDefaultTTL("stopping command execution...")
+			SendStatusInfinite("stopping execution...")
 			return nil
 		}
-		if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
+		if event.Key() == tcell.KeyCtrlK {
+			if atomic.LoadInt32(&isProcessActive) == 0 {
+				SendStatus("process already finished", 2*time.Second)
+				return nil
+			}
 			sig <- syscall.SIGKILL
-			SendStatusWithDefaultTTL("killing process and closing...")
+			SendStatusInfinite("killing process...")
 			return nil
 		}
 		return event
@@ -148,30 +178,10 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	args := []string{"sh", "-c", command}
 	go shell.Execute(args, rc, errCh, sig, processDone)
 
-	// Listen for process termination
+	// Single goroutine to handle all output and process termination
 	// Exit codes follow Unix convention: 0=success, 1-127=error, 128+N=killed by signal N
 	go func() {
-		exitCode := <-processDone
-		switch {
-		case exitCode == 0:
-			SendStatus("process completed successfully (exit code 0)", 2*time.Second)
-		case exitCode == 143: // 128 + 15 (SIGTERM)
-			SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second)
-		case exitCode == 137: // 128 + 9 (SIGKILL)
-			app.RemoveFromPagesRegistry(pageName)
-			SendStatus("process killed (SIGKILL)", 2*time.Second)
-		case exitCode >= 128:
-			// Killed by other signal
-			signal := exitCode - 128
-			SendStatus(fmt.Sprintf("process killed by signal %d", signal), 2*time.Second)
-		default:
-			// Process error (exit code 1-127)
-			SendStatus(fmt.Sprintf("process failed with exit code %d", exitCode), 2*time.Second)
-		}
-	}()
-
-	go func() {
-		for {
+		for isProcessActive == 1 {
 			select {
 			case record := <-rc:
 				app.QueueUpdateDraw(func() {
@@ -179,10 +189,40 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 					view.ScrollToEnd()
 				})
 			case errMsg := <-errCh:
+				SendStatusInfinite(errMsg)
+			case exitCode := <-processDone:
+				switch {
+				case exitCode == 0:
+					SendStatus(
+						"process completed successfully (exit code 0)",
+						2*time.Second,
+					)
+				case exitCode == 143: // 128 + 15 (SIGTERM)
+					SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second)
+				case exitCode == 137: // 128 + 9 (SIGKILL)
+					app.RemoveFromPagesRegistry(pageName)
+					SendStatus("process killed (SIGKILL)", 2*time.Second)
+				case exitCode >= 128:
+					// Killed by other signal
+					signal := exitCode - 128
+					SendStatus(
+						fmt.Sprintf("process killed by signal %d", signal),
+						2*time.Second,
+					)
+				default:
+					// Process error (exit code 1-127)
+					SendStatus(
+						fmt.Sprintf("process failed with exit code %d", exitCode),
+						2*time.Second,
+					)
+				}
+
+				// Stop spinner and update title (thread-safe)
+				atomic.StoreInt32(&isProcessActive, 0)
 				app.QueueUpdateDraw(func() {
-					_, _ = fmt.Fprintf(view, "%s\n", errMsg)
-					view.ScrollToEnd()
+					view.SetTitle(fmt.Sprintf(" %s ", baseTitle))
 				})
+				return
 			}
 		}
 	}()

@@ -119,11 +119,11 @@ var keys = map[string]Pair{
 	},
 	"terminate_cli": {
 		Key:   "<t>",
-		Value: "Terminate CLI command",
+		Value: "Terminate process ",
 	},
-	"close_cli": {
-		Key:   "<x>",
-		Value: "Remove (Kill process and remove page)",
+	"kill_cli": {
+		Key:   "<Ctrl+k>",
+		Value: "Kill process ",
 	},
 	"q": {
 		Key:   "<q>",
@@ -211,7 +211,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"edit",
 				"cli_commands",
 			},
-			CliExecutePageMenu: {"terminate_cli", "close_cli"},
+			CliExecutePageMenu: {"terminate_cli", "kill_cli"},
 			ConsumerGroupsPageMenu: {
 				"up",
 				"dw",
