@@ -16,37 +16,39 @@ import (
 type Status struct {
 	Message string
 	TTL     time.Duration // 0 means infinite (no auto-clear)
+	Spinner bool          // true to show spinner animation
 }
 
 var (
 	StatusLineCh    = make(chan Status, 10)
 	statusLineTimer *time.Timer
+
+	SpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 )
 
-// SendStatus sends a status message with the given TTL
-func SendStatus(message string, ttl time.Duration) {
-	StatusLineCh <- Status{Message: message, TTL: ttl}
+// SendStatus sends a status message with the given TTL and spinner control
+func SendStatus(message string, ttl time.Duration, spinner bool) {
+	StatusLineCh <- Status{Message: message, TTL: ttl, Spinner: spinner}
 }
 
-// SendStatusWithDefaultTTL sends a status message with 10 second TTL
+// SendStatusWithDefaultTTL sends a status message with 10 second TTL and spinner
 func SendStatusWithDefaultTTL(message string) {
-	StatusLineCh <- Status{Message: message, TTL: 10 * time.Second}
+	StatusLineCh <- Status{Message: message, TTL: 10 * time.Second, Spinner: true}
 }
 
-// SendStatusInfinite sends a status message that never auto-clears
+// SendStatusInfinite sends a status message that never auto-clears with spinner
 func SendStatusInfinite(message string) {
-	StatusLineCh <- Status{Message: message, TTL: 0}
+	StatusLineCh <- Status{Message: message, TTL: 0, Spinner: true}
 }
 
 // ClearStatus clears the status line immediately
 func ClearStatus() {
-	StatusLineCh <- Status{Message: "", TTL: 0}
+	StatusLineCh <- Status{Message: "", TTL: 0, Spinner: false}
 }
 
 // RunStatusLineHandler handles status messages with spinner animation
 func (app *App) RunStatusLineHandler(ctx context.Context, in chan Status) {
 	go func() {
-		spinnerFrames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 		spinnerTicker := time.NewTicker(100 * time.Millisecond)
 		defer spinnerTicker.Stop()
 
@@ -63,11 +65,21 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan Status) {
 				app.QueueUpdateDraw(func() {
 					if status.Message != "" {
 						currentStatus = status.Message
-						spinnerActive = true
+						spinnerActive = status.Spinner
 						app.Layout.StatusHistory.AddEntry(status.Message)
-						app.Layout.StatusLine.SetText(
-							fmt.Sprintf("%s %s", spinnerFrames[spinnerIdx], status.Message),
-						)
+
+						// Display with or without spinner based on status.Spinner
+						if status.Spinner {
+							app.Layout.StatusLine.SetText(
+								fmt.Sprintf(
+									"%s %s",
+									SpinnerFrames[spinnerIdx],
+									status.Message,
+								),
+							)
+						} else {
+							app.Layout.StatusLine.SetText(status.Message)
+						}
 
 						// Auto-clear based on TTL (0 means infinite)
 						if statusLineTimer != nil {
@@ -94,13 +106,13 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan Status) {
 				})
 			case <-spinnerTicker.C:
 				if spinnerActive {
-					spinnerIdx = (spinnerIdx + 1) % len(spinnerFrames)
+					spinnerIdx = (spinnerIdx + 1) % len(SpinnerFrames)
 					app.QueueUpdateDraw(func() {
 						if currentStatus != "" {
 							app.Layout.StatusLine.SetText(
 								fmt.Sprintf(
 									"%s %s",
-									spinnerFrames[spinnerIdx],
+									SpinnerFrames[spinnerIdx],
 									currentStatus,
 								),
 							)

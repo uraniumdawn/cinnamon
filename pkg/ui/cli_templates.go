@@ -130,7 +130,6 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	app.AddToPagesRegistry(pageName, view, CliExecutePageMenu, false)
 
 	// Spinner configuration (thread-safe using atomic)
-	spinnerChars := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	spinnerIndex := 0
 	var isProcessActive int32 = 1 // 1 = active, 0 = inactive
 
@@ -145,17 +144,17 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 			}
 			app.QueueUpdateDraw(func() {
 				if atomic.LoadInt32(&isProcessActive) == 1 {
-					view.SetTitle(fmt.Sprintf(" %s %s ", spinnerChars[spinnerIndex], baseTitle))
+					view.SetTitle(fmt.Sprintf(" %s %s ", SpinnerFrames[spinnerIndex], baseTitle))
 				}
 			})
-			spinnerIndex = (spinnerIndex + 1) % len(spinnerChars)
+			spinnerIndex = (spinnerIndex + 1) % len(SpinnerFrames)
 		}
 	}()
 
 	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune && event.Rune() == 't' {
 			if atomic.LoadInt32(&isProcessActive) == 0 {
-				SendStatus("process already finished", 2*time.Second)
+				SendStatus("process already finished", 2*time.Second, false)
 				return nil
 			}
 			sig <- syscall.SIGTERM
@@ -164,7 +163,7 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 		}
 		if event.Key() == tcell.KeyCtrlK {
 			if atomic.LoadInt32(&isProcessActive) == 0 {
-				SendStatus("process already finished", 2*time.Second)
+				SendStatus("process already finished", 2*time.Second, false)
 				return nil
 			}
 			sig <- syscall.SIGKILL
@@ -196,24 +195,27 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 					SendStatus(
 						"process completed successfully (exit code 0)",
 						2*time.Second,
+						false,
 					)
 				case exitCode == 143: // 128 + 15 (SIGTERM)
-					SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second)
+					SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second, false)
 				case exitCode == 137: // 128 + 9 (SIGKILL)
 					app.RemoveFromPagesRegistry(pageName)
-					SendStatus("process killed (SIGKILL)", 2*time.Second)
+					SendStatus("process killed (SIGKILL)", 2*time.Second, false)
 				case exitCode >= 128:
 					// Killed by other signal
 					signal := exitCode - 128
 					SendStatus(
 						fmt.Sprintf("process killed by signal %d", signal),
 						2*time.Second,
+						false,
 					)
 				default:
 					// Process error (exit code 1-127)
 					SendStatus(
 						fmt.Sprintf("process failed with exit code %d", exitCode),
 						2*time.Second,
+						false,
 					)
 				}
 
