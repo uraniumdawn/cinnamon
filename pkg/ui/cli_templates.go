@@ -193,7 +193,6 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 		errChClosed := false
 		processDoneReceived := false
 
-		// Helper to check if we should exit the loop
 		shouldExit := func() bool {
 			return rcClosed && errChClosed && processDoneReceived
 		}

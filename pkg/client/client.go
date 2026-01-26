@@ -81,8 +81,8 @@ func NewClient(config *config.ClusterConfig, timeout time.Duration) (*Client, er
 
 	logChan := make(chan kafka.LogEvent)
 
-	// _ = conf.SetKey("go.logs.channel.enable", true)
-	// _ = conf.SetKey("go.logs.channel", logChan)
+	_ = conf.SetKey("go.logs.channel.enable", true)
+	_ = conf.SetKey("go.logs.channel", logChan)
 
 	go func() {
 		for logEvent := range logChan {
