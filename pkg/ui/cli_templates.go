@@ -188,51 +188,74 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	// Single goroutine to handle all output and process termination
 	// Exit codes follow Unix convention: 0=success, 1-127=error, 128+N=killed by signal N
 	go func() {
-		for isProcessActive == 1 {
+		var exitCode int
+		rcClosed := false
+		errChClosed := false
+		processDoneReceived := false
+
+		// Helper to check if we should exit the loop
+		shouldExit := func() bool {
+			return rcClosed && errChClosed && processDoneReceived
+		}
+
+		// Process messages until both channels are closed AND processDone is received
+		for !shouldExit() {
 			select {
-			case record := <-rc:
+			case record, ok := <-rc:
+				if !ok {
+					rcClosed = true
+					continue
+				}
 				app.QueueUpdateDraw(func() {
 					_, _ = fmt.Fprintf(view, "%s\n", record)
 					view.ScrollToEnd()
 				})
-			case errMsg := <-errCh:
-				SendStatusInfinite(errMsg)
-			case exitCode := <-processDone:
-				switch {
-				case exitCode == 0:
-					SendStatus(
-						"process completed successfully (exit code 0)",
-						2*time.Second,
-						false,
-					)
-				case exitCode == 143: // 128 + 15 (SIGTERM)
-					SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second, false)
-				case exitCode == 137: // 128 + 9 (SIGKILL)
-					SendStatus("process killed (SIGKILL)", 2*time.Second, false)
-				case exitCode >= 128:
-					// Killed by other signal
-					signal := exitCode - 128
-					SendStatus(
-						fmt.Sprintf("process killed by signal %d", signal),
-						2*time.Second,
-						false,
-					)
-				default:
-					// Process error (exit code 1-127)
-					SendStatus(
-						fmt.Sprintf("process failed with exit code %d", exitCode),
-						2*time.Second,
-						false,
-					)
+
+			case errMsg, ok := <-errCh:
+				if !ok {
+					errChClosed = true
+					continue
 				}
+				SendStatusInfinite(errMsg)
+
+			case exitCode = <-processDone:
+				processDoneReceived = true
 
 				// Stop spinner and update title (thread-safe)
 				atomic.StoreInt32(&isProcessActive, 0)
 				app.QueueUpdateDraw(func() {
 					view.SetTitle(fmt.Sprintf(" %s ", baseTitle))
 				})
-				return
 			}
+		}
+
+		// Show final status message based on exit code
+		switch {
+		case exitCode == 0:
+			SendStatus(
+				"process completed successfully (exit code 0)",
+				2*time.Second,
+				false,
+			)
+		case exitCode == 143: // 128 + 15 (SIGTERM)
+			SendStatus("process stopped gracefully (SIGTERM)", 2*time.Second, false)
+		case exitCode == 137: // 128 + 9 (SIGKILL)
+			SendStatus("process killed (SIGKILL)", 2*time.Second, false)
+		case exitCode >= 128:
+			// Killed by other signal
+			signal := exitCode - 128
+			SendStatus(
+				fmt.Sprintf("process killed by signal %d", signal),
+				2*time.Second,
+				false,
+			)
+		default:
+			// Process error (exit code 1-127)
+			SendStatus(
+				fmt.Sprintf("process failed with exit code %d", exitCode),
+				2*time.Second,
+				false,
+			)
 		}
 	}()
 }

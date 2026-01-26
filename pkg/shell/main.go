@@ -99,6 +99,11 @@ func Execute(args []string, rc, e chan string, sig chan syscall.Signal, processD
 
 	waitErr := cmd.Wait()
 	wg.Wait()
+
+	// Close output channels to signal that all output has been consumed
+	close(rc)
+	close(e)
+
 	var exitCode int
 
 	// Check if user sent a signal
