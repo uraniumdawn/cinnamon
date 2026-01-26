@@ -1,4 +1,6 @@
 cinnamon:
+  api:
+    timeout: 10000  # API call timeout in seconds
   clusters:
     - name: prod
       properties:

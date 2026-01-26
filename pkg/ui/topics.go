@@ -106,7 +106,7 @@ func (app *App) Topics() {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("getting topics")
 	c.Topics(resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -195,7 +195,7 @@ func (app *App) Topic(name string) {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("getting topic description")
 	c.DescribeTopic(name, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -415,7 +415,7 @@ func (app *App) CreateTopicResultHandler(
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("creating topic")
 	c.CreateTopic(name, numPartitions, replicationFactor, config, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -446,7 +446,7 @@ func (app *App) UpdateTopic(topicName string) {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("fetching topic configuration")
 	c.DescribeTopic(topicName, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -484,7 +484,7 @@ func (app *App) UpdateTopicResultHandler(
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("updating topic configuration")
 	c.UpdateTopicConfig(name, config, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -545,7 +545,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("deleting topic")
 	c.DeleteTopic(name, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {

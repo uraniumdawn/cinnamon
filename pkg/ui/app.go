@@ -24,7 +24,6 @@ import (
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
-const timeout = time.Second * 10
 const (
 	Resources        = "Resources"
 	Clusters         = "Clusters"
@@ -235,7 +234,8 @@ func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
 	_, exists := app.KafkaClients[cluster.Name]
 	if !exists {
 		var err error
-		newClient, err := client.NewClient(cluster)
+		timeout := app.Config.GetAPICallTimeout()
+		newClient, err := client.NewClient(cluster, timeout)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create admin client")
 			os.Exit(1)

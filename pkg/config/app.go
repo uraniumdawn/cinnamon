@@ -7,6 +7,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
@@ -22,7 +23,12 @@ type Config struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
 		CliTemplates     []string                `yaml:"cli_templates,omitempty"`
+		API              ApiConfig               `yaml:"api,omitempty"`
 	} `yaml:"cinnamon"`
+}
+
+type ApiConfig struct {
+	Timeout int `yaml:"timeout"`
 }
 
 type ClusterConfig struct {
@@ -36,6 +42,15 @@ func (c *ClusterConfig) GetBootstrapServers() string {
 		return bootstrap
 	}
 	return ""
+}
+
+// GetAPICallTimeout returns the API call timeout duration.
+// Returns 10 seconds as default if not configured or invalid.
+func (c *Config) GetAPICallTimeout() time.Duration {
+	if c.Cinnamon.API.Timeout <= 0 {
+		return 10 * time.Second
+	}
+	return time.Duration(c.Cinnamon.API.Timeout) * time.Second
 }
 
 // SchemaRegistryConfig holds Schema Registry connection properties.

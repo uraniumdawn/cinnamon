@@ -105,7 +105,7 @@ func (app *App) Subjects() {
 	c := app.GetCurrentSchemaRegistryClient()
 	SendStatusInfinite("getting subjects...")
 	c.Subjects(resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -176,7 +176,7 @@ func (app *App) Versions(subject string) {
 	c := app.GetCurrentSchemaRegistryClient()
 	SendStatusInfinite("getting subject's versions...")
 	c.VersionsBySubject(subject, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -248,7 +248,7 @@ func (app *App) Schema(subject string, version int) {
 	c := app.GetCurrentSchemaRegistryClient()
 	SendStatusInfinite("getting schema")
 	c.Schema(subject, version, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {

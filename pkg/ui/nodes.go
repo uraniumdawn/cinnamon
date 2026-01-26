@@ -79,7 +79,7 @@ func (app *App) Nodes() {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("getting nodes...")
 	c.DescribeCluster(resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -137,7 +137,7 @@ func (app *App) Node(id, url string) {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("getting node description")
 	c.DescribeNode(id, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {

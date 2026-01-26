@@ -60,7 +60,7 @@ func (app *App) Cluster() {
 	errorCh := make(chan error)
 	SendStatusInfinite("getting cluster description")
 	c.DescribeCluster(rCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {

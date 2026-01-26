@@ -19,8 +19,6 @@ import (
 	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
-const timeout = time.Second * 10
-
 // ClusterResult contains the cluster description result with cluster name.
 type ClusterResult struct {
 	Name string
@@ -71,10 +69,11 @@ type TopicPartition struct {
 // Client wraps the Kafka AdminClient with cluster name context.
 type Client struct {
 	ClusterName string
+	Timeout     time.Duration
 	*kafka.AdminClient
 }
 
-func NewClient(config *config.ClusterConfig) (*Client, error) {
+func NewClient(config *config.ClusterConfig, timeout time.Duration) (*Client, error) {
 	conf := &kafka.ConfigMap{}
 	for key, value := range config.Properties {
 		_ = conf.SetKey(key, value)
@@ -97,13 +96,17 @@ func NewClient(config *config.ClusterConfig) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{ClusterName: config.Name, AdminClient: adminClient}, nil
+	return &Client{
+		ClusterName: config.Name,
+		Timeout:     timeout,
+		AdminClient: adminClient,
+	}, nil
 }
 
 // DescribeCluster retrieves cluster description including nodes and authorized operations.
 func (client *Client) DescribeCluster(resultChan chan<- *ClusterResult, errorChan chan<- error) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		clusterDesc, err := client.AdminClient.DescribeCluster(
@@ -126,7 +129,7 @@ func (client *Client) DescribeNode(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		resourceType, err := kafka.ResourceTypeFromString("broker")
@@ -140,7 +143,7 @@ func (client *Client) DescribeNode(
 			[]kafka.ConfigResource{
 				{Type: resourceType, Name: brokerID},
 			},
-			kafka.SetAdminRequestTimeout(timeout),
+			kafka.SetAdminRequestTimeout(client.Timeout),
 		)
 		if err != nil {
 			errorChan <- fmt.Errorf("failed to describe configs: %w", err)
@@ -159,7 +162,7 @@ func (client *Client) DescribeNode(
 
 func (client *Client) Topics(resultChan chan<- *TopicsResult, errorChan chan<- error) {
 	go func() {
-		metadata, err := client.GetMetadata(nil, true, int(timeout.Milliseconds()))
+		metadata, err := client.GetMetadata(nil, true, int(client.Timeout.Milliseconds()))
 		if err != nil {
 			errorChan <- err
 			return
@@ -181,7 +184,7 @@ func (client *Client) ConsumerGroups(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		groups, err := client.ListConsumerGroups(ctx)
@@ -204,7 +207,7 @@ func (client *Client) CreateTopic(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		topicSpec := kafka.TopicSpecification{
@@ -217,7 +220,7 @@ func (client *Client) CreateTopic(
 		results, err := client.CreateTopics(
 			ctx,
 			[]kafka.TopicSpecification{topicSpec},
-			kafka.SetAdminRequestTimeout(timeout),
+			kafka.SetAdminRequestTimeout(client.Timeout),
 		)
 		if err != nil {
 			errorChan <- err
@@ -241,13 +244,13 @@ func (client *Client) DeleteTopic(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		results, err := client.DeleteTopics(
 			ctx,
 			[]string{name},
-			kafka.SetAdminRequestTimeout(timeout),
+			kafka.SetAdminRequestTimeout(client.Timeout),
 		)
 		if err != nil {
 			errorChan <- err
@@ -272,7 +275,7 @@ func (client *Client) UpdateTopicConfig(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		resourceType, err := kafka.ResourceTypeFromString("topic")
@@ -299,7 +302,7 @@ func (client *Client) UpdateTopicConfig(
 		results, err := client.IncrementalAlterConfigs(
 			ctx,
 			[]kafka.ConfigResource{configResource},
-			kafka.SetAdminRequestTimeout(timeout),
+			kafka.SetAdminRequestTimeout(client.Timeout),
 		)
 		if err != nil {
 			errorChan <- err
@@ -323,7 +326,7 @@ func (client *Client) DescribeConsumerGroup(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		result := &DescribeConsumerGroupResult{}
@@ -461,7 +464,7 @@ func (client *Client) DescribeTopic(
 	errorChan chan<- error,
 ) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		topicResult := &TopicResult{}
@@ -553,7 +556,7 @@ func (client *Client) DescribeTopic(
 }
 
 func (client *Client) DescribeTopicConfig(name string) (*[]kafka.ConfigResourceResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 	defer cancel()
 
 	resourceType, err := kafka.ResourceTypeFromString("topic")
@@ -566,7 +569,7 @@ func (client *Client) DescribeTopicConfig(name string) (*[]kafka.ConfigResourceR
 		[]kafka.ConfigResource{
 			{Type: resourceType, Name: name},
 		},
-		kafka.SetAdminRequestTimeout(timeout),
+		kafka.SetAdminRequestTimeout(client.Timeout),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe configs: %w", err)

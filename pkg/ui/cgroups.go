@@ -78,7 +78,7 @@ func (app *App) ConsumerGroups() {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("getting consumer groups")
 	c.ConsumerGroups(resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -148,7 +148,7 @@ func (app *App) ConsumerGroup(name string) {
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("getting consumer group description")
 	c.DescribeConsumerGroup(name, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
