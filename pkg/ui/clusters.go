@@ -36,8 +36,7 @@ func (app *App) RunClusterEventHandler(ctx context.Context, in chan Event) {
 					app.QueueUpdateDraw(func() {
 						ct := app.NewClustersTable()
 						app.ClustersTableInputHandler(ct)
-						app.Layout.PagesRegistry.UI.Pages.AddPage(Clusters, ct, true, false)
-						app.SwitchToPage(Clusters)
+						app.AddToPagesRegistry(Clusters, ct, ClustersPageMenu, false)
 					})
 				case GetClusterEventType:
 					pageName := util.BuildPageKey(app.Selected.Cluster.Name, "info")
