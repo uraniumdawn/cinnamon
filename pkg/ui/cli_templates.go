@@ -126,7 +126,20 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 		baseTitle = baseTitle[:maxTitleLen-3] + "..."
 	}
 
-	pageName := util.BuildPageKey(command)
+	// Create a shorter page name for display in Opened Pages window
+	// Calculate based on 80% of OpenedPages modal width
+	// Modal is ~71% of screen width (5/7 flex ratio), minus borders and padding
+	pageName := command
+	modalWidth := int(float64(screenWidth) * 0.71)
+	maxPageNameLen := int(float64(modalWidth) * 0.8)
+	if maxPageNameLen < 30 {
+		maxPageNameLen = 30 // minimum reasonable length
+	}
+	if len(pageName) > maxPageNameLen {
+		pageName = pageName[:maxPageNameLen-3] + "..."
+	}
+	pageName = util.BuildPageKey(pageName)
+
 	app.AddToPagesRegistry(pageName, view, CliExecutePageMenu, false)
 
 	spinnerIndex := 0
