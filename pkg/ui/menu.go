@@ -118,8 +118,8 @@ var keys = map[string]Pair{
 		Value: "Kill process",
 	},
 	"remove_page": {
-		Key:   "<Ctrl+d>",
-		Value: "Remove age",
+		Key:   "<x>",
+		Value: "Remove page",
 	},
 	"q": {
 		Key:   "<q>",
@@ -157,7 +157,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Flex:    flex,
 		Map: &map[string]*[]string{
 			ResourcesPageMenu:    {"up", "dw", "select", "close"},
-			OpenedPagesMenu:      {"up", "dw", "close"},
+			OpenedPagesMenu:      {"up", "dw", "remove_page", "close"},
 			CreateTopicPageMenu:  {"up", "dw", "select", "submit", "default", "close"},
 			EditTopicPageMenu:    {"up", "dw", "select", "submit", "close"},
 			DeleteTopicPageMenu:  {"confirm", "cancel"},

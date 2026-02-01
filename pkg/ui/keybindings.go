@@ -42,6 +42,37 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 				}
 				app.HideModalPage(OpenedPages)
 			}
+
+			if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
+				row, _ := table.GetSelection()
+				if row >= 0 && row < table.GetRowCount() {
+					cell := table.GetCell(row, 1)
+					if cell != nil {
+						pageName := cell.Text
+
+						// Prevent deletion of Clusters page - it should always be present
+						if pageName == Clusters {
+							SendStatusWithDefaultTTL("Clusters page cannot be deleted")
+							return nil
+						}
+
+						app.RemoveFromPagesRegistry(pageName)
+
+						// Select the target row and keep modal open
+						// After deletion, try to select the previous row, or stay at 0
+						targetRow := row
+						if row > 0 {
+							targetRow = row - 1
+						}
+						if targetRow >= table.GetRowCount() {
+							targetRow = table.GetRowCount() - 1
+						}
+						table.Select(targetRow, 0)
+					}
+				}
+				return nil
+			}
+
 			return event
 		},
 	)
