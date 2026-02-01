@@ -148,28 +148,28 @@ func NewConfirmationModal(p tview.Primitive) tview.Primitive {
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
 			AddItem(p, 3, 0, true).
-			AddItem(nil, 0, 3, false), 0, 2, true).
+			AddItem(nil, 0, 9, false), 0, 2, true).
 		AddItem(nil, 1, 0, false)
 }
 
 func NewResourceModal(p tview.Primitive) tview.Primitive {
 	return tview.NewFlex().
-		AddItem(nil, 0, 9, false).
+		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 1, 0, false).
+			AddItem(nil, 0, 1, false).
 			AddItem(p, 8, 0, true).
-			AddItem(nil, 0, 8, false), 0, 2, true).
-		AddItem(nil, 2, 0, false)
+			AddItem(nil, 0, 9, false), 0, 2, true).
+		AddItem(nil, 0, 1, false)
 }
 
 func NewTopicModal(p tview.Primitive) tview.Primitive {
 	return tview.NewFlex().
-		AddItem(nil, 0, 2, false).
+		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 1, 0, false).
-			AddItem(p, 0, 1, true).
-			AddItem(nil, 0, 2, false), 0, 2, true).
-		AddItem(nil, 2, 6, false)
+			AddItem(nil, 0, 1, false).
+			AddItem(p, 0, 2, true).
+			AddItem(nil, 0, 2, false), 0, 5, true).
+		AddItem(nil, 0, 1, false)
 }
 
 func GetInt64(inputField *tview.InputField) int64 {
