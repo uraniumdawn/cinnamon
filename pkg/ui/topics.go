@@ -139,16 +139,12 @@ func (app *App) Topics() {
 							)
 						}
 
-						//if event.Key() == tcell.KeyRune && event.Rune() == 'p' {
-						//	app.ShowModalPage(ConsumingParams)
-						//}
-
 						if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
 							app.CreateTopic()
 							app.ShowModalPage(CreateTopic)
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
+						if event.Key() == tcell.KeyCtrlD {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.DeleteTopic(topicName)

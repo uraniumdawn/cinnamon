@@ -39,7 +39,7 @@ func NewPagesRegistry(_ *config.ColorConfig) *PagesRegistry {
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
-		SetTitle(" Pages ")
+		SetTitle(" Opened pages ")
 
 	pages := tview.NewPages()
 
@@ -68,7 +68,6 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
 	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
-	pr.PageMenuMap[StatusHistoryPage] = StatusHistoryPageMenu
 }
 
 func (app *App) CheckInCache(name string, onAbsent func()) {

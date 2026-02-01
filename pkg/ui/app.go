@@ -36,7 +36,6 @@ const (
 	ConsumerGroup    = "Consumer group"
 	Subjects         = "Subjects"
 	OpenedPages      = "Opened pages"
-	ConsumingParams  = "Consuming Parameters"
 	CreateTopic      = "Create Topic"
 	DeleteTopic      = "Delete Topic"
 	EditTopic        = "Edit Topic"
@@ -183,7 +182,6 @@ func (app *App) Run() {
 	)
 
 	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
-	app.StatusHistoryKeyHandler(app.Layout.StatusHistory.View)
 	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()

@@ -46,7 +46,7 @@ var keys = map[string]Pair{
 		Value: "Resources",
 	},
 	"opened": {
-		Key:   "<Ctrl+p>",
+		Key:   "<p>",
 		Value: "Opened Pages",
 	},
 	"search": {
@@ -82,7 +82,7 @@ var keys = map[string]Pair{
 		Value: "Create Topic",
 	},
 	"delete": {
-		Key:   "<x>",
+		Key:   "<Ctrl+d>",
 		Value: "Delete Topic",
 	},
 	"edit": {
@@ -151,7 +151,6 @@ const (
 	FinalPageMenu            = "FinalPageMenu"
 	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
 	CliExecutePageMenu       = "CliExecutePageMenu"
-	StatusHistoryPageMenu    = "StatusHistoryPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -176,8 +175,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dw",
 				"select",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 				"dsc",
 			},
@@ -186,16 +183,12 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dw",
 				"select",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 			},
 			NodesPageMenu: {
 				"up",
 				"dw",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 				"dsc",
 				"upd",
@@ -204,8 +197,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"up",
 				"dw",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 				"dsc",
 				"search",
@@ -221,8 +212,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dw",
 				"select",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 				"dsc",
 				"search",
@@ -233,8 +222,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dw",
 				"select",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 				"search",
 				"upd",
@@ -243,14 +230,11 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"up",
 				"dw",
 				"res",
-				"forward",
-				"backward",
 				"opened",
 				"dsc",
 				"upd",
 			},
-			StatusHistoryPageMenu: {"close"},
-			FinalPageMenu:         {"res", "forward", "backward", "opened", "upd"},
+			FinalPageMenu: {"res", "opened", "upd"},
 		},
 		Colors: colors,
 	}

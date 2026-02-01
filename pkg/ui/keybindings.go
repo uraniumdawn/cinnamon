@@ -10,27 +10,37 @@ import (
 )
 
 func (app *App) OpenPagesKeyHandler(table *tview.Table) {
+	table.SetSelectionChangedFunc(func(row, column int) {
+		if row >= 0 && row < table.GetRowCount() {
+			cell := table.GetCell(row, 1)
+			if cell != nil {
+				pageName := cell.Text
+				if _, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
+					// Keep menu as OpenedPagesMenu while browsing
+					app.Layout.Menu.SetMenu(OpenedPagesMenu)
+					app.Layout.PagesRegistry.UI.Pages.SwitchToPage(pageName)
+					// Keep the modal visible and in front
+					app.Layout.PagesRegistry.UI.Pages.ShowPage(OpenedPages)
+					app.Layout.PagesRegistry.UI.Pages.SendToFront(OpenedPages)
+				}
+			}
+		}
+	})
+
 	table.SetInputCapture(
 		func(event *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyEnter {
+			if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyEnter {
 				row, _ := table.GetSelection()
-				page := table.GetCell(row, 1).Text
-				app.SwitchToPage(page)
+				if row >= 0 && row < table.GetRowCount() {
+					cell := table.GetCell(row, 1)
+					if cell != nil {
+						pageName := cell.Text
+						if menu, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
+							app.Layout.Menu.SetMenu(menu)
+						}
+					}
+				}
 				app.HideModalPage(OpenedPages)
-			}
-			if event.Key() == tcell.KeyEsc {
-				app.HideModalPage(OpenedPages)
-			}
-			return event
-		},
-	)
-}
-
-func (app *App) StatusHistoryKeyHandler(view *tview.TextView) {
-	view.SetInputCapture(
-		func(event *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyEsc {
-				app.HideModalPage(StatusHistoryPage)
 			}
 			return event
 		},
@@ -59,22 +69,17 @@ func (app *App) MainOperationKeyHandler() {
 			}
 		}
 
-		if event.Key() == tcell.KeyCtrlP {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'p' && !app.IsSearchInFocus() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		// Disable
-		//if event.Key() == tcell.KeyCtrlO {
-		//	app.ShowModalPage(StatusHistoryPage)
+		//if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
+		//	app.Backward()
 		//}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
-			app.Backward()
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
-			app.Forward()
-		}
+		//
+		//if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
+		//	app.Forward()
+		//}
 
 		return event
 	})

@@ -65,7 +65,6 @@ func (app *App) RunStatusLineHandler(ctx context.Context, in chan Status) {
 					if status.Message != "" {
 						currentStatus = status.Message
 						spinnerActive = status.Spinner
-						app.Layout.StatusHistory.AddEntry(status.Message)
 
 						// Display with or without spinner based on status.Spinner
 						if status.Spinner {

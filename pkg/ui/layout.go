@@ -21,7 +21,6 @@ type Layout struct {
 	Colors        *config.ColorConfig
 	StatusLine    *tview.TextView
 	StatusBar     *tview.Flex
-	StatusHistory *StatusHistory
 }
 
 type Borders struct {
@@ -109,15 +108,11 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		AddItem(statusLabel, 3, 0, false).
 		AddItem(statusLine, 0, 1, false)
 
-	statusHistory := NewStatusHistory(colors)
-
 	main := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(header, headerHeight, 0, false).
 		AddItem(registry.UI.Pages, 0, mainProportion, true).
 		AddItem(statusBar, 1, 0, false)
-
-	registry.UI.Pages.AddPage(StatusHistoryPage, statusHistory.Flex, true, false)
 
 	return &Layout{
 		PagesRegistry: registry,
@@ -129,7 +124,6 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		Colors:        colors,
 		StatusLine:    statusLine,
 		StatusBar:     statusBar,
-		StatusHistory: statusHistory,
 	}
 }
 
