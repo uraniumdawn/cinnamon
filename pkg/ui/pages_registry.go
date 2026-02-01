@@ -195,10 +195,21 @@ func (app *App) SwitchToPage(name string) {
 }
 
 func (app *App) ShowModalPage(pageName string) {
-	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
+	registry := app.Layout.PagesRegistry
+	if menu, ok := registry.PageMenuMap[pageName]; ok {
 		app.Layout.Menu.SetMenu(menu)
-		app.Layout.PagesRegistry.UI.Pages.ShowPage(pageName)
-		app.Layout.PagesRegistry.UI.Pages.SendToFront(pageName)
+		registry.UI.Pages.ShowPage(pageName)
+		registry.UI.Pages.SendToFront(pageName)
+
+		// If showing OpenedPages modal, select the current page from history
+		if pageName == OpenedPages && registry.CurrentPageIndex >= 0 &&
+			registry.CurrentPageIndex < len(registry.History) {
+			currentPage := registry.History[registry.CurrentPageIndex]
+			tableRow := registry.findPageInTable(currentPage)
+			if tableRow >= 0 {
+				registry.UI.OpenedPages.Select(tableRow, 0)
+			}
+		}
 	}
 }
 

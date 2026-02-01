@@ -457,6 +457,7 @@ func (app *App) UpdateTopic(topicName string) {
 				app.QueueUpdateDraw(func() {
 					app.NewUpdateTopicModal(topicName, topicResult)
 					app.ShowModalPage(EditTopic)
+					ClearStatus()
 				})
 				cancel()
 				return
