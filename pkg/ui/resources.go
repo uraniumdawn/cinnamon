@@ -133,5 +133,5 @@ func (app *App) NewResourcesPage() tview.Primitive {
 		return event
 	})
 
-	return util.NewModal(table)
+	return util.NewResourceModal(table)
 }

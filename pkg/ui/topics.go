@@ -151,6 +151,12 @@ func (app *App) Topics() {
 							app.ShowModalPage(DeleteTopic)
 						}
 
+						if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+							row, _ := table.GetSelection()
+							topicName := table.GetCell(row, 0).Text
+							app.UpdateTopic(topicName)
+						}
+
 						if event.Key() == tcell.KeyRune && event.Rune() == 't' {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
@@ -394,7 +400,7 @@ retention.ms=604800000`).
 	flex.SetTitle(" Create Topic ")
 	flex.SetBorder(true)
 
-	modal := util.NewModal(flex)
+	modal := util.NewTopicModal(flex)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(CreateTopic, modal, true, true)
 	app.Layout.PagesRegistry.UI.Pages.ShowPage(CreateTopic)
 }
@@ -717,7 +723,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	flex.SetTitle(fmt.Sprintf(" Edit Topic: %s ", topicName))
 	flex.SetBorder(true)
 
-	modal := util.NewModal(flex)
+	modal := util.NewTopicModal(flex)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(EditTopic, modal, true, false)
 }
 

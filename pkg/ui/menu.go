@@ -61,14 +61,6 @@ var keys = map[string]Pair{
 		Key:   "<Ctrl+u>",
 		Value: "Update",
 	},
-	"rft": {
-		Key:   "<r>",
-		Value: "Read",
-	},
-	"params": {
-		Key:   "<p>",
-		Value: "Consuming parameters",
-	},
 	"term": {
 		Key:   "<e>",
 		Value: "Terminating",
@@ -165,7 +157,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Flex:    flex,
 		Map: &map[string]*[]string{
 			ResourcesPageMenu:    {"up", "dw", "select", "close"},
-			OpenedPagesMenu:      {"up", "dw", "select", "close"},
+			OpenedPagesMenu:      {"up", "dw", "close"},
 			CreateTopicPageMenu:  {"up", "dw", "select", "submit", "default", "close"},
 			EditTopicPageMenu:    {"up", "dw", "select", "submit", "close"},
 			DeleteTopicPageMenu:  {"confirm", "cancel"},
