@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/emirpasic/gods/maps/treemap"
@@ -423,7 +424,7 @@ func (app *App) CreateTopicResultHandler(
 		for {
 			select {
 			case <-resultCh:
-				SendStatusWithDefaultTTL(fmt.Sprintf("topic '%s' has been created", name))
+				SendStatus(fmt.Sprintf("topic '%s' has been created", name), 2*time.Second, false)
 				Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 				cancel()
 				return
@@ -493,7 +494,11 @@ func (app *App) UpdateTopicResultHandler(
 		for {
 			select {
 			case <-resultCh:
-				SendStatusWithDefaultTTL(fmt.Sprintf("topic '%s' config has been updated", name))
+				SendStatus(
+					fmt.Sprintf("topic '%s' config has been updated", name),
+					2*time.Second,
+					false,
+				)
 				cancel()
 				return
 			case err := <-errorCh:
@@ -554,7 +559,7 @@ func (app *App) DeleteTopicResultHandler(name string) {
 		for {
 			select {
 			case <-resultCh:
-				SendStatusWithDefaultTTL(fmt.Sprintf("topic '%s' has been deleted", name))
+				SendStatus(fmt.Sprintf("topic '%s' has been deleted", name), 2*time.Second, false)
 				Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 				cancel()
 				return
