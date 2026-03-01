@@ -1,0 +1,42 @@
+version: "2"
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+  settings:
+    revive:
+      severity: warning
+      rules:
+        - name: atomic
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: time-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: superfluous-else
+
+formatters:
+  settings:
+    golines:
+      max-len: 120
+      tab-len: 8
+      shorten-comments: true
+      reformat-tags: false
+      chain-split-dots: true
+    gofumpt:
+      extra-rules: true
+  enable:
+    - gofumpt
+    - golines

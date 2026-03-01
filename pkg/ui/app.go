@@ -1,50 +1,59 @@
+// Copyright (c) Sergey Petrovsky
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+// Package ui provides the terminal user interface for the cinnamon application.
 package ui
 
 import (
-	"cinnamon/pkg/client"
-	"cinnamon/pkg/config"
-	"cinnamon/pkg/schemaregistry"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
-	"path/filepath"
-	"sort"
-	"time"
+
+	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/config"
+	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
-const timeout = 10 * time.Second
 const (
-	Main             = "Main"
 	Resources        = "Resources"
 	Clusters         = "Clusters"
-	Cluster          = "Cluster"
 	SchemaRegistries = "Schema-registries"
 	Topics           = "Topics"
 	Topic            = "Topic"
 	Nodes            = "Nodes"
 	Node             = "Node"
-	ConsumerGroups   = "Consumer-groups"
-	ConsumerGroup    = "Consumer-group"
+	ConsumerGroups   = "Consumer groups"
+	ConsumerGroup    = "Consumer group"
 	Subjects         = "Subjects"
-	Opened           = "Opened"
-	ConsumingParams  = "Consuming Parameters"
+	OpenedPages      = "Opened pages"
+	CreateTopic      = "Create Topic"
+	DeleteTopic      = "Delete Topic"
+	EditTopic        = "Edit Topic"
+	CliTemplates     = "CLI Templates"
 )
 
 type App struct {
 	*tview.Application
-	Main                  *MainPage
+	Layout                *Layout
 	Cache                 *cache.Cache
 	Clusters              map[string]*config.ClusterConfig
 	SchemaRegistries      map[string]*config.SchemaRegistryConfig
 	KafkaClients          map[string]*client.Client
 	SchemaRegistryClients map[string]*schemaregistry.Client
 	Selected              Selected
-	Opened                *OpenedPages
+	Config                *config.Config
+	Colors                *config.ColorConfig
+	ModalHideTimer        *time.Timer
 }
 
 type Selected struct {
@@ -52,297 +61,179 @@ type Selected struct {
 	SchemaRegistry *config.SchemaRegistryConfig
 }
 
-type KeySeries struct {
-	Series map[int]string
-}
-
-func toClustersMap(cfg *config.Config) map[string]*config.ClusterConfig {
-	clusterMap := make(map[string]*config.ClusterConfig)
-	for _, cluster := range cfg.CC9s.Clusters {
-		clusterMap[cluster.Name] = cluster
-	}
-	return clusterMap
-}
-
-func toSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryConfig {
-	srMap := make(map[string]*config.SchemaRegistryConfig)
-	for _, sr := range cfg.CC9s.SchemaRegistries {
-		srMap[sr.Name] = sr
-	}
-	return srMap
-}
-
-func (app *App) getCurrentKafkaClient() *client.Client {
+func (app *App) GetCurrentKafkaClient() *client.Client {
 	return app.KafkaClients[app.Selected.Cluster.Name]
 }
 
-func (app *App) getCurrentSchemaRegistryClient() *schemaregistry.Client {
+func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
+	if app.Selected.SchemaRegistry == nil {
+		return nil
+	}
 	return app.SchemaRegistryClients[app.Selected.SchemaRegistry.Name]
 }
 
 func NewApp() *App {
-	initLogger()
+	InitLogger()
 
-	cfg, err := config.InitConfig()
+	cfg, err := config.LoadAppConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize config")
 		os.Exit(1)
 	}
-	return &App{
+
+	colors, err := config.LoadColorConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to load color config")
+		os.Exit(1)
+	}
+
+	app := &App{
 		Application:           tview.NewApplication(),
-		Main:                  NewPage(),
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
-		Clusters:              toClustersMap(cfg),
-		SchemaRegistries:      toSchemaRegistryMap(cfg),
+		Clusters:              util.ToClustersMap(cfg),
+		SchemaRegistries:      util.ToSchemaRegistryMap(cfg),
 		KafkaClients:          make(map[string]*client.Client),
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
+		Config:                cfg,
+		Colors:                colors,
 	}
+
+	return app
 }
 
-func initLogger() {
+func InitLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339
 
-	logFilePath := filepath.Join(os.Getenv("HOME"), ".cinnamon", "cinnamon.log")
+	logFilePath := filepath.Join(os.Getenv("HOME"), ".config", "cinnamon", "cinnamon.log")
 	logDir := filepath.Dir(logFilePath)
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		fmt.Printf("failed to create log directory, %s\n", err.Error())
 	}
 
-	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 	if err != nil {
 		fmt.Printf("failed to open log file, %s\n", err.Error())
 		os.Exit(1)
 	}
 
+	// Use ConsoleWriter for human-readable, canonical log format
+	consoleWriter := zerolog.ConsoleWriter{
+		Out:        file,
+		TimeFormat: time.RFC3339,
+		NoColor:    true, // Set to true if colors are not desired in log file
+	}
+
 	os.Stderr = file
 	os.Stdout = file
-	log.Logger = log.Output(file)
+
+	// Add caller information (file and line number) to all log entries
+	log.Logger = log.Output(consoleWriter).With().Caller().Logger()
 }
 
-var statusLineChannel = make(chan string, 10)
-var commandChannel = make(chan string)
-
-func (app *App) CommandHandler(ctx context.Context, in chan string) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Info().Msg("Shutting down CommandHandler")
-				return
-			case command := <-in:
-				switch command {
-				case Main:
-					app.Main.Pages.SwitchToPage(Main)
-				case Clusters:
-					app.Main.Pages.SwitchToPage(Clusters)
-				case SchemaRegistries:
-					app.Main.Pages.SwitchToPage(SchemaRegistries)
-				case "tps", Topics:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Cluster"
-						continue
-					}
-					app.Check(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Topics), func() {
-						app.Topics(statusLineChannel)
-					})
-				case "grs", ConsumerGroups:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Cluster"
-						continue
-					}
-					app.Check(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, ConsumerGroups), func() {
-						app.ConsumerGroups(statusLineChannel)
-					})
-				case "nds", Nodes:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Cluster"
-						continue
-					}
-					app.Check(fmt.Sprintf("%s:%s", app.Selected.Cluster.Name, Nodes), func() {
-						app.QueueUpdateDraw(func() {
-							app.Nodes(statusLineChannel)
-						})
-					})
-				case "sjs", Subjects:
-					if !app.isClusterSelected(app.Selected) {
-						statusLineChannel <- "[red]To perform operation, select Schema Registry"
-						continue
-					}
-					app.Check(Subjects, func() {
-						app.Subjects(statusLineChannel)
-					})
-				case "q!":
-					app.Stop()
-				default:
-					statusLineChannel <- "Invalid command"
-				}
-			}
-		}
-	}()
-}
-
-func (app *App) StatusLineHandler(ctx context.Context, in chan string) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Info().Msg("Shutting down StatusLineHandler")
-				return
-			case status := <-in:
-				app.QueueUpdateDraw(func() {
-					app.Main.StatusLine.SetText(status)
-				})
-			}
-		}
-	}()
-}
-
-func (app *App) Init() {
+func (app *App) Run() {
+	app.ApplyColors()
 	ctx, cancel := context.WithCancel(context.Background())
-	app.CommandHandler(ctx, commandChannel)
-	app.StatusLineHandler(ctx, statusLineChannel)
 
-	app.Opened = app.NewOpenedPages()
+	app.RunResourcesEventHandler(ctx, ResourcesChannel)
+	app.RunStatusLineHandler(ctx, StatusLineCh)
+	app.RunClusterEventHandler(ctx, ClustersChannel)
+	app.RunSchemaRegistriesEventHandler(ctx, SchemaRegistriesChannel)
+	app.RunNodesEventHandler(ctx, NodesChannel)
+	app.RunTopicsEventHandler(ctx, TopicsChannel)
+	app.RunCgroupsEventHandler(ctx, CgroupsChannel)
+	app.RunSubjectsEventHandler(ctx, SubjectsChannel)
 
-	ct := app.NewClustersTable()
-	st := app.NewSchemaRegistriesTable()
-	app.SchemaRegistriesTableInputHandler(st)
-	app.ClustersTableInputHandler(ct)
+	registry := NewPagesRegistry(app.Colors)
+	app.Layout = NewLayout(registry, app.Colors)
 
-	main := tview.NewTable()
-	main.SetTitle(" Main ")
-	main.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-
-	r := 0
-	var configs []*config.ClusterConfig
-	for _, cluster := range app.Clusters {
-		configs = append(configs, cluster)
+	for _, c := range app.Config.Cinnamon.Clusters {
+		if c.Selected {
+			app.SelectCluster(c, false)
+			break // Assuming only one can be selected
+		}
 	}
 
-	sort.Slice(configs, func(i, j int) bool {
-		return configs[i].Name < configs[j].Name
-	})
-	for _, cluster := range configs {
-		main.
-			SetCell(r, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(r, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"])).
-			SetCell(r, 2, tview.NewTableCell(cluster.SchemaRegistry)).
-			SetCell(r, 3, tview.NewTableCell(app.SchemaRegistries[cluster.SchemaRegistry].SchemaRegistryUrl))
-		r++
+	for _, sr := range app.Config.Cinnamon.SchemaRegistries {
+		if sr.Selected {
+			app.SelectSchemaRegistry(sr, false)
+			break // Assuming only one can be selected
+		}
 	}
 
-	main.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := main.GetSelection()
-		clusterName := main.GetCell(row, 0).Text
-		schemaRegistryName := main.GetCell(row, 2).Text
-		cluster := app.Clusters[clusterName]
-		schemaRegistry := app.SchemaRegistries[schemaRegistryName]
+	Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
-		if event.Key() == tcell.KeyEnter {
-			app.SelectCluster(cluster)
-			app.SelectSchemaRegistry(schemaRegistry)
-			app.Main.SetSelected(app.Selected.Cluster.Name, app.Selected.SchemaRegistry.Name)
-			app.Main.ClearStatus()
-		}
-		return event
-	})
+	resourcesPage := app.NewResourcesPage()
+	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(
+		OpenedPages,
+		app.Layout.PagesRegistry.UI.Main,
+		true,
+		false,
+	)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(Clusters)
+	app.Layout.Menu.SetMenu(ClustersPageMenu)
+	app.Layout.PagesRegistry.UI.OpenedPages.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
 
-	app.Main.Pages.AddPage(Resources, NewResourcesPage(commandChannel).Modal, true, true)
-	app.Main.Pages.AddPage(Opened, app.Opened.Modal, true, true)
-	app.Main.Pages.AddPage(Clusters, ct, true, true)
-	app.Main.Pages.AddPage(SchemaRegistries, st, true, true)
+	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
+	app.MainOperationKeyHandler()
 
-	app.AddAndSwitch(Main, main, MainPageMenu)
-
-	app.Main.Filter.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyTab {
-			app.Application.SetFocus(app.Main.Pages)
-		}
-
-		if event.Key() == tcell.KeyEsc {
-			app.Main.Filter.SetText("")
-			app.Application.SetFocus(app.Main.Pages)
-		}
-		return event
-	})
-
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
-			app.Main.Pages.SwitchToPage(Resources)
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
-			app.Main.Filter.SetText("")
-			app.SetFocus(app.Main.Filter)
-			app.Main.ClearStatus()
-			return nil
-		}
-
-		if event.Key() == tcell.KeyCtrlP {
-			app.Main.Pages.SwitchToPage(Opened)
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'b' && !app.Main.Filter.HasFocus() {
-			if app.Opened.ActivePage > 0 {
-				app.Opened.ActivePage--
-				app.NavigateTo(app.Opened.ActivePage)
-			}
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'f' && !app.Main.Filter.HasFocus() {
-			if app.Opened.ActivePage < app.Opened.Table.GetRowCount()-1 {
-				app.Opened.ActivePage++
-				app.NavigateTo(app.Opened.ActivePage)
-			}
-		}
-
-		return event
-	})
-
-	err := app.SetRoot(app.Main.Content, true).Run()
+	err := app.SetRoot(app.Layout.Content, true).Run()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed Application execution")
+		log.Error().Err(err).Msg("failed application execution")
 	}
 	cancel()
-	log.Info().Msg("Application terminated")
+	log.Info().Msg("application terminated")
 }
 
-func (app *App) ClustersTableInputHandler(ct *tview.Table) {
-	ct.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := ct.GetSelection()
-		clusterName := ct.GetCell(row, 0).Text
-		cluster := app.Clusters[clusterName]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectCluster(cluster)
-			app.Main.ClearStatus()
-		}
-
-		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
-			if !app.isClusterSelected(app.Selected) {
-				app.SelectCluster(cluster)
-			}
-			statusLineChannel <- "Getting cluster description results..."
-			app.Cluster()
-		}
-
-		return event
-	})
+func (app *App) ApplyColors() {
+	tview.Styles = tview.Theme{
+		PrimitiveBackgroundColor:    tcell.GetColor(app.Colors.Cinnamon.Background),
+		ContrastBackgroundColor:     tview.Styles.ContrastBackgroundColor,
+		MoreContrastBackgroundColor: tview.Styles.MoreContrastBackgroundColor,
+		BorderColor:                 tcell.GetColor(app.Colors.Cinnamon.Border),
+		TitleColor:                  tcell.GetColor(app.Colors.Cinnamon.Title),
+		GraphicsColor:               tview.Styles.GraphicsColor,
+		PrimaryTextColor:            tcell.GetColor(app.Colors.Cinnamon.Foreground),
+		SecondaryTextColor:          tview.Styles.SecondaryTextColor,
+		TertiaryTextColor:           tview.Styles.TertiaryTextColor,
+		InverseTextColor:            tview.Styles.InverseTextColor,
+		ContrastSecondaryTextColor:  tview.Styles.ContrastSecondaryTextColor,
+	}
 }
 
 func (app *App) isClusterSelected(selected Selected) bool {
 	return selected.Cluster != nil
 }
 
-func (app *App) SelectCluster(cluster *config.ClusterConfig) {
+func (app *App) isSchemaRegistrySelected(selected Selected) bool {
+	return selected.SchemaRegistry != nil
+}
+
+func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
+	if save {
+		for _, c := range app.Config.Cinnamon.Clusters {
+			c.Selected = c.Name == cluster.Name
+		}
+		if err := app.Config.Save(); err != nil {
+			log.Error().Err(err).Msg("failed to save config after cluster selection")
+		}
+	}
+
 	app.Selected.Cluster = cluster
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
 	_, exists := app.KafkaClients[cluster.Name]
 	if !exists {
 		var err error
-		newClient, err := client.NewClient(cluster)
+		timeout := app.Config.GetAPICallTimeout()
+		newClient, err := client.NewClient(cluster, timeout)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create admin client")
 			os.Exit(1)
@@ -351,8 +242,18 @@ func (app *App) SelectCluster(cluster *config.ClusterConfig) {
 	}
 }
 
-func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig) {
+func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool) {
+	if save {
+		for _, r := range app.Config.Cinnamon.SchemaRegistries {
+			r.Selected = r.Name == sr.Name
+		}
+		if err := app.Config.Save(); err != nil {
+			log.Error().Err(err).Msg("failed to save config after schema registry selection")
+		}
+	}
+
 	app.Selected.SchemaRegistry = sr
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
 
 	_, exists := app.SchemaRegistryClients[sr.Name]
 	if !exists {
@@ -366,72 +267,6 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig) {
 	}
 }
 
-func (app *App) SchemaRegistriesTableInputHandler(st *tview.Table) {
-	st.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := st.GetSelection()
-		name := st.GetCell(row, 0).Text
-		sr := app.SchemaRegistries[name]
-
-		if event.Key() == tcell.KeyEnter {
-			app.SelectSchemaRegistry(sr)
-			app.Main.ClearStatus()
-		}
-
-		return event
-	})
-}
-
-func (app *App) Cluster() {
-	c := app.KafkaClients[app.Selected.Cluster.Name]
-	rCh := make(chan *client.ClusterResult)
-	errorCh := make(chan error)
-	c.DescribeCluster(rCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-
-	go func() {
-		for {
-			select {
-			case description := <-rCh:
-				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" %s ", description.Name))
-					desc.SetText(description.String())
-
-					app.AddAndSwitch(Cluster, desc, ClustersPageMenu)
-					app.Main.ClearStatus()
-				})
-				cancel()
-				return
-			case err := <-errorCh:
-				log.Error().Err(err).Msg("failed to describe cluster")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to describe cluster: %s", err.Error())
-				cancel()
-				return
-			case <-ctx.Done():
-				log.Error().Msg("timeout while describing cluster")
-				statusLineChannel <- "[red]Timeout while describing cluster"
-				return
-			}
-		}
-	}()
-}
-
-func (app *App) NewMainTable() *tview.Table {
-	table := tview.NewTable()
-	table.SetTitle(" Main ")
-	table.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-
-	row := 0
-	for _, cluster := range app.Clusters {
-		table.
-			SetCell(row, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"]))
-		row++
-	}
-	return table
-}
-
 func (app *App) NewDescription(title string) *tview.TextView {
 	desc := tview.NewTextView().
 		SetTextAlign(tview.AlignLeft).
@@ -442,39 +277,6 @@ func (app *App) NewDescription(title string) *tview.TextView {
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(title)
+	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
 	return desc
-}
-
-func (app *App) NewClustersTable() *tview.Table {
-	table := tview.NewTable()
-	table.SetTitle(" Clusters ")
-	table.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-
-	row := 0
-	for _, cluster := range app.Clusters {
-		table.
-			SetCell(row, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"]))
-		row++
-	}
-	return table
-}
-
-func (app *App) NewSchemaRegistriesTable() *tview.Table {
-	table := tview.NewTable()
-	table.SetTitle(" Schema Registry URLs ")
-	table.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0)
-
-	row := 0
-	for _, sr := range app.SchemaRegistries {
-		table.
-			SetCell(row, 0, tview.NewTableCell(sr.Name)).
-			SetCell(row, 1, tview.NewTableCell(sr.SchemaRegistryUrl))
-		row++
-	}
-	return table
 }

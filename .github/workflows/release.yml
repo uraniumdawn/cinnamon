@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install librdkafka
+        run: brew install librdkafka
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+  release-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install librdkafka
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librdkafka-dev
+
+      - name: Build Linux binaries
+        run: |
+          CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name }} -X main.commit=${{ github.sha }} -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/cinnamon_linux_amd64 .
+
+      - name: Create Linux archive
+        run: |
+          cd dist
+          tar -czvf cinnamon_Linux_amd64.tar.gz cinnamon_linux_amd64
+
+      - name: Upload Linux artifacts to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/cinnamon_Linux_amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

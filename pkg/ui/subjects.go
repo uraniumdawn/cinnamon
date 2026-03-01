@@ -1,8 +1,11 @@
+// Copyright (c) Sergey Petrovsky
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 package ui
 
 import (
 	"bytes"
-	"cinnamon/pkg/schemaregistry"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,16 +16,96 @@ import (
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
-func (app *App) Subjects(statusLineChannel chan string) {
-	statusLineChannel <- "Getting subjects..."
+const (
+	// GetSubjectsEventType is the event type for fetching subjects.
+	GetSubjectsEventType EventType = "subjects:get"
+	// GetVersionsEventType is the event type for fetching versions.
+	GetVersionsEventType EventType = "versions:get"
+	// GetSchemaEventType is the event type for fetching a schema.
+	GetSchemaEventType EventType = "schema:get"
+)
+
+// SubjectsChannel is the channel for subject events.
+var SubjectsChannel = make(chan Event)
+
+// SubjectVersionPair represents a subject and version pair.
+type SubjectVersionPair struct {
+	Subject string
+	Version string
+}
+
+// RunSubjectsEventHandler processes subject events from the channel.
+func (app *App) RunSubjectsEventHandler(ctx context.Context, in chan Event) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Debug().Msg("shutting down subjects event handler")
+				return
+			case event := <-in:
+				switch event.Type {
+				case GetSubjectsEventType:
+					pageName := util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects)
+					force := event.Payload.Force
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						app.Subjects()
+					}
+
+				case GetVersionsEventType:
+					subject := event.Payload.Data.(string)
+					force := event.Payload.Force
+					pageName := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"versions",
+					)
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						app.Versions(subject)
+					}
+
+				case GetSchemaEventType:
+					sv := event.Payload.Data.(SubjectVersionPair)
+					force := event.Payload.Force
+					v, _ := strconv.Atoi(sv.Version)
+					subject := sv.Subject
+					pageName := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"version",
+						sv.Version,
+					)
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						app.Schema(subject, v)
+					}
+				}
+			}
+		}
+	}()
+}
+
+// Subjects fetches and displays the list of schema subjects.
+func (app *App) Subjects() {
 	resultCh := make(chan []string)
 	errorCh := make(chan error)
 
-	c := app.getCurrentSchemaRegistryClient()
+	c := app.GetCurrentSchemaRegistryClient()
+	SendStatusInfinite("getting subjects...")
 	c.Subjects(resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
@@ -30,159 +113,245 @@ func (app *App) Subjects(statusLineChannel chan string) {
 			case subjects := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewSubjectsTable(subjects)
+					title := util.BuildTitle(Subjects,
+						"["+strconv.Itoa(len(subjects))+"]")
+					table.SetTitle(title)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Subjects(statusLineChannel)
+							Publish(
+								SubjectsChannel,
+								GetSubjectsEventType,
+								Payload{nil, true},
+							)
 						}
 
 						if event.Key() == tcell.KeyEnter {
 							row, _ := table.GetSelection()
 							subject := table.GetCell(row, 0).Text
-
-							app.Check(fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name), func() {
-								app.Versions(subject)
-							})
+							Publish(
+								SubjectsChannel,
+								GetVersionsEventType,
+								Payload{subject, false},
+							)
 						}
 
 						return event
 					})
 
-					app.Main.Filter.SetChangedFunc(func(text string) {
-						app.FilterSubjectsTable(table, subjects, text)
+					app.AddToPagesRegistry(
+						util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects),
+						table,
+						SubjectsPageMenu, true,
+					)
+
+					app.AssignSearch(func(text string) {
+						filterSubjectsTable(table, subjects, text)
+						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
 
-					app.AddAndSwitch(Subjects, table, SubjectsPageMenu)
-					app.Main.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to list subjects")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list subjects: %s", err.Error())
+				log.Error().Err(err).Msg("failed to list subjects")
+				SendStatusWithDefaultTTL(fmt.Sprintf("[red]failed to list subjects: %s", err.Error()))
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while to list subjects")
-				statusLineChannel <- "[red]Timeout while to list subjects"
+				log.Error().Msg("timeout while to list subjects")
+				SendStatusWithDefaultTTL("[red]timeout while to list subjects")
 				return
 			}
 		}
 	}()
 }
 
+// Versions fetches and displays the versions for a specific subject.
 func (app *App) Versions(subject string) {
-	statusLineChannel <- "Getting versions..."
 	resultCh := make(chan []int)
 	errorCh := make(chan error)
 
-	c := app.getCurrentSchemaRegistryClient()
+	c := app.GetCurrentSchemaRegistryClient()
+	SendStatusInfinite("getting subject's versions...")
 	c.VersionsBySubject(subject, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
 			select {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					table := app.NewVersionsTable(subject, versions)
-					app.AddAndSwitch(fmt.Sprintf("%s:versions", app.Selected.SchemaRegistry.Name), table, VersionsPageMenu)
+					table := app.NewVersionsTable(versions)
+					table.SetTitle(
+						util.BuildTitle(
+							subject,
+							"["+strconv.Itoa(len(versions))+"]",
+						),
+					)
+
+					app.AddToPagesRegistry(
+						util.BuildPageKey(
+							app.Selected.SchemaRegistry.Name,
+							subject,
+							"versions",
+						),
+						table,
+						VersionsPageMenu, false,
+					)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							app.Versions(subject)
+							Publish(
+								SubjectsChannel,
+								GetVersionsEventType,
+								Payload{nil, true},
+							)
 						}
 
 						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
 							row, _ := table.GetSelection()
 							version := table.GetCell(row, 0).Text
-							v, _ := strconv.Atoi(version)
 
-							app.Check(fmt.Sprintf("%s:%s:version:%s", app.Selected.SchemaRegistry.Name, subject, version), func() {
-								app.Schema(subject, v)
-							})
+							Publish(SubjectsChannel, GetSchemaEventType,
+								Payload{SubjectVersionPair{subject, version}, false})
 						}
 
 						return event
 					})
 
-					app.Main.ClearStatus()
+					ClearStatus()
 				})
 				cancel()
 				return
 			case err := <-errorCh:
 				log.Error().Err(err).Msg("failed to list subject's versions")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
 				log.Error().Msg("timeout while to list subject's versions")
-				statusLineChannel <- "[red]Timeout while to list subject's versions"
+				SendStatusWithDefaultTTL("[red]timeout while to list subject's versions")
 				return
 			}
 		}
 	}()
 }
 
+// Schema fetches and displays a specific schema version for a subject.
 func (app *App) Schema(subject string, version int) {
-	statusLineChannel <- "Getting schema..."
 	resultCh := make(chan schemaregistry.SchemaResult)
 	errorCh := make(chan error)
 
-	c := app.getCurrentSchemaRegistryClient()
+	c := app.GetCurrentSchemaRegistryClient()
+	SendStatusInfinite("getting schema")
 	c.Schema(subject, version, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
 			select {
 			case result := <-resultCh:
+				var formattedSchema string
+				var pretty bytes.Buffer
+				indentErr := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
+				if indentErr != nil {
+					errorCh <- indentErr
+					cancel()
+					return
+				}
+				formattedSchema = pretty.String()
+
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(fmt.Sprintf(" Subject: %s, Version: %d", subject, version))
-					var pretty bytes.Buffer
-					err := json.Indent(&pretty, []byte(result.Metadata.Schema), "", "  ")
+					v := strconv.Itoa(version)
+					desc := app.NewDescription(
+						util.BuildTitle(subject, v),
+					)
+
+					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+						if event.Key() == tcell.KeyCtrlU {
+							Publish(SubjectsChannel, GetSchemaEventType,
+								Payload{SubjectVersionPair{subject, v}, true})
+						}
+						return event
+					})
+
+					writer := tview.ANSIWriter(desc)
+					_, err := writer.Write([]byte(formattedSchema))
 					if err != nil {
-						errorCh <- err
-						return
+						log.Error().Err(err).Msg("failed to write formatted schema")
+						SendStatusWithDefaultTTL("[red]failed to write formatted schema")
 					}
-					desc.SetText(pretty.String())
-					app.AddAndSwitch(fmt.Sprintf("%s:%s:version:%d", app.Selected.SchemaRegistry.Name, subject, version), desc, FinalPageMenu)
-					app.Main.ClearStatus()
+					app.AddToPagesRegistry(
+						util.BuildPageKey(
+							app.Selected.SchemaRegistry.Name,
+							subject,
+							"version",
+							v,
+						),
+						desc,
+						FinalPageMenu, false,
+					)
 				})
 				cancel()
 				return
 			case err := <-errorCh:
-				log.Error().Err(err).Msg("Failed to list subject's versions")
-				statusLineChannel <- fmt.Sprintf("[red]Failed to list subject's versions: %s", err.Error())
+				log.Error().Err(err).Msg("failed to list subject's versions")
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to list subject's versions: %s", err.Error()),
+				)
 				cancel()
 				return
 			case <-ctx.Done():
-				log.Error().Msg("Timeout while to list subject's versions")
-				statusLineChannel <- "[red]Timeout while to list subject's versions"
+				log.Error().Msg("timeout while to list subject's versions")
+				SendStatusWithDefaultTTL("[red]tmeout while to list subject's versions")
 				return
 			}
 		}
 	}()
 }
 
+// NewSubjectsTable creates a table displaying schema subjects.
 func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf(" Subjects [%s] [%d]", app.Selected.SchemaRegistry.Name, len(subjects)))
+	if app.Colors != nil {
+		table.SetSelectedStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
+			),
+		)
+	}
 
 	for i, subject := range subjects {
 		table.SetCell(i, 0, tview.NewTableCell(subject))
 	}
+
 	return table
 }
 
-func (app *App) NewVersionsTable(subject string, versions []int) *tview.Table {
+// NewVersionsTable creates a table displaying schema versions.
+func (app *App) NewVersionsTable(versions []int) *tview.Table {
 	table := tview.NewTable()
 	table.SetSelectable(true, false).
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0)
-	table.SetTitle(fmt.Sprintf(" Versions [%s] [%d]", subject, len(versions)))
+
+	if app.Colors != nil {
+		table.SetSelectedStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
+			),
+		)
+	}
 
 	row := 0
 	for _, version := range versions {
@@ -192,7 +361,7 @@ func (app *App) NewVersionsTable(subject string, versions []int) *tview.Table {
 	return table
 }
 
-func (app *App) FilterSubjectsTable(table *tview.Table, subjects []string, filter string) {
+func filterSubjectsTable(table *tview.Table, subjects []string, filter string) {
 	table.Clear()
 
 	ranks := fuzzy.RankFind(filter, subjects)

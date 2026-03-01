@@ -1,32 +1,41 @@
+// Copyright (c) Sergey Petrovsky
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+// Package client provides a wrapper around the Kafka AdminClient with additional
+// functionality for managing Kafka clusters, topics, consumer groups, and configurations.
 package client
 
 import (
-	"cinnamon/pkg/config"
 	"context"
 	"fmt"
-	"golang.org/x/exp/maps"
 	"sync"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/maps"
+
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 )
 
-const timeout = time.Second * 10
-
+// ClusterResult contains the cluster description result with cluster name.
 type ClusterResult struct {
 	Name string
 	kafka.DescribeClusterResult
 }
 
+// ResourceResult contains configuration resource results.
 type ResourceResult struct {
 	Results []kafka.ConfigResourceResult
 }
 
+// TopicsResult contains a map of topic names to their metadata.
 type TopicsResult struct {
 	Result map[string]*kafka.TopicMetadata
 }
 
+// TopicResult contains detailed topic information including offsets and ACLs.
 type TopicResult struct {
 	Name string
 	kafka.DescribeTopicsResult
@@ -37,10 +46,12 @@ type TopicResult struct {
 	mx           sync.RWMutex
 }
 
+// ConsumerGroupsResult contains the list of consumer groups.
 type ConsumerGroupsResult struct {
 	kafka.ListConsumerGroupsResult
 }
 
+// DescribeConsumerGroupResult contains consumer group details including lag information.
 type DescribeConsumerGroupResult struct {
 	kafka.DescribeConsumerGroupsResult
 	currentOffsets map[TopicPartition]kafka.Offset
@@ -49,37 +60,59 @@ type DescribeConsumerGroupResult struct {
 	mx             sync.RWMutex
 }
 
+// TopicPartition represents a topic and partition pair.
 type TopicPartition struct {
 	Topic     string
 	Partition int32
 }
 
+// Client wraps the Kafka AdminClient with cluster name context.
 type Client struct {
 	ClusterName string
+	Timeout     time.Duration
 	*kafka.AdminClient
 }
 
-func NewClient(config *config.ClusterConfig) (*Client, error) {
+func NewClient(config *config.ClusterConfig, timeout time.Duration) (*Client, error) {
 	conf := &kafka.ConfigMap{}
 	for key, value := range config.Properties {
 		_ = conf.SetKey(key, value)
 	}
-	adminClient, err := kafka.NewAdminClient(conf)
 
+	logChan := make(chan kafka.LogEvent)
+
+	_ = conf.SetKey("go.logs.channel.enable", true)
+	_ = conf.SetKey("go.logs.channel", logChan)
+
+	go func() {
+		for logEvent := range logChan {
+			log.Info().Str("kafka_log", logEvent.Message).Msg("librdkafka")
+		}
+	}()
+
+	adminClient, err := kafka.NewAdminClient(conf)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create Admin client")
 		return nil, err
 	}
 
-	return &Client{config.Name, adminClient}, nil
+	return &Client{
+		ClusterName: config.Name,
+		Timeout:     timeout,
+		AdminClient: adminClient,
+	}, nil
 }
 
+// DescribeCluster retrieves cluster description including nodes and authorized operations.
 func (client *Client) DescribeCluster(resultChan chan<- *ClusterResult, errorChan chan<- error) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
-		clusterDesc, err := client.AdminClient.DescribeCluster(ctx, kafka.SetAdminOptionIncludeAuthorizedOperations(true))
+		clusterDesc, err := client.AdminClient.DescribeCluster(
+			ctx,
+			kafka.SetAdminOptionIncludeAuthorizedOperations(true),
+		)
 		if err != nil {
 			errorChan <- err
 			return
@@ -90,9 +123,13 @@ func (client *Client) DescribeCluster(resultChan chan<- *ClusterResult, errorCha
 	}()
 }
 
-func (client *Client) DescribeNode(brokerId string, resultChan chan<- *ResourceResult, errorChan chan<- error) {
+func (client *Client) DescribeNode(
+	brokerID string,
+	resultChan chan<- *ResourceResult,
+	errorChan chan<- error,
+) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		resourceType, err := kafka.ResourceTypeFromString("broker")
@@ -101,15 +138,20 @@ func (client *Client) DescribeNode(brokerId string, resultChan chan<- *ResourceR
 			return
 		}
 
-		results, err := client.AdminClient.DescribeConfigs(ctx,
-			[]kafka.ConfigResource{{Type: resourceType, Name: brokerId}}, kafka.SetAdminRequestTimeout(timeout))
+		results, err := client.DescribeConfigs(
+			ctx,
+			[]kafka.ConfigResource{
+				{Type: resourceType, Name: brokerID},
+			},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
 		if err != nil {
 			errorChan <- fmt.Errorf("failed to describe configs: %w", err)
 			return
 		}
 
 		if len(results) == 0 {
-			errorChan <- fmt.Errorf("no results found for brokerId: %s", brokerId)
+			errorChan <- fmt.Errorf("no results found for brokerID: %s", brokerID)
 			return
 		}
 
@@ -120,7 +162,7 @@ func (client *Client) DescribeNode(brokerId string, resultChan chan<- *ResourceR
 
 func (client *Client) Topics(resultChan chan<- *TopicsResult, errorChan chan<- error) {
 	go func() {
-		metadata, err := client.AdminClient.GetMetadata(nil, true, int(timeout.Milliseconds()))
+		metadata, err := client.GetMetadata(nil, true, int(client.Timeout.Milliseconds()))
 		if err != nil {
 			errorChan <- err
 			return
@@ -137,12 +179,15 @@ func (client *Client) Topics(resultChan chan<- *TopicsResult, errorChan chan<- e
 	}()
 }
 
-func (client *Client) ConsumerGroups(resultChan chan<- *ConsumerGroupsResult, errorChan chan<- error) {
+func (client *Client) ConsumerGroups(
+	resultChan chan<- *ConsumerGroupsResult,
+	errorChan chan<- error,
+) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
-		groups, err := client.AdminClient.ListConsumerGroups(ctx)
+		groups, err := client.ListConsumerGroups(ctx)
 		if err != nil {
 			errorChan <- err
 			return
@@ -153,24 +198,150 @@ func (client *Client) ConsumerGroups(resultChan chan<- *ConsumerGroupsResult, er
 	}()
 }
 
-func (client *Client) DescribeConsumerGroup(group string, resultChan chan<- *DescribeConsumerGroupResult, errorChan chan<- error) {
+func (client *Client) CreateTopic(
+	name string,
+	numPartitions int,
+	replicationFactor int,
+	config map[string]string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		topicSpec := kafka.TopicSpecification{
+			Topic:             name,
+			NumPartitions:     numPartitions,
+			ReplicationFactor: replicationFactor,
+			Config:            config,
+		}
+
+		results, err := client.CreateTopics(
+			ctx,
+			[]kafka.TopicSpecification{topicSpec},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to create topic '%s': %s", name, result.Error.String())
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
+func (client *Client) DeleteTopic(
+	name string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		results, err := client.DeleteTopics(
+			ctx,
+			[]string{name},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to delete topic '%s': %s", name, result.Error.String())
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
+func (client *Client) UpdateTopicConfig(
+	name string,
+	config map[string]string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		resourceType, err := kafka.ResourceTypeFromString("topic")
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to parse resource type: %w", err)
+			return
+		}
+
+		// Build config entries for AlterConfigs
+		var configEntries []kafka.ConfigEntry
+		for key, value := range config {
+			configEntries = append(configEntries, kafka.ConfigEntry{
+				Name:  key,
+				Value: value,
+			})
+		}
+
+		configResource := kafka.ConfigResource{
+			Type:   resourceType,
+			Name:   name,
+			Config: configEntries,
+		}
+
+		results, err := client.IncrementalAlterConfigs(
+			ctx,
+			[]kafka.ConfigResource{configResource},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to update topic config '%s': %s", name, result.Error.String())
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
+func (client *Client) DescribeConsumerGroup(
+	group string,
+	resultChan chan<- *DescribeConsumerGroupResult,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		result := &DescribeConsumerGroupResult{}
-		client.CurrentOffsets(group, ctx, errorChan, result)
+		client.CurrentOffsets(ctx, group, errorChan, result)
 
 		var wg sync.WaitGroup
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			client.LogEndOffsets(maps.Keys(result.currentOffsets), ctx, errorChan, result)
+			client.LogEndOffsets(ctx, maps.Keys(result.currentOffsets), errorChan, result)
 		}()
 
 		go func() {
 			defer wg.Done()
-			groups, err := client.AdminClient.DescribeConsumerGroups(ctx, []string{group})
+			groups, err := client.DescribeConsumerGroups(ctx, []string{group})
 			if err != nil {
 				errorChan <- err
 				return
@@ -184,7 +355,12 @@ func (client *Client) DescribeConsumerGroup(group string, resultChan chan<- *Des
 	}()
 }
 
-func (client *Client) LogEndOffsets(tps []TopicPartition, ctx context.Context, errorChan chan<- error, result *DescribeConsumerGroupResult) {
+func (client *Client) LogEndOffsets(
+	ctx context.Context,
+	tps []TopicPartition,
+	errorChan chan<- error,
+	result *DescribeConsumerGroupResult,
+) {
 	endOffsets := make(map[kafka.TopicPartition]kafka.OffsetSpec)
 	for _, tp := range tps {
 		endOffsets[kafka.TopicPartition{
@@ -206,11 +382,20 @@ func (client *Client) LogEndOffsets(tps []TopicPartition, ctx context.Context, e
 	result.SetEndOffsets(r)
 }
 
-func (client *Client) CurrentOffsets(group string, ctx context.Context, errorChan chan<- error, result *DescribeConsumerGroupResult) {
+// CurrentOffsets retrieves the current committed offsets for a consumer group.
+func (client *Client) CurrentOffsets(
+	ctx context.Context,
+	group string,
+	errorChan chan<- error,
+	result *DescribeConsumerGroupResult,
+) {
 	currentOffsets := kafka.ConsumerGroupTopicPartitions{
 		Group: group,
 	}
-	offsets, err := client.ListConsumerGroupOffsets(ctx, []kafka.ConsumerGroupTopicPartitions{currentOffsets})
+	offsets, err := client.ListConsumerGroupOffsets(
+		ctx,
+		[]kafka.ConsumerGroupTopicPartitions{currentOffsets},
+	)
 	if err != nil {
 		errorChan <- err
 		return
@@ -224,7 +409,10 @@ func (client *Client) CurrentOffsets(group string, ctx context.Context, errorCha
 	result.SetCurrentOffsets(r)
 }
 
-func (r *DescribeConsumerGroupResult) SetLag(current map[TopicPartition]kafka.Offset, end map[TopicPartition]kafka.Offset) {
+func (r *DescribeConsumerGroupResult) SetLag(
+	current map[TopicPartition]kafka.Offset,
+	end map[TopicPartition]kafka.Offset,
+) {
 	consumerLag := make(map[TopicPartition]kafka.Offset)
 	for tp, offsets := range current {
 		if endOffset, ok := end[tp]; ok {
@@ -270,14 +458,22 @@ func (r *TopicResult) SetTopicACLsResult(o kafka.DescribeACLsResult) {
 	r.DescribeACLsResult = o
 }
 
-func (client *Client) DescribeTopic(name string, resultChan chan<- *TopicResult, errorChan chan<- error) {
+func (client *Client) DescribeTopic(
+	name string,
+	resultChan chan<- *TopicResult,
+	errorChan chan<- error,
+) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 		defer cancel()
 
 		topicResult := &TopicResult{}
 		topics := kafka.NewTopicCollectionOfTopicNames(append([]string{}, name))
-		desc, err := client.AdminClient.DescribeTopics(ctx, topics, kafka.SetAdminOptionIncludeAuthorizedOperations(true))
+		desc, err := client.DescribeTopics(
+			ctx,
+			topics,
+			kafka.SetAdminOptionIncludeAuthorizedOperations(true),
+		)
 		if err != nil {
 			errorChan <- err
 			return
@@ -327,7 +523,6 @@ func (client *Client) DescribeTopic(name string, resultChan chan<- *TopicResult,
 			r := make(map[int32]kafka.Offset)
 			for tp, info := range result.ResultInfos {
 				r[tp.Partition] = info.Offset
-
 			}
 			return r
 		}
@@ -361,7 +556,7 @@ func (client *Client) DescribeTopic(name string, resultChan chan<- *TopicResult,
 }
 
 func (client *Client) DescribeTopicConfig(name string) (*[]kafka.ConfigResourceResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 	defer cancel()
 
 	resourceType, err := kafka.ResourceTypeFromString("topic")
@@ -369,8 +564,13 @@ func (client *Client) DescribeTopicConfig(name string) (*[]kafka.ConfigResourceR
 		return nil, fmt.Errorf("failed to parse resource type: %w", err)
 	}
 
-	results, err := client.AdminClient.DescribeConfigs(ctx,
-		[]kafka.ConfigResource{{Type: resourceType, Name: name}}, kafka.SetAdminRequestTimeout(timeout))
+	results, err := client.DescribeConfigs(
+		ctx,
+		[]kafka.ConfigResource{
+			{Type: resourceType, Name: name},
+		},
+		kafka.SetAdminRequestTimeout(client.Timeout),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe configs: %w", err)
 	}
