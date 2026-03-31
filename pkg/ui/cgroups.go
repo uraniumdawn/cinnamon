@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gdamore/tcell/v2"
@@ -25,6 +26,8 @@ const (
 	GetCgroupsEventType EventType = "cgroups:get"
 	// GetCgroupEventType is the event type for fetching a specific consumer group.
 	GetCgroupEventType EventType = "cgroup:get"
+	// ResetCgroupOffsetEventType is the event type for resetting consumer group offsets.
+	ResetCgroupOffsetEventType EventType = "cgroup:reset-offset"
 )
 
 // CgroupsChannel is the channel for consumer group events.
@@ -64,6 +67,13 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 					} else {
 						app.ConsumerGroup(consumerGroup)
 					}
+
+				case ResetCgroupOffsetEventType:
+					groupName := event.Payload.Data.(string)
+					app.QueueUpdateDraw(func() {
+						app.ResetConsumerGroupOffsetModal(groupName)
+						app.ShowModalPage(ResetOffset)
+					})
 				}
 			}
 		}
@@ -102,7 +112,7 @@ func (app *App) ConsumerGroups() {
 							Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
 							groupName := table.GetCell(row, 0).Text
 							Publish(
@@ -111,6 +121,7 @@ func (app *App) ConsumerGroups() {
 								Payload{groupName, false},
 							)
 						}
+
 						return event
 					})
 
@@ -163,6 +174,21 @@ func (app *App) ConsumerGroup(name string) {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(CgroupsChannel, GetCgroupEventType, Payload{name, true})
 						}
+						if IsKey(event, 'o') {
+							for _, d := range description.ConsumerGroupDescriptions {
+								if len(d.Members) > 0 {
+									SendStatusWithDefaultTTL(
+										"[red]cannot reset offsets: consumer group has active members",
+									)
+									return event
+								}
+							}
+							Publish(
+								CgroupsChannel,
+								ResetCgroupOffsetEventType,
+								Payload{name, false},
+							)
+						}
 						return event
 					})
 					app.AddToPagesRegistry(
@@ -172,7 +198,7 @@ func (app *App) ConsumerGroup(name string) {
 							name,
 						),
 						desc,
-						FinalPageMenu, false,
+						ConsumerGroupDescribePageMenu, false,
 					)
 					ClearStatus()
 				})
@@ -188,6 +214,226 @@ func (app *App) ConsumerGroup(name string) {
 			case <-ctx.Done():
 				log.Error().Msg("timeout while describing consumer group")
 				SendStatusWithDefaultTTL("[red]timeout while describing consumer group")
+				return
+			}
+		}
+	}()
+}
+
+// ResetConsumerGroupOffsetModal opens the reset offset modal for the given consumer group.
+func (app *App) ResetConsumerGroupOffsetModal(groupName string) {
+	scopeOptions := []string{"all topics", "single topic"}
+	strategyOptions := []string{"to-earliest", "to-latest", "to-datatime"}
+
+	scopeIdx := 0
+	strategyIdx := 0
+
+	width := 40
+
+	scopeField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetText(scopeOptions[0]).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+	scopeField.SetDisabled(true)
+
+	strategyField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetText(strategyOptions[0]).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+	strategyField.SetDisabled(true)
+
+	topicField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+
+	timestampField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetPlaceholder("eg: 2025-02-23T00:00:00.000").
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+
+	setRowActive := func(labelCell *tview.TableCell, active bool) {
+		if active {
+			labelCell.SetTextColor(tcell.ColorDefault)
+		} else {
+			labelCell.SetTextColor(tcell.ColorGray)
+		}
+	}
+
+	selection := tview.NewTable()
+	selection.SetCell(0, 0, tview.NewTableCell("Scope:").SetAlign(tview.AlignRight))
+	selection.SetCell(1, 0, tview.NewTableCell("Strategy:").SetAlign(tview.AlignRight))
+	selection.SetCell(2, 0, tview.NewTableCell("Topic:").SetAlign(tview.AlignRight).SetSelectable(false))
+	selection.SetCell(3, 0, tview.NewTableCell("Timestamp:").SetAlign(tview.AlignRight).SetSelectable(false))
+	selection.SetSelectable(true, false)
+	selection.SetBorderPadding(0, 0, 1, 0)
+	setRowActive(selection.GetCell(2, 0), false)
+	setRowActive(selection.GetCell(3, 0), false)
+	selection.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
+
+	f := tview.NewFlex().SetDirection(tview.FlexColumn)
+	f.AddItem(selection, 22, 0, true)
+	f.AddItem(tview.NewBox(), 1, 0, false)
+
+	inputs := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(scopeField, 1, 0, false).
+		AddItem(strategyField, 1, 0, false).
+		AddItem(topicField, 1, 0, false).
+		AddItem(timestampField, 1, 0, false).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	f.AddItem(inputs, 40, 0, false).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	topicField.SetDoneFunc(func(key tcell.Key) {
+		app.SetFocus(selection)
+		app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
+	})
+
+	timestampField.SetDoneFunc(func(key tcell.Key) {
+		app.SetFocus(selection)
+		app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
+	})
+
+	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := selection.GetSelection()
+
+		if IsKey(event, 'e') {
+			switch row {
+			case 0:
+				scopeIdx = (scopeIdx + 1) % len(scopeOptions)
+				scopeField.SetText(scopeOptions[scopeIdx])
+				topicSelectable := scopeOptions[scopeIdx] == "single topic"
+				selection.GetCell(2, 0).SetSelectable(topicSelectable)
+				setRowActive(selection.GetCell(2, 0), topicSelectable)
+				if !topicSelectable {
+					topicField.SetText("")
+				}
+			case 1:
+				strategyIdx = (strategyIdx + 1) % len(strategyOptions)
+				strategyField.SetText(strategyOptions[strategyIdx])
+				tsSelectable := strategyOptions[strategyIdx] == "to-datatime"
+				selection.GetCell(3, 0).SetSelectable(tsSelectable)
+				setRowActive(selection.GetCell(3, 0), tsSelectable)
+				if !tsSelectable {
+					timestampField.SetText("")
+				}
+			case 2:
+				app.SetFocus(topicField)
+				app.Layout.Menu.SetMenu(ResetOffsetInputMenu)
+			case 3:
+				app.SetFocus(timestampField)
+				app.Layout.Menu.SetMenu(ResetOffsetInputMenu)
+			}
+		}
+
+		if event.Key() == tcell.KeyCtrlS {
+			topic := ""
+			if scopeOptions[scopeIdx] == "single topic" {
+				topic = topicField.GetText()
+				if topic == "" {
+					SendStatusWithDefaultTTL("[red]topic name is required for single-topic scope")
+					return event
+				}
+			}
+
+			var timestampMs int64
+			if strategyOptions[strategyIdx] == "to-datatime" {
+				tsStr := timestampField.GetText()
+				t, err := time.Parse("2006-01-02T15:04:05.000", tsStr)
+				if err != nil {
+					t, err = time.Parse(time.RFC3339, tsStr)
+				}
+				if err != nil {
+					SendStatusWithDefaultTTL(
+						"[red]invalid timestamp, use format 2025-02-23T00:00:00.000",
+					)
+					return event
+				}
+				timestampMs = t.UnixMilli()
+			}
+
+			app.ResetConsumerGroupOffsetResultHandler(
+				groupName,
+				topic,
+				strategyOptions[strategyIdx],
+				timestampMs,
+			)
+			app.HideModalPage(ResetOffset)
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.HideModalPage(ResetOffset)
+		}
+
+		return event
+	})
+
+	flex := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(f, 0, 1, true)
+	flex.SetTitle(fmt.Sprintf(" Reset Offsets: %s ", groupName))
+	flex.SetBorder(true)
+
+	modal := util.NewTopicModal(flex)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ResetOffset, modal, true, false)
+}
+
+// ResetConsumerGroupOffsetResultHandler performs the offset reset and shows the result status.
+func (app *App) ResetConsumerGroupOffsetResultHandler(
+	group string,
+	topic string,
+	strategy string,
+	timestampMs int64,
+) {
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	SendStatusInfinite("resetting consumer group offsets")
+	c.ResetConsumerGroupOffsets(group, topic, strategy, timestampMs, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				SendStatus(
+					fmt.Sprintf("offsets for '%s' have been reset (%s)", group, strategy),
+					2*time.Second,
+					false,
+				)
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msg("failed to reset consumer group offsets")
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to reset offsets: %s", err.Error()),
+				)
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("timeout while resetting consumer group offsets")
+				SendStatusWithDefaultTTL("[red]timeout while resetting consumer group offsets")
 				return
 			}
 		}

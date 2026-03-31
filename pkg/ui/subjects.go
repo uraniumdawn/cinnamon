@@ -209,7 +209,7 @@ func (app *App) Versions(subject string) {
 							)
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
 							version := table.GetCell(row, 0).Text
 

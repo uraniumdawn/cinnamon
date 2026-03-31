@@ -52,7 +52,7 @@ func (app *App) CliTemplates(topicName string) {
 			return nil
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
+		if IsKey(event, 'c') {
 			row, _ := table.GetSelection()
 			if row >= 0 && row < len(app.Config.Cinnamon.CliTemplates) {
 				templateCmd := app.Config.Cinnamon.CliTemplates[row]
@@ -68,7 +68,7 @@ func (app *App) CliTemplates(topicName string) {
 			return nil
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+		if IsKey(event, 'e') {
 			row, _ := table.GetSelection()
 			if row >= 0 && row < len(app.Config.Cinnamon.CliTemplates) {
 				templateCmd := app.Config.Cinnamon.CliTemplates[row]
@@ -164,7 +164,7 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	}()
 
 	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == 't' {
+		if IsKey(event, 't') {
 			if atomic.LoadInt32(&isProcessActive) == 0 {
 				SendStatus("process already finished", 2*time.Second, false)
 				return nil

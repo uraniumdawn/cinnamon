@@ -131,7 +131,7 @@ func (app *App) Topics() {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 						}
-						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							Publish(
@@ -141,7 +141,7 @@ func (app *App) Topics() {
 							)
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'c' {
+						if IsKey(event, 'c') {
 							app.CreateTopic()
 							app.ShowModalPage(CreateTopic)
 						}
@@ -153,13 +153,13 @@ func (app *App) Topics() {
 							app.ShowModalPage(DeleteTopic)
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+						if IsKey(event, 'e') {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.UpdateTopic(topicName)
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 't' {
+						if IsKey(event, 't') {
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.CliTemplates(topicName)
@@ -249,7 +249,7 @@ func (app *App) CreateTopic() {
 	topicName := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("Put topic name here").
+		SetPlaceholder("-").
 		SetPlaceholderStyle(
 			tcell.StyleDefault.Foreground(
 				tcell.GetColor(app.Colors.Cinnamon.Foreground),
@@ -262,7 +262,7 @@ func (app *App) CreateTopic() {
 	replicationFactor := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("-1")
+		SetPlaceholder("1")
 	replicationFactor.SetAcceptanceFunc(tview.InputFieldInteger)
 	replicationFactor.SetPlaceholderStyle(
 		tcell.StyleDefault.Foreground(
@@ -276,7 +276,7 @@ func (app *App) CreateTopic() {
 	partitions := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("-1")
+		SetPlaceholder("1")
 	partitions.SetAcceptanceFunc(tview.InputFieldInteger)
 	partitions.
 		SetPlaceholderStyle(
@@ -369,7 +369,7 @@ retention.ms=604800000`).
 	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := selection.GetSelection()
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+		if IsKey(event, 'e') {
 			if row < len(inputFields) {
 				app.SetFocus(inputFields[row])
 				app.Layout.Menu.SetMenu(CreateTopicInputMenu)
@@ -379,7 +379,7 @@ retention.ms=604800000`).
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
+		if IsKey(event, 's') {
 			params.TopicName = topicName.GetText()
 			params.ReplicationFactor, _ = strconv.Atoi(replicationFactor.GetText())
 			params.Partitions, _ = strconv.Atoi(partitions.GetText())
@@ -584,7 +584,7 @@ func (app *App) DeleteTopic(topicName string) {
 		SetBorderPadding(0, 0, 1, 1)
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
+		if IsKey(event, 's') {
 			app.DeleteTopicResultHandler(topicName)
 			app.HideModalPage(DeleteTopic)
 			Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
@@ -731,11 +731,11 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	}
 
 	selection := tview.NewTable()
-	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight).SetSelectable(false))
+	selection.SetCell(0, 0, tview.NewTableCell("[grey]Name:").SetAlign(tview.AlignRight).SetSelectable(false))
 	selection.SetCell(
 		1,
 		0,
-		tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight).SetSelectable(false),
+		tview.NewTableCell("[grey]Replication factor:").SetAlign(tview.AlignRight).SetSelectable(false),
 	)
 	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
 	selection.SetCell(3, 0, tview.NewTableCell("Configs:").SetAlign(tview.AlignRight))
@@ -764,7 +764,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 			app.Layout.Menu.SetMenu(EditTopicPageMenu)
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+		if IsKey(event, 'e') {
 			app.SetFocus(partitionsField)
 			app.Layout.Menu.SetMenu(EditTopicInputMenu)
 		}
@@ -781,7 +781,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 			return nil
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+		if IsKey(event, 'e') {
 			app.SetFocus(configTextArea)
 			app.Layout.Menu.SetMenu(EditTopicInputMenu)
 		}
@@ -792,7 +792,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := selection.GetSelection()
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+		if IsKey(event, 'e') {
 			switch row {
 			case 2:
 				app.SetFocus(partitionsField)
@@ -803,7 +803,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
+		if IsKey(event, 's') {
 			propertiesText := configTextArea.GetText()
 			editedConfig = parseConfig(propertiesText)
 

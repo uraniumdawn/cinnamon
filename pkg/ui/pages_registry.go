@@ -67,6 +67,7 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[CreateTopic] = CreateTopicPageMenu
 	pr.PageMenuMap[DeleteTopic] = DeleteTopicPageMenu
 	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
+	pr.PageMenuMap[ResetOffset] = ResetOffsetPageMenu
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
 }
 

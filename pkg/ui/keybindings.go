@@ -9,6 +9,11 @@ import (
 	"github.com/rivo/tview"
 )
 
+// IsKey reports whether the event is a printable rune key matching r.
+func IsKey(event *tcell.EventKey, r rune) bool {
+	return event.Key() == tcell.KeyRune && event.Rune() == r
+}
+
 func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 	table.SetSelectionChangedFunc(func(row, column int) {
 		if row >= 0 && row < table.GetRowCount() {
@@ -43,7 +48,7 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 				app.HideModalPage(OpenedPages)
 			}
 
-			if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
+			if IsKey(event, 'x') {
 				row, _ := table.GetSelection()
 				if row >= 0 && row < table.GetRowCount() {
 					cell := table.GetCell(row, 1)
@@ -80,13 +85,13 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 
 func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
+		if IsKey(event, ':') {
 			if !app.IsSearchInFocus() {
 				app.ShowModalPage(Resources)
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
+		if IsKey(event, '/') {
 			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
 			for _, searchablePage := range app.Layout.PagesRegistry.SearchablePages {
 				if currentPage == searchablePage {

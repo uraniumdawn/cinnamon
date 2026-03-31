@@ -39,6 +39,7 @@ const (
 	CreateTopic      = "Create Topic"
 	DeleteTopic      = "Delete Topic"
 	EditTopic        = "Edit Topic"
+	ResetOffset      = "Reset Offset"
 	CliTemplates     = "CLI Templates"
 )
 
