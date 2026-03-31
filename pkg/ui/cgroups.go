@@ -12,9 +12,9 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gdamore/tcell/v2"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+	"github.com/sahilm/fuzzy"
 
 	"github.com/uraniumdawn/cinnamon/pkg/client"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
@@ -228,18 +228,33 @@ func filterConsumerGroupsTable(
 		groups = append(groups, g.GroupID)
 	}
 
-	ranks := fuzzy.RankFind(filter, groups)
-	sort.Slice(ranks, func(i, j int) bool {
-		return ranks[i].Distance < ranks[j].Distance
-	})
+	if filter == "" {
+		// Show all consumer groups sorted alphabetically when filter is empty
+		sort.Strings(groups)
+		row := 1
+		for _, groupID := range groups {
+			// Find the matching group in groupListing
+			for _, g := range groupListing {
+				if g.GroupID == groupID {
+					table.SetCell(row, 0, tview.NewTableCell(g.GroupID))
+					table.SetCell(row, 1, tview.NewTableCell("STATE: "+g.State.String()))
+					row++
+					break
+				}
+			}
+		}
+		return
+	}
 
-	row := 1
-	for _, rank := range ranks {
-		table.SetCell(row, 0, tview.NewTableCell(rank.Target))
+	matches := fuzzy.Find(filter, groups)
+
+	row := 0
+	for _, match := range matches {
+		table.SetCell(row, 0, tview.NewTableCell(match.Str))
 		table.SetCell(
 			row,
 			1,
-			tview.NewTableCell("STATE: "+groupListing[rank.OriginalIndex].State.String()),
+			tview.NewTableCell("STATE: "+groupListing[match.Index].State.String()),
 		)
 		row++
 	}

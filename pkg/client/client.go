@@ -9,6 +9,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -434,6 +435,52 @@ func (r *DescribeConsumerGroupResult) SetEndOffsets(o map[TopicPartition]kafka.O
 	r.logEndOffsets = o
 }
 
+// GetTotalLag returns the sum of lag across all partitions.
+// Returns the total number of messages the consumer group is behind.
+func (r *DescribeConsumerGroupResult) GetTotalLag() int64 {
+	var total int64
+	for _, lag := range r.lag {
+		total += int64(lag)
+	}
+	return total
+}
+
+// GetLagByTopic returns lag aggregated by topic name.
+// Returns a map of topic name to total lag across all partitions of that topic.
+func (r *DescribeConsumerGroupResult) GetLagByTopic() map[string]int64 {
+	lagByTopic := make(map[string]int64)
+	for tp, lag := range r.lag {
+		lagByTopic[tp.Topic] += int64(lag)
+	}
+	return lagByTopic
+}
+
+// GetPartitionCountByTopic returns the number of partitions per topic.
+// Useful for displaying alongside per-topic lag.
+func (r *DescribeConsumerGroupResult) GetPartitionCountByTopic() map[string]int {
+	partitionCount := make(map[string]int)
+	for tp := range r.currentOffsets {
+		partitionCount[tp.Topic]++
+	}
+	return partitionCount
+}
+
+// GetTopicNames returns a sorted list of unique topic names in the consumer group.
+func (r *DescribeConsumerGroupResult) GetTopicNames() []string {
+	topicSet := make(map[string]bool)
+	for tp := range r.currentOffsets {
+		topicSet[tp.Topic] = true
+	}
+
+	topics := make([]string, 0, len(topicSet))
+	for topic := range topicSet {
+		topics = append(topics, topic)
+	}
+
+	sort.Strings(topics)
+	return topics
+}
+
 func (r *TopicResult) SetStartOffsets(o map[int32]kafka.Offset) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -456,6 +503,96 @@ func (r *TopicResult) SetTopicACLsResult(o kafka.DescribeACLsResult) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
 	r.DescribeACLsResult = o
+}
+
+// GetTotalMessages returns the total message count across all partitions.
+// This is the sum of (end_offset - start_offset) for all partitions.
+func (r *TopicResult) GetTotalMessages() int64 {
+	var total int64
+	for partition := range r.endOffsets {
+		end := r.endOffsets[partition]
+		start := r.startOffsets[partition]
+		total += int64(end - start)
+	}
+	return total
+}
+
+// GetEstimatedSizeBytes returns an estimated topic size in bytes.
+// Returns (size_in_bytes, is_estimate).
+// If is_estimate is false, only message count is reliable (size estimation failed).
+// The estimation is based on segment.bytes configuration and assumes:
+// - Average segment utilization of 70%
+// - Approximately 10,000 messages per segment
+// This provides a rough approximation; actual size may vary due to:
+// - Message size variance
+// - Compression settings
+// - Replication factor (not included in this calculation)
+func (r *TopicResult) GetEstimatedSizeBytes() (int64, bool) {
+	totalMessages := r.GetTotalMessages()
+	if totalMessages == 0 {
+		return 0, false
+	}
+
+	// Try to get segment.bytes from config for estimation
+	var segmentBytes int64 = 1073741824 // default 1GB
+
+	for _, configResult := range r.Config {
+		if entry, ok := configResult.Config["segment.bytes"]; ok {
+			if val, err := fmt.Sscanf(entry.Value, "%d", &segmentBytes); err == nil && val == 1 {
+				// Successfully parsed segment.bytes
+				break
+			}
+		}
+	}
+
+	// Estimate: assume average segment is 70% full and contains ~10k messages
+	// This is a rough heuristic: segment_bytes * 0.7 / 10000 = avg_msg_size
+	estimatedAvgMsgSize := float64(segmentBytes) * 0.7 / 10000.0
+
+	// Ensure minimum 100 bytes per message (reasonable lower bound)
+	if estimatedAvgMsgSize < 100 {
+		estimatedAvgMsgSize = 1000 // default to 1KB per message
+	}
+
+	estimatedSize := int64(float64(totalMessages) * estimatedAvgMsgSize)
+
+	// Return estimate with flag indicating it's an approximation
+	return estimatedSize, true
+}
+
+// IncreasePartitions increases the partition count of a topic to newCount.
+// Kafka only supports increasing partition count, not decreasing.
+func (client *Client) IncreasePartitions(
+	name string,
+	newCount int,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		results, err := client.CreatePartitions(
+			ctx,
+			[]kafka.PartitionsSpecification{
+				{Topic: name, IncreaseTo: newCount},
+			},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to increase partitions for topic '%s': %s", name, result.Error.String())
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
 }
 
 func (client *Client) DescribeTopic(
@@ -492,22 +629,6 @@ func (client *Client) DescribeTopic(
 				return
 			}
 		}()
-
-		//go func() {
-		//	defer wg.Done()
-		//	binding := kafka.ACLBindingFilter{
-		//		Type: kafka.ResourceTopic,
-		//		Name: name,
-		//	}
-		//
-		//	ac, errorACLs := client.DescribeACLs(context.Background(), binding)
-		//	//topicResult.SetTopicACLsResult(*ac)
-		//	fmt.Printf("DescribeACLs successful, result: %s", ac)
-		//	if errorACLs != nil {
-		//		errorChan <- errorACLs
-		//		return
-		//	}
-		//}()
 
 		startOffsetsRq := make(map[kafka.TopicPartition]kafka.OffsetSpec)
 		endOffsetsRq := make(map[kafka.TopicPartition]kafka.OffsetSpec)

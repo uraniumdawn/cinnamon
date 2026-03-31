@@ -29,7 +29,7 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 
 	table.SetInputCapture(
 		func(event *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyEsc {
+			if (event.Key() == tcell.KeyEsc) || (event.Key() == tcell.KeyEnter) {
 				row, _ := table.GetSelection()
 				if row >= 0 && row < table.GetRowCount() {
 					cell := table.GetCell(row, 1)

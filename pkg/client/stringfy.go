@@ -6,6 +6,7 @@ package client
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
 	"github.com/rs/zerolog/log"
+
+	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 func (r *ClusterResult) String() string {
@@ -75,6 +78,18 @@ func (r *TopicResult) String() string {
 		sb.WriteString(fmt.Sprintf("Topic Id: %s\n", desc.TopicID))
 		sb.WriteString(fmt.Sprintf("Allowed operations: %s\n", desc.AuthorizedOperations))
 		sb.WriteString(fmt.Sprintf("Partitions count: %d\n", len(desc.Partitions)))
+
+		// Add size information
+		totalMessages := r.GetTotalMessages()
+		estimatedSize, isEstimate := r.GetEstimatedSizeBytes()
+		sb.WriteString(fmt.Sprintf("Total Messages: %s\n", util.FormatNumber(totalMessages)))
+		sb.WriteString(
+			fmt.Sprintf(
+				"Estimated Size: %s\n",
+				util.FormatSizeWithFallback(estimatedSize, totalMessages, isEstimate),
+			),
+		)
+
 		sb.WriteString("Offsets: \n")
 		for _, p := range desc.Partitions {
 			end := r.endOffsets[int32(p.Partition)]
@@ -90,12 +105,7 @@ func (r *TopicResult) String() string {
 				sb.WriteString(fmt.Sprintf("\t\t%s\n", isr))
 			}
 		}
-		sb.WriteString("\n")
 	}
-
-	//for _, acl := range r.DescribeACLsResult.ACLBindings {
-	//	sb.WriteString(fmt.Sprintf("ACL Bindings: %s\n", acl))
-	//}
 
 	for _, result := range r.Config {
 		w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
@@ -149,6 +159,54 @@ func (r *DescribeConsumerGroupResult) String() string {
 		}
 	}
 
+	// Total lag summary
+	totalLag := r.GetTotalLag()
+	topicCount := len(r.GetTopicNames())
+	sb.WriteString(
+		fmt.Sprintf(
+			"Total Lag: %d messages across %d topic%s\n",
+			totalLag,
+			topicCount,
+			pluralize(topicCount),
+		),
+	)
+
+	// Per-topic lag summary (sorted by lag descending)
+	sb.WriteString("Topic Lag Summary:\n")
+	lagByTopic := r.GetLagByTopic()
+	partitionsByTopic := r.GetPartitionCountByTopic()
+
+	// Create slice for sorting by lag
+	type topicLagPair struct {
+		topic string
+		lag   int64
+	}
+	topicLags := make([]topicLagPair, 0, len(lagByTopic))
+	for topic, lag := range lagByTopic {
+		topicLags = append(topicLags, topicLagPair{topic, lag})
+	}
+
+	// Sort by lag descending (highest first)
+	sort.Slice(topicLags, func(i, j int) bool {
+		return topicLags[i].lag > topicLags[j].lag
+	})
+
+	// Display sorted topics
+	for _, tl := range topicLags {
+		partitionCount := partitionsByTopic[tl.topic]
+		sb.WriteString(
+			fmt.Sprintf(
+				"  %s: %d messages (%d partition%s)\n",
+				tl.topic,
+				tl.lag,
+				partitionCount,
+				pluralize(partitionCount),
+			),
+		)
+	}
+
+	// Partition details table
+	sb.WriteString("Partition Details:\n")
 	w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
 	_, err := fmt.Fprintln(
 		w,
@@ -208,4 +266,12 @@ func (r *DescribeConsumerGroupResult) String() string {
 	}
 
 	return sb.String()
+}
+
+// pluralize returns "s" if count != 1, empty string otherwise.
+func pluralize(count int) string {
+	if count == 1 {
+		return ""
+	}
+	return "s"
 }

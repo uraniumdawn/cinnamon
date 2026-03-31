@@ -63,9 +63,25 @@ func NewInlineSearch(colors *config.ColorConfig) *tview.InputField {
 func (app *App) AssignSearch(onSearch func(text string)) {
 	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
 	search := NewInlineSearch(app.Layout.Colors)
-	search.SetChangedFunc(onSearch)
+
+	// Wrap the onSearch callback to save filter state
+	wrappedOnSearch := func(text string) {
+		// Save current filter to app state
+		app.CurrentFilters[currentPage] = text
+
+		// Call the original filter function
+		onSearch(text)
+	}
+
+	search.SetChangedFunc(wrappedOnSearch)
 	app.SearchKeyHandler(search)
 	app.Layout.Search[currentPage] = search
+
+	// Restore previous filter if it exists
+	if filterText, exists := app.CurrentFilters[currentPage]; exists && filterText != "" {
+		search.SetText(filterText)
+		// SetText will trigger wrappedOnSearch automatically
+	}
 }
 
 func (app *App) IsSearchInFocus() bool {

@@ -15,9 +15,10 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/gdamore/tcell/v2"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+	"github.com/sahilm/fuzzy"
+
 	"github.com/uraniumdawn/cinnamon/pkg/client"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
@@ -312,14 +313,6 @@ retention.ms=604800000`).
 		),
 	)
 
-	inputFields := []*tview.InputField{topicName, replicationFactor, partitions}
-	for _, inf := range inputFields {
-		inf.SetDoneFunc(func(key tcell.Key) {
-			app.SetFocus(selection)
-			app.Layout.Menu.SetMenu(CreateTopicPageMenu)
-		})
-	}
-
 	f := tview.NewFlex()
 	f.SetDirection(tview.FlexColumn)
 	f.AddItem(selection, 20, 0, true)
@@ -335,22 +328,28 @@ retention.ms=604800000`).
 		AddItem(tview.NewBox(), 0, 1, false)
 
 	topicName.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
+		if event.Key() == tcell.KeyEsc {
 			params.TopicName = topicName.GetText()
+			app.SetFocus(selection)
+			app.Layout.Menu.SetMenu(CreateTopicPageMenu)
 		}
 		return event
 	})
 
 	replicationFactor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
+		if event.Key() == tcell.KeyEsc {
 			params.ReplicationFactor, _ = strconv.Atoi(replicationFactor.GetText())
+			app.SetFocus(selection)
+			app.Layout.Menu.SetMenu(CreateTopicPageMenu)
 		}
 		return event
 	})
 
 	partitions.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEnter {
+		if event.Key() == tcell.KeyEsc {
 			params.Partitions, _ = strconv.Atoi(partitions.GetText())
+			app.SetFocus(selection)
+			app.Layout.Menu.SetMenu(CreateTopicPageMenu)
 		}
 		return event
 	})
@@ -366,10 +365,11 @@ retention.ms=604800000`).
 		return event
 	})
 
+	inputFields := []*tview.InputField{topicName, replicationFactor, partitions}
 	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := selection.GetSelection()
 
-		if event.Key() == tcell.KeyEnter {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
 			if row < len(inputFields) {
 				app.SetFocus(inputFields[row])
 				app.Layout.Menu.SetMenu(CreateTopicInputMenu)
@@ -491,41 +491,86 @@ func (app *App) UpdateTopic(topicName string) {
 
 func (app *App) UpdateTopicResultHandler(
 	name string,
+	currentPartitions int,
+	newPartitions int,
 	config map[string]string,
 ) {
-	resultCh := make(chan bool)
-	errorCh := make(chan error)
-
 	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("updating topic configuration")
-	c.UpdateTopicConfig(name, config, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
-	go func() {
-		for {
-			select {
-			case <-resultCh:
-				SendStatus(
-					fmt.Sprintf("topic '%s' config has been updated", name),
-					2*time.Second,
-					false,
-				)
-				cancel()
-				return
-			case err := <-errorCh:
-				log.Error().Err(err).Msg("failed to update topic configuration")
-				SendStatusWithDefaultTTL(
-					fmt.Sprintf("[red]failed to update topic configuration: %s", err.Error()),
-				)
-				cancel()
-				return
-			case <-ctx.Done():
-				log.Error().Msg("timeout while updating topic config")
-				SendStatusWithDefaultTTL("[red]timeout while updating topic config")
-				return
+	if len(config) > 0 {
+		resultCh := make(chan bool)
+		errorCh := make(chan error)
+		SendStatusInfinite("updating topic configuration")
+		c.UpdateTopicConfig(name, config, resultCh, errorCh)
+		ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+		go func() {
+			for {
+				select {
+				case <-resultCh:
+					SendStatus(
+						fmt.Sprintf("topic '%s' config has been updated", name),
+						2*time.Second,
+						false,
+					)
+					cancel()
+					return
+				case err := <-errorCh:
+					log.Error().Err(err).Msg("failed to update topic configuration")
+					SendStatusWithDefaultTTL(
+						fmt.Sprintf(
+							"[red]failed to update topic configuration: %s",
+							err.Error(),
+						),
+					)
+					cancel()
+					return
+				case <-ctx.Done():
+					log.Error().Msg("timeout while updating topic config")
+					SendStatusWithDefaultTTL("[red]timeout while updating topic config")
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
+
+	if newPartitions > currentPartitions {
+		resultCh := make(chan bool)
+		errorCh := make(chan error)
+		SendStatusInfinite("increasing partition count")
+		c.IncreasePartitions(name, newPartitions, resultCh, errorCh)
+		ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+		go func() {
+			for {
+				select {
+				case <-resultCh:
+					SendStatus(
+						fmt.Sprintf(
+							"topic '%s' partitions increased to %d",
+							name,
+							newPartitions,
+						),
+						2*time.Second,
+						false,
+					)
+					cancel()
+					return
+				case err := <-errorCh:
+					log.Error().Err(err).Msg("failed to increase partition count")
+					SendStatusWithDefaultTTL(
+						fmt.Sprintf("[red]failed to increase partition count: %s", err.Error()),
+					)
+					cancel()
+					return
+				case <-ctx.Done():
+					log.Error().Msg("timeout while increasing partition count")
+					SendStatusWithDefaultTTL("[red]timeout while increasing partition count")
+					return
+				}
+			}
+		}()
+	}
 }
 
 func (app *App) DeleteTopic(topicName string) {
@@ -542,7 +587,7 @@ func (app *App) DeleteTopic(topicName string) {
 		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
 			app.DeleteTopicResultHandler(topicName)
 			app.HideModalPage(DeleteTopic)
-			Publish(TopicsChannel, GetTopicsEventType, Payload{nil, false})
+			Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
 		}
 
 		if event.Key() == tcell.KeyEsc {
@@ -664,7 +709,16 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault).
 		SetText(fmt.Sprintf("%d", partitionCount))
-	partitionsField.SetDisabled(true)
+	partitionsField.SetAcceptanceFunc(tview.InputFieldInteger)
+	partitionsField.
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
 
 	configTextArea := tview.NewTextArea()
 
@@ -677,8 +731,12 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	}
 
 	selection := tview.NewTable()
-	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
-	selection.SetCell(1, 0, tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight))
+	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight).SetSelectable(false))
+	selection.SetCell(
+		1,
+		0,
+		tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight).SetSelectable(false),
+	)
 	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
 	selection.SetCell(3, 0, tview.NewTableCell("Configs:").SetAlign(tview.AlignRight))
 	selection.SetSelectable(true, false)
@@ -700,6 +758,20 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 
 	var editedConfig map[string]string
 
+	partitionsField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			app.SetFocus(selection)
+			app.Layout.Menu.SetMenu(EditTopicPageMenu)
+		}
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+			app.SetFocus(partitionsField)
+			app.Layout.Menu.SetMenu(EditTopicInputMenu)
+		}
+
+		return event
+	})
+
 	configTextArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
 			propertiesText := configTextArea.GetText()
@@ -708,14 +780,24 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 			app.Layout.Menu.SetMenu(EditTopicPageMenu)
 			return nil
 		}
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+			app.SetFocus(configTextArea)
+			app.Layout.Menu.SetMenu(EditTopicInputMenu)
+		}
+
 		return event
 	})
 
 	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		row, _ := selection.GetSelection()
 
-		if event.Key() == tcell.KeyEnter {
-			if row == 3 {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+			switch row {
+			case 2:
+				app.SetFocus(partitionsField)
+				app.Layout.Menu.SetMenu(EditTopicInputMenu)
+			case 3:
 				app.SetFocus(configTextArea)
 				app.Layout.Menu.SetMenu(EditTopicInputMenu)
 			}
@@ -724,7 +806,18 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 		if event.Key() == tcell.KeyRune && event.Rune() == 's' {
 			propertiesText := configTextArea.GetText()
 			editedConfig = parseConfig(propertiesText)
-			app.UpdateTopicResultHandler(topicName, editedConfig)
+
+			newPartitions, err := strconv.Atoi(partitionsField.GetText())
+			if err != nil || newPartitions <= 0 {
+				SendStatusWithDefaultTTL("[red]partitions must be a positive integer")
+				return event
+			}
+			if newPartitions < partitionCount {
+				SendStatusWithDefaultTTL("[red]partition count cannot be decreased")
+				return event
+			}
+
+			app.UpdateTopicResultHandler(topicName, partitionCount, newPartitions, editedConfig)
 			app.HideModalPage(EditTopic)
 			Publish(TopicsChannel, GetTopicsEventType, Payload{nil, false})
 		}
@@ -780,13 +873,10 @@ func filterTopicsTable(
 		return
 	}
 
-	ranks := fuzzy.RankFind(filter, topics)
-	sort.Slice(ranks, func(i, j int) bool {
-		return ranks[i].Distance < ranks[j].Distance
-	})
+	matches := fuzzy.Find(filter, topics)
 
-	for i, rank := range ranks {
-		topicName := rank.Target
+	for i, match := range matches {
+		topicName := match.Str
 		meta := metadata[topicName]
 		partitions := len(meta.Partitions)
 		replicas := 0

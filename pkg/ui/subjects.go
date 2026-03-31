@@ -13,9 +13,9 @@ import (
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+	"github.com/sahilm/fuzzy"
 
 	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
@@ -294,6 +294,7 @@ func (app *App) Schema(subject string, version int) {
 						desc,
 						FinalPageMenu, false,
 					)
+					ClearStatus()
 				})
 				cancel()
 				return
@@ -364,14 +365,22 @@ func (app *App) NewVersionsTable(versions []int) *tview.Table {
 func filterSubjectsTable(table *tview.Table, subjects []string, filter string) {
 	table.Clear()
 
-	ranks := fuzzy.RankFind(filter, subjects)
-	sort.Slice(ranks, func(i, j int) bool {
-		return ranks[i].Distance < ranks[j].Distance
-	})
+	if filter == "" {
+		// Show all subjects sorted alphabetically when filter is empty
+		sort.Strings(subjects)
+		row := 0
+		for _, subject := range subjects {
+			table.SetCell(row, 0, tview.NewTableCell(subject))
+			row++
+		}
+		return
+	}
 
-	row := 1
-	for _, rank := range ranks {
-		table.SetCell(row, 0, tview.NewTableCell(rank.Target))
+	matches := fuzzy.Find(filter, subjects)
+
+	row := 0
+	for _, match := range matches {
+		table.SetCell(row, 0, tview.NewTableCell(match.Str))
 		row++
 	}
 }

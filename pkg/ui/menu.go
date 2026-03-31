@@ -41,12 +41,16 @@ var keys = map[string]Pair{
 		Key:   "<Enter>",
 		Value: "Select",
 	},
+	"edit": {
+		Key:   "<e>",
+		Value: "Edit",
+	},
 	"res": {
 		Key:   "<:>",
 		Value: "Resources",
 	},
 	"opened": {
-		Key:   "<p>",
+		Key:   "<Ctrl+p>",
 		Value: "Opened Pages",
 	},
 	"search": {
@@ -77,7 +81,7 @@ var keys = map[string]Pair{
 		Key:   "<Ctrl+d>",
 		Value: "Delete Topic",
 	},
-	"edit": {
+	"edit_topic": {
 		Key:   "<e>",
 		Value: "Edit Topic",
 	},
@@ -129,6 +133,14 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Back",
 	},
+	"esc_confirm": {
+		Key:   "<Esc>",
+		Value: "Confirm and back",
+	},
+	"esc_confirm_opened": {
+		Key:   "<Esc, Enter>",
+		Value: "Confirm and back",
+	},
 	"q": {
 		Key:   "<q>",
 		Value: "",
@@ -167,11 +179,11 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Flex:    flex,
 		Map: &map[string]*[]string{
 			ResourcesPageMenu:    {"up", "dw", "select", "close"},
-			OpenedPagesMenu:      {"up", "dw", "remove_page", "close"},
-			CreateTopicPageMenu:  {"up", "dw", "select", "submit", "default", "close"},
-			CreateTopicInputMenu: {"esc", "enter"},
-			EditTopicPageMenu:    {"up", "dw", "select", "submit", "close"},
-			EditTopicInputMenu:   {"esc", "enter"},
+			OpenedPagesMenu:      {"up", "dw", "remove_page", "esc_confirm_opened"},
+			CreateTopicPageMenu:  {"up", "dw", "edit", "submit", "default", "close"},
+			CreateTopicInputMenu: {"esc_confirm"},
+			EditTopicPageMenu:    {"up", "dw", "edit", "submit", "close"},
+			EditTopicInputMenu:   {"esc_confirm"},
 			DeleteTopicPageMenu:  {"confirm", "cancel"},
 			CliTemplatesPageMenu: {"up", "dw", "copy_cli", "execute_cli", "close"},
 			ClustersPageMenu: {
@@ -207,10 +219,10 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"upd",
 				"create",
 				"delete",
-				"edit",
+				"edit_topic",
 				"cli_commands",
 			},
-			CliExecutePageMenu: {"terminate_cli", "kill_cli", "remove_page"},
+			CliExecutePageMenu: {"terminate_cli", "kill_cli"},
 			ConsumerGroupsPageMenu: {
 				"up",
 				"dw",
