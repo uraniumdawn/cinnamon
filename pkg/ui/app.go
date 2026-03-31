@@ -39,6 +39,7 @@ const (
 	CreateTopic      = "Create Topic"
 	DeleteTopic      = "Delete Topic"
 	EditTopic        = "Edit Topic"
+	ResetOffset      = "Reset Offset"
 	CliTemplates     = "CLI Templates"
 )
 
@@ -54,6 +55,7 @@ type App struct {
 	Config                *config.Config
 	Colors                *config.ColorConfig
 	ModalHideTimer        *time.Timer
+	CurrentFilters        map[string]string // pageName -> filter text for search preservation
 }
 
 type Selected struct {
@@ -96,6 +98,7 @@ func NewApp() *App {
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
 		Config:                cfg,
 		Colors:                colors,
+		CurrentFilters:        make(map[string]string),
 	}
 
 	return app
@@ -279,4 +282,20 @@ func (app *App) NewDescription(title string) *tview.TextView {
 		SetTitle(title)
 	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
 	return desc
+}
+
+// ClearCurrentFilter clears the saved filter for the current page.
+func (app *App) ClearCurrentFilter() {
+	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+	delete(app.CurrentFilters, currentPage)
+
+	// Also clear the search input if it exists
+	if search, exists := app.Layout.Search[currentPage]; exists {
+		search.SetText("")
+	}
+}
+
+// ClearFilterForPage clears the saved filter for a specific page.
+func (app *App) ClearFilterForPage(pageName string) {
+	delete(app.CurrentFilters, pageName)
 }

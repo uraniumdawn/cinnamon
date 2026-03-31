@@ -41,12 +41,16 @@ var keys = map[string]Pair{
 		Key:   "<Enter>",
 		Value: "Select",
 	},
+	"edit": {
+		Key:   "<e>",
+		Value: "Edit",
+	},
 	"res": {
 		Key:   "<:>",
 		Value: "Resources",
 	},
 	"opened": {
-		Key:   "<p>",
+		Key:   "<Ctrl+p>",
 		Value: "Opened Pages",
 	},
 	"search": {
@@ -77,13 +81,21 @@ var keys = map[string]Pair{
 		Key:   "<Ctrl+d>",
 		Value: "Delete Topic",
 	},
-	"edit": {
+	"edit_topic": {
 		Key:   "<e>",
 		Value: "Edit Topic",
 	},
 	"submit": {
 		Key:   "<s>",
 		Value: "Submit",
+	},
+	"submit_ctrl": {
+		Key:   "<Ctrl+s>",
+		Value: "Submit",
+	},
+	"reset_offset": {
+		Key:   "<o>",
+		Value: "Reset Offsets",
 	},
 	"confirm": {
 		Key:   "<s>",
@@ -129,6 +141,19 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Back",
 	},
+
+	"edit_preselected": {
+		Key:   "<e>",
+		Value: "Edit or choose preselected",
+	},
+	"esc_confirm": {
+		Key:   "<Esc>",
+		Value: "Confirm and back",
+	},
+	"esc_confirm_opened": {
+		Key:   "<Esc, Enter>",
+		Value: "Confirm and back",
+	},
 	"q": {
 		Key:   "<q>",
 		Value: "",
@@ -136,23 +161,26 @@ var keys = map[string]Pair{
 }
 
 const (
-	ResourcesPageMenu        = "ResourcesPageMenu"
-	OpenedPagesMenu          = "OpenedPagesMenu"
-	ClustersPageMenu         = "ClustersPageMenu"
-	SchemaRegistriesPageMenu = "SchemaRegistriesPageMenu"
-	NodesPageMenu            = "NodesPageMenu"
-	TopicsPageMenu           = "TopicsPageMenu"
-	CreateTopicPageMenu      = "CreateTopicPageMenu"
-	CreateTopicInputMenu     = "CreateTopicInputMenu"
-	DeleteTopicPageMenu      = "DeleteTopicPageMenu"
-	EditTopicPageMenu        = "EditTopicPageMenu"
-	EditTopicInputMenu       = "EditTopicInputMenu"
-	ConsumerGroupsPageMenu   = "ConsumerGroupsPageMenu"
-	SubjectsPageMenu         = "SubjectsPageMenu"
-	VersionsPageMenu         = "VersionsPageMenu"
-	FinalPageMenu            = "FinalPageMenu"
-	CliTemplatesPageMenu     = "CliTemplatesPageMenu"
-	CliExecutePageMenu       = "CliExecutePageMenu"
+	ResourcesPageMenu             = "ResourcesPageMenu"
+	OpenedPagesMenu               = "OpenedPagesMenu"
+	ClustersPageMenu              = "ClustersPageMenu"
+	SchemaRegistriesPageMenu      = "SchemaRegistriesPageMenu"
+	NodesPageMenu                 = "NodesPageMenu"
+	TopicsPageMenu                = "TopicsPageMenu"
+	CreateTopicPageMenu           = "CreateTopicPageMenu"
+	CreateTopicInputMenu          = "CreateTopicInputMenu"
+	DeleteTopicPageMenu           = "DeleteTopicPageMenu"
+	EditTopicPageMenu             = "EditTopicPageMenu"
+	EditTopicInputMenu            = "EditTopicInputMenu"
+	ResetOffsetPageMenu           = "ResetOffsetPageMenu"
+	ResetOffsetInputMenu          = "ResetOffsetInputMenu"
+	ConsumerGroupsPageMenu        = "ConsumerGroupsPageMenu"
+	ConsumerGroupDescribePageMenu = "ConsumerGroupDescribePageMenu"
+	SubjectsPageMenu              = "SubjectsPageMenu"
+	VersionsPageMenu              = "VersionsPageMenu"
+	FinalPageMenu                 = "FinalPageMenu"
+	CliTemplatesPageMenu          = "CliTemplatesPageMenu"
+	CliExecutePageMenu            = "CliExecutePageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -167,11 +195,13 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Flex:    flex,
 		Map: &map[string]*[]string{
 			ResourcesPageMenu:    {"up", "dw", "select", "close"},
-			OpenedPagesMenu:      {"up", "dw", "remove_page", "close"},
-			CreateTopicPageMenu:  {"up", "dw", "select", "submit", "default", "close"},
-			CreateTopicInputMenu: {"esc", "enter"},
-			EditTopicPageMenu:    {"up", "dw", "select", "submit", "close"},
-			EditTopicInputMenu:   {"esc", "enter"},
+			OpenedPagesMenu:      {"up", "dw", "remove_page", "esc_confirm_opened"},
+			CreateTopicPageMenu:  {"up", "dw", "edit", "submit", "default", "close"},
+			CreateTopicInputMenu: {"esc_confirm"},
+			EditTopicPageMenu:    {"up", "dw", "edit", "submit", "close"},
+			EditTopicInputMenu:   {"esc_confirm"},
+			ResetOffsetPageMenu:  {"up", "dw", "edit_preselected", "submit_ctrl", "close"},
+			ResetOffsetInputMenu: {"esc_confirm"},
 			DeleteTopicPageMenu:  {"confirm", "cancel"},
 			CliTemplatesPageMenu: {"up", "dw", "copy_cli", "execute_cli", "close"},
 			ClustersPageMenu: {
@@ -207,19 +237,24 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"upd",
 				"create",
 				"delete",
-				"edit",
+				"edit_topic",
 				"cli_commands",
 			},
-			CliExecutePageMenu: {"terminate_cli", "kill_cli", "remove_page"},
+			CliExecutePageMenu: {"terminate_cli", "kill_cli"},
 			ConsumerGroupsPageMenu: {
 				"up",
 				"dw",
-				"select",
 				"res",
 				"opened",
 				"dsc",
 				"search",
 				"upd",
+			},
+			ConsumerGroupDescribePageMenu: {
+				"res",
+				"opened",
+				"upd",
+				"reset_offset",
 			},
 			SubjectsPageMenu: {
 				"up",

@@ -142,7 +142,7 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 			ClearStatus()
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+		if IsKey(event, 'd') {
 			if !app.isClusterSelected(app.Selected) || app.Selected.Cluster.Name != clusterName {
 				SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
 				return event

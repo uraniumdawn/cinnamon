@@ -68,7 +68,6 @@ brews:
     license: MIT
     dependencies:
       - name: librdkafka
-        type: build
     install: |
       bin.install "cinnamon"
     test: |

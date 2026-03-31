@@ -93,7 +93,7 @@ func (app *App) Nodes() {
 							Publish(SubjectsChannel, GetNodesEventType, Payload{nil, true})
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
 							nodeID := table.GetCell(row, 0).Text
 							url := table.GetCell(row, 1).Text
