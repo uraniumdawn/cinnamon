@@ -20,9 +20,8 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 			cell := table.GetCell(row, 1)
 			if cell != nil {
 				pageName := cell.Text
-				if _, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
-					// Keep menu as OpenedPagesMenu while browsing
-					app.Layout.Menu.SetMenu(OpenedPagesMenu)
+				if menu, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
+					app.Layout.Menu.SetMenu(menu)
 					app.Layout.PagesRegistry.UI.Pages.SwitchToPage(pageName)
 					// Keep the modal visible and in front
 					app.Layout.PagesRegistry.UI.Pages.ShowPage(OpenedPages)
