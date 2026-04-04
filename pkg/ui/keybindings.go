@@ -39,10 +39,7 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 				if row >= 0 && row < table.GetRowCount() {
 					cell := table.GetCell(row, 1)
 					if cell != nil {
-						pageName := cell.Text
-						if menu, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
-							app.Layout.Menu.SetMenu(menu)
-						}
+						app.SwitchToPage(cell.Text)
 					}
 				}
 				app.HideModalPage(OpenedPages)
@@ -109,13 +106,27 @@ func (app *App) MainOperationKeyHandler() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		//if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
-		//	app.Backward()
-		//}
-		//
-		//if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
-		//	app.Forward()
-		//}
+		// if event.Key() == tcell.KeyEsc && !app.IsSearchInFocus() {
+		// 	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+		// 	if app.Layout.PagesRegistry.IsPersistentPage(currentPage) {
+		// 		app.Backward()
+		// 		return nil
+		// 	}
+		// 	return event
+		// }
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
+			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+			if app.Layout.PagesRegistry.IsPersistentPage(currentPage) {
+				app.Backward()
+				return nil
+			}
+		}
+
+		// if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
+		// 	app.Forward()
+		// 	return nil
+		// }
 
 		return event
 	})

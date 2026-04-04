@@ -95,16 +95,17 @@ func (app *App) AddToPagesRegistry(
 	if existingRow >= 0 {
 		// Page exists - remove old component to replace with new
 		registry.UI.Pages.RemovePage(name)
+		// Update history position to this page (replace, don't append)
+		registry.updateHistoryPosition(name)
 	} else {
-		// New page - add to opened pages table
+		// New page - clear forward history (browser-style), then append
+		registry.History = registry.History[:registry.CurrentPageIndex+1]
 		row := registry.UI.OpenedPages.GetRowCount()
 		registry.UI.OpenedPages.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
 		registry.UI.OpenedPages.SetCell(row, 1, tview.NewTableCell(name))
+		registry.History = append(registry.History, name)
+		registry.CurrentPageIndex = len(registry.History) - 1
 	}
-
-	// Add to navigation history
-	registry.History = append(registry.History, name)
-	registry.CurrentPageIndex = len(registry.History) - 1
 
 	// Add to searchable pages if specified and not already present
 	if searchable && !registry.isPageSearchable(name) {
@@ -116,6 +117,21 @@ func (app *App) AddToPagesRegistry(
 	registry.UI.Pages.AddAndSwitchToPage(name, component, true)
 }
 
+// updateHistoryPosition moves the current history index to the given page name.
+// If the page exists in history, it updates CurrentPageIndex to point to it.
+// If not found, it appends the page to history.
+func (pr *PagesRegistry) updateHistoryPosition(name string) {
+	for i, h := range pr.History {
+		if h == name {
+			pr.CurrentPageIndex = i
+			return
+		}
+	}
+	// Page not in history - append it
+	pr.History = append(pr.History, name)
+	pr.CurrentPageIndex = len(pr.History) - 1
+}
+
 // findPageInTable returns the row index of a page in the opened pages table, or -1 if not found.
 func (pr *PagesRegistry) findPageInTable(name string) int {
 	for i := 0; i < pr.UI.OpenedPages.GetRowCount(); i++ {
@@ -125,6 +141,12 @@ func (pr *PagesRegistry) findPageInTable(name string) int {
 		}
 	}
 	return -1
+}
+
+// IsPersistentPage reports whether a page name is a persistent (non-modal) page
+// tracked in the opened-pages table.
+func (pr *PagesRegistry) IsPersistentPage(name string) bool {
+	return pr.findPageInTable(name) >= 0
 }
 
 // isPageSearchable checks if a page is in the searchable pages list.
@@ -191,6 +213,7 @@ func (app *App) navigateToHistoryPage() {
 func (app *App) SwitchToPage(name string) {
 	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[name]; ok {
 		app.Layout.Menu.SetMenu(menu)
+		app.Layout.PagesRegistry.updateHistoryPosition(name)
 		app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
 	}
 }

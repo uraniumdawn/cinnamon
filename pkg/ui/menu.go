@@ -214,6 +214,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"opened",
 				"dsc",
+				"backward",
 			},
 			SchemaRegistriesPageMenu: {
 				"up",
@@ -221,6 +222,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"select",
 				"res",
 				"opened",
+				"backward",
 			},
 			ConnectPageMenu: {
 				"up",
@@ -228,6 +230,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"select",
 				"res",
 				"opened",
+				"backward",
 			},
 			NodesPageMenu: {
 				"up",
@@ -236,6 +239,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"dsc",
 				"upd",
+				"backward",
 			},
 			TopicsPageMenu: {
 				"up",
@@ -249,8 +253,9 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"delete",
 				"edit_topic",
 				"cli_commands",
+				"backward",
 			},
-			CliExecutePageMenu: {"terminate_cli", "kill_cli"},
+			CliExecutePageMenu: {"terminate_cli", "kill_cli", "backward"},
 			ConsumerGroupsPageMenu: {
 				"up",
 				"dw",
@@ -259,12 +264,15 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"search",
 				"upd",
+				"backward",
 			},
 			ConsumerGroupDescribePageMenu: {
 				"res",
 				"opened",
 				"upd",
 				"reset_offset",
+				"esc",
+				"backward",
 			},
 			SubjectsPageMenu: {
 				"up",
@@ -274,6 +282,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"search",
 				"upd",
+				"backward",
 			},
 			VersionsPageMenu: {
 				"up",
@@ -282,6 +291,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"dsc",
 				"upd",
+				"backward",
 			},
 			ConnectorsPageMenu: {
 				"up",
@@ -291,13 +301,16 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"search",
 				"upd",
+				"backward",
 			},
 			ConnectorDetailPageMenu: {
 				"res",
 				"opened",
 				"upd",
+				"esc",
+				"backward",
 			},
-			FinalPageMenu: {"res", "opened", "upd"},
+			FinalPageMenu: {"res", "opened", "upd", "esc", "backward"},
 		},
 		Colors: colors,
 	}
