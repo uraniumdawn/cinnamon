@@ -59,8 +59,8 @@ type App struct {
 	Selected              Selected
 	Config                *config.Config
 	Colors                *config.ColorConfig
-	ModalHideTimer        *time.Timer
-	CurrentFilters        map[string]string // pageName -> filter text for search preservation
+	// ModalHideTimer        *time.Timer
+	CurrentFilters map[string]string // pageName -> filter text for search preservation
 }
 
 type Selected struct {

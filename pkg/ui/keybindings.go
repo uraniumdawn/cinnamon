@@ -123,10 +123,13 @@ func (app *App) MainOperationKeyHandler() {
 			}
 		}
 
-		// if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
-		// 	app.Forward()
-		// 	return nil
-		// }
+		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
+			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+			if app.Layout.PagesRegistry.IsPersistentPage(currentPage) {
+				app.Forward()
+				return nil
+			}
+		}
 
 		return event
 	})

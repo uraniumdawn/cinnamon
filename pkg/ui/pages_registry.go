@@ -95,10 +95,8 @@ func (app *App) AddToPagesRegistry(
 	if existingRow >= 0 {
 		// Page exists - remove old component to replace with new
 		registry.UI.Pages.RemovePage(name)
-		// Update history position to this page (replace, don't append)
-		registry.updateHistoryPosition(name)
 	} else {
-		// New page - clear forward history (browser-style), then append
+		// New page - clear forward history, append to opened pages table and history
 		registry.History = registry.History[:registry.CurrentPageIndex+1]
 		row := registry.UI.OpenedPages.GetRowCount()
 		registry.UI.OpenedPages.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
@@ -115,21 +113,6 @@ func (app *App) AddToPagesRegistry(
 	app.Cache.Set(name, name, Expiration)
 	app.Layout.Menu.SetMenu(menu)
 	registry.UI.Pages.AddAndSwitchToPage(name, component, true)
-}
-
-// updateHistoryPosition moves the current history index to the given page name.
-// If the page exists in history, it updates CurrentPageIndex to point to it.
-// If not found, it appends the page to history.
-func (pr *PagesRegistry) updateHistoryPosition(name string) {
-	for i, h := range pr.History {
-		if h == name {
-			pr.CurrentPageIndex = i
-			return
-		}
-	}
-	// Page not in history - append it
-	pr.History = append(pr.History, name)
-	pr.CurrentPageIndex = len(pr.History) - 1
 }
 
 // findPageInTable returns the row index of a page in the opened pages table, or -1 if not found.
@@ -175,7 +158,7 @@ func (app *App) Backward() {
 	}
 }
 
-// navigateToHistoryPage navigates to the page at CurrentPageIndex and shows navigation feedback.
+// navigateToHistoryPage navigates to the page at CurrentPageIndex.
 func (app *App) navigateToHistoryPage() {
 	registry := app.Layout.PagesRegistry
 	if registry.CurrentPageIndex < 0 || registry.CurrentPageIndex >= len(registry.History) {
@@ -190,30 +173,11 @@ func (app *App) navigateToHistoryPage() {
 
 	app.Layout.Menu.SetMenu(menu)
 	registry.UI.Pages.SwitchToPage(name)
-
-	// Show navigation feedback with opened pages modal
-	if app.ModalHideTimer != nil {
-		app.ModalHideTimer.Stop()
-	}
-	app.ShowModalPage(OpenedPages)
-
-	// Find and select the row in the table by page name (not by history index)
-	tableRow := registry.findPageInTable(name)
-	if tableRow >= 0 {
-		registry.UI.OpenedPages.Select(tableRow, 0)
-	}
-
-	app.ModalHideTimer = time.AfterFunc(1*time.Second, func() {
-		app.QueueUpdateDraw(func() {
-			app.HideModalPage(OpenedPages)
-		})
-	})
 }
 
 func (app *App) SwitchToPage(name string) {
 	if menu, ok := app.Layout.PagesRegistry.PageMenuMap[name]; ok {
 		app.Layout.Menu.SetMenu(menu)
-		app.Layout.PagesRegistry.updateHistoryPosition(name)
 		app.Layout.PagesRegistry.UI.Pages.SwitchToPage(name)
 	}
 }

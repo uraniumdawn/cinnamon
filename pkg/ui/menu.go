@@ -215,6 +215,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"dsc",
 				"backward",
+				"forward",
 			},
 			SchemaRegistriesPageMenu: {
 				"up",
@@ -223,6 +224,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"opened",
 				"backward",
+				"forward",
 			},
 			ConnectPageMenu: {
 				"up",
@@ -231,6 +233,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"opened",
 				"backward",
+				"forward",
 			},
 			NodesPageMenu: {
 				"up",
@@ -240,6 +243,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"upd",
 				"backward",
+				"forward",
 			},
 			TopicsPageMenu: {
 				"up",
@@ -254,8 +258,9 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"edit_topic",
 				"cli_commands",
 				"backward",
+				"forward",
 			},
-			CliExecutePageMenu: {"terminate_cli", "kill_cli", "backward"},
+			CliExecutePageMenu: {"terminate_cli", "kill_cli", "backward", "forward"},
 			ConsumerGroupsPageMenu: {
 				"up",
 				"dw",
@@ -265,6 +270,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"search",
 				"upd",
 				"backward",
+				"forward",
 			},
 			ConsumerGroupDescribePageMenu: {
 				"res",
@@ -273,6 +279,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"reset_offset",
 				"esc",
 				"backward",
+				"forward",
 			},
 			SubjectsPageMenu: {
 				"up",
@@ -283,6 +290,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"search",
 				"upd",
 				"backward",
+				"forward",
 			},
 			VersionsPageMenu: {
 				"up",
@@ -292,6 +300,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"upd",
 				"backward",
+				"forward",
 			},
 			ConnectorsPageMenu: {
 				"up",
@@ -302,6 +311,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"search",
 				"upd",
 				"backward",
+				"forward",
 			},
 			ConnectorDetailPageMenu: {
 				"res",
@@ -309,8 +319,9 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"upd",
 				"esc",
 				"backward",
+				"forward",
 			},
-			FinalPageMenu: {"res", "opened", "upd", "esc", "backward"},
+			FinalPageMenu: {"res", "opened", "upd", "esc", "backward", "forward"},
 		},
 		Colors: colors,
 	}
