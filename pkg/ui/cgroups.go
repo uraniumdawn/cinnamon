@@ -477,7 +477,7 @@ func filterConsumerGroupsTable(
 	if filter == "" {
 		// Show all consumer groups sorted alphabetically when filter is empty
 		sort.Strings(groups)
-		row := 1
+		row := 0
 		for _, groupID := range groups {
 			// Find the matching group in groupListing
 			for _, g := range groupListing {

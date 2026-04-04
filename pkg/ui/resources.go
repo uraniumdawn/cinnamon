@@ -27,6 +27,10 @@ const (
 	NodesResourceEventType EventType = "resources:nodes"
 	// SubjectsResourceEventType is the event type for subject resources.
 	SubjectsResourceEventType EventType = "resources:subjects"
+	// ConnectorsResourceEventType is the event type for connector resources.
+	ConnectorsResourceEventType EventType = "resources:connectors"
+	// ConnectResourceEventType is the event type for connect cluster resources.
+	ConnectResourceEventType EventType = "resources:connect"
 )
 
 var m = map[string]EventType{
@@ -36,6 +40,8 @@ var m = map[string]EventType{
 	Topics:           TopicsResourceEventType,
 	ConsumerGroups:   CgroupsResourceEventType,
 	Subjects:         SubjectsResourceEventType,
+	Connectors:       ConnectorsResourceEventType,
+	Connect:          ConnectResourceEventType,
 }
 
 // ResourcesChannel is the channel for resource events.
@@ -51,12 +57,19 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 				return
 			case event := <-in:
 				switch event.Type {
-				case ClustersResourceEventType:
+				case "cl", ClustersResourceEventType:
 					Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
-				case SchemaRegistriesResourceEventType:
+				case "sr", SchemaRegistriesResourceEventType:
 					Publish(
 						SchemaRegistriesChannel,
 						GetSchemaRegistriesEventType,
+						Payload{nil, false},
+					)
+
+				case "cnt", ConnectResourceEventType:
+					Publish(
+						ConnectChannel,
+						GetConnectEventType,
 						Payload{nil, false},
 					)
 				case "tps", TopicsResourceEventType:
@@ -85,6 +98,12 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 						continue
 					}
 					Publish(SubjectsChannel, GetSubjectsEventType, Payload{nil, false})
+				case "cnts", ConnectorsResourceEventType:
+					if !app.isConnectSelected(app.Selected) {
+						SendStatusWithDefaultTTL("[red]to perform operation, select Connect")
+						continue
+					}
+					Publish(ConnectorsChannel, GetConnectorsEventType, Payload{nil, false})
 				case "q!":
 					app.Stop()
 				default:
@@ -103,12 +122,30 @@ func (app *App) NewResourcesPage() tview.Primitive {
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(" Resources ")
 
-	table.SetCell(0, 0, tview.NewTableCell(Clusters))
-	table.SetCell(1, 0, tview.NewTableCell(SchemaRegistries))
-	table.SetCell(2, 0, tview.NewTableCell(Nodes))
-	table.SetCell(3, 0, tview.NewTableCell(Topics))
-	table.SetCell(4, 0, tview.NewTableCell(ConsumerGroups))
-	table.SetCell(5, 0, tview.NewTableCell(Subjects))
+	row := 0
+	table.SetCell(row, 0, tview.NewTableCell(Clusters))
+	row++
+	if len(app.Config.Cinnamon.SchemaRegistries) > 0 {
+		table.SetCell(row, 0, tview.NewTableCell(SchemaRegistries))
+		row++
+	}
+	if len(app.Config.Cinnamon.Connect) > 0 {
+		table.SetCell(row, 0, tview.NewTableCell(Connect))
+		row++
+	}
+	table.SetCell(row, 0, tview.NewTableCell(Nodes))
+	row++
+	table.SetCell(row, 0, tview.NewTableCell(Topics))
+	row++
+	table.SetCell(row, 0, tview.NewTableCell(ConsumerGroups))
+	row++
+	if len(app.Config.Cinnamon.SchemaRegistries) > 0 {
+		table.SetCell(row, 0, tview.NewTableCell(Subjects))
+		row++
+	}
+	if len(app.Config.Cinnamon.Connect) > 0 {
+		table.SetCell(row, 0, tview.NewTableCell(Connectors))
+	}
 
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
@@ -133,5 +170,7 @@ func (app *App) NewResourcesPage() tview.Primitive {
 		return event
 	})
 
-	return util.NewResourceModal(table)
+	// +2 for top and bottom borders
+	height := table.GetRowCount() + 2
+	return util.NewResourceModal(table, height)
 }

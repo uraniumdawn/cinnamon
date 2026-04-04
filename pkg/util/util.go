@@ -152,12 +152,12 @@ func NewConfirmationModal(p tview.Primitive) tview.Primitive {
 		AddItem(nil, 1, 0, false)
 }
 
-func NewResourceModal(p tview.Primitive) tview.Primitive {
+func NewResourceModal(p tview.Primitive, height int) tview.Primitive {
 	return tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(p, 8, 0, true).
+			AddItem(p, height, 0, true).
 			AddItem(nil, 0, 9, false), 0, 2, true).
 		AddItem(nil, 0, 1, false)
 }
@@ -209,6 +209,15 @@ func ToSchemaRegistryMap(cfg *config.Config) map[string]*config.SchemaRegistryCo
 	return srMap
 }
 
+// ToConnectMap converts a connect slice to a map keyed by name.
+func ToConnectMap(cfg *config.Config) map[string]*config.ConnectConfig {
+	connectMap := make(map[string]*config.ConnectConfig)
+	for _, connect := range cfg.Cinnamon.Connect {
+		connectMap[connect.Name] = connect
+	}
+	return connectMap
+}
+
 // BuildTitle creates a formatted title string from parts separated by colons.
 func BuildTitle(parts ...string) string {
 	var builder strings.Builder
@@ -235,10 +244,11 @@ func BuildPageKey(parts ...string) string {
 	return builder.String()
 }
 
-// BuildCliCommand Supported placeholders: {{bootstrap}}, {{topic}}
-func BuildCliCommand(templateStr, bootstrap, topic string) string {
+// BuildCliCommand Supported placeholders: {{bootstrap}}, {{topic}}, {{srURL}}
+func BuildCliCommand(templateStr, bootstrap, topic, schemaRegistryURL string) string {
 	result := strings.ReplaceAll(templateStr, "{{bootstrap}}", bootstrap)
 	result = strings.ReplaceAll(result, "{{topic}}", topic)
+	result = strings.ReplaceAll(result, "{{srURL}}", schemaRegistryURL)
 	return result
 }
 

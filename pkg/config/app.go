@@ -23,6 +23,7 @@ type Config struct {
 		Clusters         []*ClusterConfig        `yaml:"clusters"`
 		SchemaRegistries []*SchemaRegistryConfig `yaml:"schema-registries"`
 		CliTemplates     []string                `yaml:"cli_templates,omitempty"`
+		Connect          []*ConnectConfig        `yaml:"connect,omitempty"`
 		API              ApiConfig               `yaml:"api,omitempty"`
 	} `yaml:"cinnamon"`
 }
@@ -60,6 +61,15 @@ type SchemaRegistryConfig struct {
 	SchemaRegistryUsername string `yaml:"schema.registry.sasl.username,omitempty"`
 	SchemaRegistryPassword string `yaml:"schema.registry.sasl.password,omitempty"`
 	Selected               bool   `yaml:"selected,omitempty"`
+}
+
+// ConnectConfig holds Kafka Connect connection properties.
+type ConnectConfig struct {
+	Name     string `yaml:"name"`
+	URL      string `yaml:"url"`
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	Selected bool   `yaml:"selected,omitempty"`
 }
 
 // LoadAppConfig loads the application configuration from the config file.

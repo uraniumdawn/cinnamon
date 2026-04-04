@@ -181,6 +181,9 @@ const (
 	FinalPageMenu                 = "FinalPageMenu"
 	CliTemplatesPageMenu          = "CliTemplatesPageMenu"
 	CliExecutePageMenu            = "CliExecutePageMenu"
+	ConnectorsPageMenu            = "ConnectorsPageMenu"
+	ConnectorDetailPageMenu       = "ConnectorDetailPageMenu"
+	ConnectPageMenu               = "ConnectPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -213,6 +216,13 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 			},
 			SchemaRegistriesPageMenu: {
+				"up",
+				"dw",
+				"select",
+				"res",
+				"opened",
+			},
+			ConnectPageMenu: {
 				"up",
 				"dw",
 				"select",
@@ -271,6 +281,20 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"opened",
 				"dsc",
+				"upd",
+			},
+			ConnectorsPageMenu: {
+				"up",
+				"dw",
+				"res",
+				"opened",
+				"dsc",
+				"search",
+				"upd",
+			},
+			ConnectorDetailPageMenu: {
+				"res",
+				"opened",
 				"upd",
 			},
 			FinalPageMenu: {"res", "opened", "upd"},

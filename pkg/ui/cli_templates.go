@@ -6,6 +6,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -41,8 +42,16 @@ func (app *App) CliTemplates(topicName string) {
 		return
 	}
 
+	srURL := app.schemaRegistryURL()
+
 	for i, templateCmd := range app.Config.Cinnamon.CliTemplates {
-		command := util.BuildCliCommand(templateCmd, bootstrap, topicName)
+		if strings.Contains(templateCmd, "{{srURL}}") && srURL == "" {
+			SendStatusWithDefaultTTL(
+				"[red]template uses {{srURL}} but no Schema Registry is selected",
+			)
+			return
+		}
+		command := util.BuildCliCommand(templateCmd, bootstrap, topicName, srURL)
 		table.SetCell(i, 0, tview.NewTableCell(command))
 	}
 
@@ -56,7 +65,7 @@ func (app *App) CliTemplates(topicName string) {
 			row, _ := table.GetSelection()
 			if row >= 0 && row < len(app.Config.Cinnamon.CliTemplates) {
 				templateCmd := app.Config.Cinnamon.CliTemplates[row]
-				command := util.BuildCliCommand(templateCmd, bootstrap, topicName)
+				command := util.BuildCliCommand(templateCmd, bootstrap, topicName, srURL)
 				err := clipboard.WriteAll(command)
 				if err != nil {
 					log.Error().Err(err).Send()
@@ -86,6 +95,13 @@ func (app *App) CliTemplates(topicName string) {
 	app.ShowModalPage(CliTemplates)
 }
 
+func (app *App) schemaRegistryURL() string {
+	if app.Selected.SchemaRegistry != nil {
+		return app.Selected.SchemaRegistry.SchemaRegistryURL
+	}
+	return ""
+}
+
 func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 	bootstrap := app.Selected.Cluster.GetBootstrapServers()
 	if bootstrap == "" {
@@ -94,7 +110,13 @@ func (app *App) ExecuteCliCommand(topicName, commandTemplate string) {
 		return
 	}
 
-	command := util.BuildCliCommand(commandTemplate, bootstrap, topicName)
+	srURL := app.schemaRegistryURL()
+	if strings.Contains(commandTemplate, "{{srURL}}") && srURL == "" {
+		SendStatusWithDefaultTTL("[red]template uses {{srURL}} but no Schema Registry is selected")
+		return
+	}
+
+	command := util.BuildCliCommand(commandTemplate, bootstrap, topicName, srURL)
 
 	rc := make(chan string, 100)
 	errCh := make(chan string, 10)

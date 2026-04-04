@@ -12,15 +12,17 @@ import (
 )
 
 type Layout struct {
-	PagesRegistry *PagesRegistry
-	Cluster       *tview.Table
-	Search        map[string]*tview.InputField
-	Content       *tview.Flex
-	Header        *tview.Flex
-	Menu          *Menu
-	Colors        *config.ColorConfig
-	StatusLine    *tview.TextView
-	StatusBar     *tview.Flex
+	PagesRegistry     *PagesRegistry
+	Cluster           *tview.Table
+	Search            map[string]*tview.InputField
+	Content           *tview.Flex
+	Header            *tview.Flex
+	Menu              *Menu
+	Colors            *config.ColorConfig
+	StatusLine        *tview.TextView
+	StatusBar         *tview.Flex
+	HasConnect        bool
+	HasSchemaRegistry bool
 }
 
 type Borders struct {
@@ -51,7 +53,7 @@ const (
 	searchHeight   = 1
 )
 
-func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
+func NewLayout(registry *PagesRegistry, colors *config.ColorConfig, hasSchemaRegistry, hasConnect bool) *Layout {
 	InitBorders()
 
 	cluster := tview.NewTable()
@@ -59,23 +61,40 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 	cluster.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor))
 	cluster.SetSelectable(false, false)
 
-	cluster.SetCell(0, 0, tview.NewTableCell("Cluster:").
-		SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
-		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
-		SetExpansion(0))
-	cluster.SetCell(0, 1, tview.NewTableCell("").
-		SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor)).
-		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
-		SetExpansion(1))
+	row := 0
 
-	cluster.SetCell(1, 0, tview.NewTableCell("Schema Registry:").
+	cluster.SetCell(row, 0, tview.NewTableCell("Cluster:").
 		SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
 		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
 		SetExpansion(0))
-	cluster.SetCell(1, 1, tview.NewTableCell("").
+	cluster.SetCell(row, 1, tview.NewTableCell("").
 		SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor)).
 		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
 		SetExpansion(1))
+	row++
+
+	if hasSchemaRegistry {
+		cluster.SetCell(row, 0, tview.NewTableCell("Schema Registry:").
+			SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
+			SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+			SetExpansion(0))
+		cluster.SetCell(row, 1, tview.NewTableCell("").
+			SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor)).
+			SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+			SetExpansion(1))
+		row++
+	}
+
+	if hasConnect {
+		cluster.SetCell(row, 0, tview.NewTableCell("Connect:").
+			SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
+			SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+			SetExpansion(0))
+		cluster.SetCell(row, 1, tview.NewTableCell("").
+			SetTextColor(tcell.GetColor(colors.Cinnamon.Cluster.FgColor)).
+			SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
+			SetExpansion(1))
+	}
 
 	menu := NewMenu(colors)
 	header := tview.NewFlex()
@@ -115,15 +134,17 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig) *Layout {
 		AddItem(statusBar, 1, 0, false)
 
 	return &Layout{
-		PagesRegistry: registry,
-		Cluster:       cluster,
-		Search:        make(map[string]*tview.InputField),
-		Menu:          menu,
-		Content:       main,
-		Header:        header,
-		Colors:        colors,
-		StatusLine:    statusLine,
-		StatusBar:     statusBar,
+		PagesRegistry:     registry,
+		Cluster:           cluster,
+		Search:            make(map[string]*tview.InputField),
+		Menu:              menu,
+		Content:           main,
+		Header:            header,
+		Colors:            colors,
+		StatusLine:        statusLine,
+		StatusBar:         statusBar,
+		HasSchemaRegistry: hasSchemaRegistry,
+		HasConnect:        hasConnect,
 	}
 }
 
@@ -151,9 +172,14 @@ func InitBorders() {
 	}
 }
 
-func (l *Layout) SetSelected(cluster *config.ClusterConfig, sr *config.SchemaRegistryConfig) {
+func (l *Layout) SetSelected(
+	cluster *config.ClusterConfig,
+	sr *config.SchemaRegistryConfig,
+	connect *config.ConnectConfig,
+) {
 	clusterName := ""
 	srName := ""
+	connectName := ""
 
 	if cluster != nil {
 		clusterName = cluster.Name
@@ -161,7 +187,19 @@ func (l *Layout) SetSelected(cluster *config.ClusterConfig, sr *config.SchemaReg
 	if sr != nil {
 		srName = sr.Name
 	}
+	if connect != nil {
+		connectName = connect.Name
+	}
 
 	l.Cluster.GetCell(0, 1).SetText(clusterName)
-	l.Cluster.GetCell(1, 1).SetText(srName)
+	if l.HasSchemaRegistry {
+		l.Cluster.GetCell(1, 1).SetText(srName)
+	}
+	if l.HasConnect {
+		connectRow := 1
+		if l.HasSchemaRegistry {
+			connectRow = 2
+		}
+		l.Cluster.GetCell(connectRow, 1).SetText(connectName)
+	}
 }

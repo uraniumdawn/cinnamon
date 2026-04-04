@@ -39,7 +39,7 @@ func (r *ResourceResult) String() string {
 	var sb strings.Builder
 	for _, result := range r.Results {
 		w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
-		_, err := fmt.Fprintln(w, "Name\tValue\tSource\tRead-only\tDefault")
+		_, err := fmt.Fprintln(w, "\n"+"Name\tValue\tSource\tRead-only\tDefault")
 		if err != nil {
 			log.Error().Err(err).Msg("Error to write Node description")
 		}
@@ -74,45 +74,53 @@ func (r *ResourceResult) String() string {
 
 func (r *TopicResult) String() string {
 	var sb strings.Builder
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+
 	for _, desc := range r.TopicDescriptions {
-		sb.WriteString(fmt.Sprintf("Topic Id: %s\n", desc.TopicID))
-		sb.WriteString(fmt.Sprintf("Allowed operations: %s\n", desc.AuthorizedOperations))
-		sb.WriteString(fmt.Sprintf("Partitions count: %d\n", len(desc.Partitions)))
+		_, _ = fmt.Fprintf(w, "Topic Id:\t%s\n", desc.TopicID)
+		_, _ = fmt.Fprintf(w, "Allowed operations:\t%s\n", desc.AuthorizedOperations)
+		_, _ = fmt.Fprintf(w, "Partitions count:\t%d\n", len(desc.Partitions))
 
 		// Add size information
 		totalMessages := r.GetTotalMessages()
 		estimatedSize, isEstimate := r.GetEstimatedSizeBytes()
-		sb.WriteString(fmt.Sprintf("Total Messages: %s\n", util.FormatNumber(totalMessages)))
-		sb.WriteString(
-			fmt.Sprintf(
-				"Estimated Size: %s\n",
-				util.FormatSizeWithFallback(estimatedSize, totalMessages, isEstimate),
-			),
-		)
+		_, _ = fmt.Fprintf(w, "Total Messages:\t%s\n", util.FormatNumber(totalMessages))
+		_, _ = fmt.Fprintf(w, "Estimated Size:\t%s\n",
+			util.FormatSizeWithFallback(estimatedSize, totalMessages, isEstimate))
 
-		sb.WriteString("Offsets: \n")
+		_, _ = fmt.Fprintln(w, "")
+		_, _ = fmt.Fprintln(w, "Offsets:")
 		for _, p := range desc.Partitions {
 			end := r.endOffsets[int32(p.Partition)]
 			st := r.startOffsets[int32(p.Partition)]
-			sb.WriteString(fmt.Sprintf("\t%d: [%d, %d] %d\n", p.Partition, st, end, end-st))
+			_, _ = fmt.Fprintf(w, "\t%d:\t[%d, %d] %d\n", p.Partition, st, end, end-st)
 		}
-		sb.WriteString("Partitions details: \n")
+		_, _ = fmt.Fprintln(w, "")
+		_, _ = fmt.Fprintln(w, "Partitions details:")
 		for _, p := range desc.Partitions {
-			sb.WriteString(fmt.Sprintf("\tPartition: %d\n", p.Partition))
-			sb.WriteString(fmt.Sprintf("\tLeader: %s\n", p.Leader))
-			sb.WriteString("\tISRs:\n")
-			for _, isr := range p.Isr {
-				sb.WriteString(fmt.Sprintf("\t\t%s\n", isr))
+			_, _ = fmt.Fprintf(w, "\tPartition:\t%d\n", p.Partition)
+			if p.Leader != nil {
+				_, _ = fmt.Fprintf(w, "\tLeader:\t%s\n", p.Leader.String())
+			} else {
+				_, _ = fmt.Fprintf(w, "\tLeader:\t-\n")
+			}
+			if len(p.Isr) > 0 {
+				isrs := make([]string, len(p.Isr))
+				for i, isr := range p.Isr {
+					isrs[i] = isr.String()
+				}
+				_, _ = fmt.Fprintf(w, "\tISRs:\t%s\n", strings.Join(isrs, ", "))
 			}
 		}
 	}
 
+	_ = w.Flush()
+
 	for _, result := range r.Config {
-		w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
-		_, err := fmt.Fprintln(w, "Name\tValue\tSource\tRead-only\tDefault")
-		if err != nil {
-			log.Error().Err(err).Msg("Error to write Node description")
-		}
+		sb.WriteString("\n")
+		w2 := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w2, "Name\tValue\tSource\tRead-only\tDefault")
+
 		sorted := treemap.NewWithStringComparator()
 		for k, v := range result.Config {
 			sorted.Put(k, v)
@@ -121,7 +129,7 @@ func (r *TopicResult) String() string {
 		sorted.Each(func(_, value any) {
 			e := value.(kafka.ConfigEntryResult)
 			_, err := fmt.Fprintf(
-				w,
+				w2,
 				"%s\t%s\t%s\t%v\t%v\n",
 				e.Name,
 				e.Value,
@@ -134,10 +142,7 @@ func (r *TopicResult) String() string {
 			}
 		})
 
-		err = w.Flush()
-		if err != nil {
-			log.Error().Err(err).Msg("Error to flush Topic description")
-		}
+		_ = w2.Flush()
 	}
 
 	return sb.String()
@@ -145,12 +150,14 @@ func (r *TopicResult) String() string {
 
 func (r *DescribeConsumerGroupResult) String() string {
 	var sb strings.Builder
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+
 	members := make(map[TopicPartition]kafka.MemberDescription)
 	for _, desc := range r.ConsumerGroupDescriptions {
-		sb.WriteString(fmt.Sprintf("Group ID: %s\n", desc.GroupID))
-		sb.WriteString(fmt.Sprintf("Simple: %v\n", desc.IsSimpleConsumerGroup))
-		sb.WriteString(fmt.Sprintf("Partition Assignor: %s\n", desc.PartitionAssignor))
-		sb.WriteString(fmt.Sprintf("State: %s\n", desc.State.String()))
+		_, _ = fmt.Fprintf(w, "Group ID:\t%s\n", desc.GroupID)
+		_, _ = fmt.Fprintf(w, "Simple:\t%v\n", desc.IsSimpleConsumerGroup)
+		_, _ = fmt.Fprintf(w, "Partition Assignor:\t%s\n", desc.PartitionAssignor)
+		_, _ = fmt.Fprintf(w, "State:\t%s\n", desc.State.String())
 
 		for _, member := range desc.Members {
 			for _, tp := range member.Assignment.TopicPartitions {
@@ -162,17 +169,15 @@ func (r *DescribeConsumerGroupResult) String() string {
 	// Total lag summary
 	totalLag := r.GetTotalLag()
 	topicCount := len(r.GetTopicNames())
-	sb.WriteString(
-		fmt.Sprintf(
-			"Total Lag: %d messages across %d topic%s\n",
-			totalLag,
-			topicCount,
-			pluralize(topicCount),
-		),
+	_, _ = fmt.Fprintf(w, "Total Lag:\t%d messages across %d topic%s\n",
+		totalLag,
+		topicCount,
+		pluralize(topicCount),
 	)
 
 	// Per-topic lag summary (sorted by lag descending)
-	sb.WriteString("Topic Lag Summary:\n")
+	_, _ = fmt.Fprintln(w, "")
+	_, _ = fmt.Fprintln(w, "Topic Lag Summary:")
 	lagByTopic := r.GetLagByTopic()
 	partitionsByTopic := r.GetPartitionCountByTopic()
 
@@ -194,27 +199,22 @@ func (r *DescribeConsumerGroupResult) String() string {
 	// Display sorted topics
 	for _, tl := range topicLags {
 		partitionCount := partitionsByTopic[tl.topic]
-		sb.WriteString(
-			fmt.Sprintf(
-				"  %s: %d messages (%d partition%s)\n",
-				tl.topic,
-				tl.lag,
-				partitionCount,
-				pluralize(partitionCount),
-			),
+		_, _ = fmt.Fprintf(w, "\t%s:\t%d messages (%d partition%s)\n",
+			tl.topic,
+			tl.lag,
+			partitionCount,
+			pluralize(partitionCount),
 		)
 	}
 
 	// Partition details table
-	sb.WriteString("Partition Details:\n")
-	w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
-	_, err := fmt.Fprintln(
-		w,
+	_, _ = fmt.Fprintln(w, "")
+	_, _ = fmt.Fprintln(w, "Partition Details:")
+	w2 := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(
+		w2,
 		"Topic\tPartition\tCurrent-Offset\tLog-End-Offset\tLag\tConsumer-ID\tHost",
 	)
-	if err != nil {
-		log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
-	}
 
 	comparator := func(a, b interface{}) int {
 		tp1 := a.(TopicPartition)
@@ -245,7 +245,7 @@ func (r *DescribeConsumerGroupResult) String() string {
 			host = member.Host
 		}
 		_, err := fmt.Fprintf(
-			w,
+			w2,
 			"%s\t%d\t%d\t%d\t%d\t%s\t%s\n",
 			tp.Topic,
 			tp.Partition,
@@ -260,11 +260,9 @@ func (r *DescribeConsumerGroupResult) String() string {
 			return
 		}
 	})
-	err = w.Flush()
-	if err != nil {
-		log.Error().Err(err).Msg("Error to flush Consumer Group Offsets description")
-	}
+	_ = w2.Flush()
 
+	_ = w.Flush()
 	return sb.String()
 }
 

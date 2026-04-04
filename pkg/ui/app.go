@@ -20,6 +20,7 @@ import (
 
 	"github.com/uraniumdawn/cinnamon/pkg/client"
 	"github.com/uraniumdawn/cinnamon/pkg/config"
+	"github.com/uraniumdawn/cinnamon/pkg/connect"
 	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
@@ -35,6 +36,8 @@ const (
 	ConsumerGroups   = "Consumer groups"
 	ConsumerGroup    = "Consumer group"
 	Subjects         = "Subjects"
+	Connectors       = "Connectors"
+	Connect          = "Connect"
 	OpenedPages      = "Opened pages"
 	CreateTopic      = "Create Topic"
 	DeleteTopic      = "Delete Topic"
@@ -49,8 +52,10 @@ type App struct {
 	Cache                 *cache.Cache
 	Clusters              map[string]*config.ClusterConfig
 	SchemaRegistries      map[string]*config.SchemaRegistryConfig
+	Connects              map[string]*config.ConnectConfig
 	KafkaClients          map[string]*client.Client
 	SchemaRegistryClients map[string]*schemaregistry.Client
+	ConnectClients        map[string]*connect.Client
 	Selected              Selected
 	Config                *config.Config
 	Colors                *config.ColorConfig
@@ -61,6 +66,7 @@ type App struct {
 type Selected struct {
 	Cluster        *config.ClusterConfig
 	SchemaRegistry *config.SchemaRegistryConfig
+	Connect        *config.ConnectConfig
 }
 
 func (app *App) GetCurrentKafkaClient() *client.Client {
@@ -72,6 +78,13 @@ func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
 		return nil
 	}
 	return app.SchemaRegistryClients[app.Selected.SchemaRegistry.Name]
+}
+
+func (app *App) GetCurrentConnectClient() *connect.Client {
+	if app.Selected.Connect == nil {
+		return nil
+	}
+	return app.ConnectClients[app.Selected.Connect.Name]
 }
 
 func NewApp() *App {
@@ -94,8 +107,10 @@ func NewApp() *App {
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
 		Clusters:              util.ToClustersMap(cfg),
 		SchemaRegistries:      util.ToSchemaRegistryMap(cfg),
+		Connects:              util.ToConnectMap(cfg),
 		KafkaClients:          make(map[string]*client.Client),
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
+		ConnectClients:        make(map[string]*connect.Client),
 		Config:                cfg,
 		Colors:                colors,
 		CurrentFilters:        make(map[string]string),
@@ -141,13 +156,17 @@ func (app *App) Run() {
 	app.RunStatusLineHandler(ctx, StatusLineCh)
 	app.RunClusterEventHandler(ctx, ClustersChannel)
 	app.RunSchemaRegistriesEventHandler(ctx, SchemaRegistriesChannel)
+	app.RunConnectEventHandler(ctx, ConnectChannel)
 	app.RunNodesEventHandler(ctx, NodesChannel)
 	app.RunTopicsEventHandler(ctx, TopicsChannel)
 	app.RunCgroupsEventHandler(ctx, CgroupsChannel)
 	app.RunSubjectsEventHandler(ctx, SubjectsChannel)
+	app.RunConnectorsEventHandler(ctx, ConnectorsChannel)
 
 	registry := NewPagesRegistry(app.Colors)
-	app.Layout = NewLayout(registry, app.Colors)
+	hasSR := len(app.Config.Cinnamon.SchemaRegistries) > 0
+	hasConnect := len(app.Config.Cinnamon.Connect) > 0
+	app.Layout = NewLayout(registry, app.Colors, hasSR, hasConnect)
 
 	for _, c := range app.Config.Cinnamon.Clusters {
 		if c.Selected {
@@ -163,8 +182,15 @@ func (app *App) Run() {
 		}
 	}
 
+	for _, cn := range app.Config.Cinnamon.Connect {
+		if cn.Selected {
+			app.SelectConnect(cn, false)
+			break
+		}
+	}
+
 	Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
-	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
 
 	resourcesPage := app.NewResourcesPage()
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
@@ -219,6 +245,10 @@ func (app *App) isSchemaRegistrySelected(selected Selected) bool {
 	return selected.SchemaRegistry != nil
 }
 
+func (app *App) isConnectSelected(selected Selected) bool {
+	return selected.Connect != nil
+}
+
 func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
 	if save {
 		for _, c := range app.Config.Cinnamon.Clusters {
@@ -230,7 +260,7 @@ func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
 	}
 
 	app.Selected.Cluster = cluster
-	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
 
 	_, exists := app.KafkaClients[cluster.Name]
 	if !exists {
@@ -256,7 +286,7 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool)
 	}
 
 	app.Selected.SchemaRegistry = sr
-	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
 
 	_, exists := app.SchemaRegistryClients[sr.Name]
 	if !exists {
@@ -267,6 +297,30 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool)
 			os.Exit(1)
 		}
 		app.SchemaRegistryClients[sr.Name] = newClient
+	}
+}
+
+func (app *App) SelectConnect(cfg *config.ConnectConfig, save bool) {
+	if save {
+		for _, c := range app.Config.Cinnamon.Connect {
+			c.Selected = c.Name == cfg.Name
+		}
+		if err := app.Config.Save(); err != nil {
+			log.Error().Err(err).Msg("failed to save config after connect selection")
+		}
+	}
+
+	app.Selected.Connect = cfg
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
+
+	_, exists := app.ConnectClients[cfg.Name]
+	if !exists {
+		newClient, err := connect.NewClient(cfg, app.Config.GetAPICallTimeout())
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create connect client")
+			return
+		}
+		app.ConnectClients[cfg.Name] = newClient
 	}
 }
 
