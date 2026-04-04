@@ -63,7 +63,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig, hasSchemaReg
 
 	row := 0
 
-	cluster.SetCell(row, 0, tview.NewTableCell("Cluster:").
+	cluster.SetCell(row, 0, tview.NewTableCell(" Cluster:").
 		SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
 		SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
 		SetExpansion(0))
@@ -74,7 +74,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig, hasSchemaReg
 	row++
 
 	if hasSchemaRegistry {
-		cluster.SetCell(row, 0, tview.NewTableCell("Schema Registry:").
+		cluster.SetCell(row, 0, tview.NewTableCell(" Schema Registry:").
 			SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
 			SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
 			SetExpansion(0))
@@ -86,7 +86,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig, hasSchemaReg
 	}
 
 	if hasConnect {
-		cluster.SetCell(row, 0, tview.NewTableCell("Connect:").
+		cluster.SetCell(row, 0, tview.NewTableCell(" Connect:").
 			SetTextColor(tcell.GetColor(colors.Cinnamon.Label.FgColor)).
 			SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Cluster.BgColor)).
 			SetExpansion(0))
