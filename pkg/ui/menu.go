@@ -22,11 +22,11 @@ type Pair struct {
 
 var keys = map[string]Pair{
 	"dw": {
-		Key:   "<j, ↓>",
+		Key:   "<j,↓>",
 		Value: "Down",
 	},
 	"up": {
-		Key:   "<k, ↑>",
+		Key:   "<k,↑>",
 		Value: "Up",
 	},
 	"forward": {
