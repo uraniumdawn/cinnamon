@@ -57,7 +57,14 @@ func (d *ConnectorDetail) String() string {
 		for _, task := range d.Status.Tasks {
 			_, _ = fmt.Fprintf(w, "  Task %d:\t%s\n", task.ID, task.State)
 			if task.Trace != "" {
-				_, _ = fmt.Fprintf(w, "    Trace:\t%s\n", task.Trace)
+				lines := strings.Split(task.Trace, "\n")
+				for i, line := range lines {
+					label := "    Trace:"
+					if i > 0 {
+						label = ""
+					}
+					_, _ = fmt.Fprintf(w, "%s\t[grey]%s[-:-:-]\n", label, line)
+				}
 			}
 		}
 	} else {
