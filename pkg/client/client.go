@@ -269,6 +269,37 @@ func (client *Client) DeleteTopic(
 	}()
 }
 
+// DeleteConsumerGroup deletes a consumer group.
+func (client *Client) DeleteConsumerGroup(
+	group string,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		result, err := client.DeleteConsumerGroups(
+			ctx,
+			[]string{group},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to delete consumer group: %w", err)
+			return
+		}
+
+		for _, r := range result.ConsumerGroupResults {
+			if r.Error.Code() != kafka.ErrNoError {
+				errorChan <- fmt.Errorf("failed to delete consumer group '%s': %s", group, r.Error)
+				return
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
 func (client *Client) UpdateTopicConfig(
 	name string,
 	config map[string]string,

@@ -36,7 +36,7 @@ func NewSchemaRegistryClient(config *config.SchemaRegistryConfig) (*Client, erro
 		return nil, err
 	}
 
-	return &Client{config.Name, client}, nil
+	return &Client{ClusterName: config.Name, Client: client}, nil
 }
 
 func (client *Client) DescribeSchemaRegistry(resultChan chan<- []string, errorChan chan<- error) {

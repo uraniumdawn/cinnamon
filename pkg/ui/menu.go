@@ -77,9 +77,13 @@ var keys = map[string]Pair{
 		Key:   "<c>",
 		Value: "Create Topic",
 	},
-	"delete": {
+	"delete_t": {
 		Key:   "<Ctrl+d>",
 		Value: "Delete Topic",
+	},
+	"delete_cg": {
+		Key:   "<Ctrl+d>",
+		Value: "Delete Group",
 	},
 	"edit_topic": {
 		Key:   "<e>",
@@ -170,6 +174,7 @@ const (
 	CreateTopicPageMenu           = "CreateTopicPageMenu"
 	CreateTopicInputMenu          = "CreateTopicInputMenu"
 	DeleteTopicPageMenu           = "DeleteTopicPageMenu"
+	DeleteConsumerGroupPageMenu   = "DeleteConsumerGroupPageMenu"
 	EditTopicPageMenu             = "EditTopicPageMenu"
 	EditTopicInputMenu            = "EditTopicInputMenu"
 	ResetOffsetPageMenu           = "ResetOffsetPageMenu"
@@ -197,16 +202,17 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			ResourcesPageMenu:    {"up", "dw", "select", "close"},
-			OpenedPagesMenu:      {"up", "dw", "remove_page", "esc_confirm_opened"},
-			CreateTopicPageMenu:  {"up", "dw", "edit", "submit", "default", "close"},
-			CreateTopicInputMenu: {"esc_confirm"},
-			EditTopicPageMenu:    {"up", "dw", "edit", "submit", "close"},
-			EditTopicInputMenu:   {"esc_confirm"},
-			ResetOffsetPageMenu:  {"up", "dw", "edit_preselected", "submit_ctrl", "close"},
-			ResetOffsetInputMenu: {"esc_confirm"},
-			DeleteTopicPageMenu:  {"confirm", "cancel"},
-			CliTemplatesPageMenu: {"up", "dw", "copy_cli", "execute_cli", "close"},
+			ResourcesPageMenu:           {"up", "dw", "select", "close"},
+			OpenedPagesMenu:             {"up", "dw", "remove_page", "esc_confirm_opened"},
+			CreateTopicPageMenu:         {"up", "dw", "edit", "submit", "default", "close"},
+			CreateTopicInputMenu:        {"esc_confirm"},
+			EditTopicPageMenu:           {"up", "dw", "edit", "submit", "close"},
+			EditTopicInputMenu:          {"esc_confirm"},
+			ResetOffsetPageMenu:         {"up", "dw", "edit_preselected", "submit_ctrl", "close"},
+			ResetOffsetInputMenu:        {"esc_confirm"},
+			DeleteTopicPageMenu:         {"confirm", "cancel"},
+			DeleteConsumerGroupPageMenu: {"confirm", "cancel"},
+			CliTemplatesPageMenu:        {"up", "dw", "copy_cli", "execute_cli", "close"},
 			ClustersPageMenu: {
 				"up",
 				"dw",
@@ -254,7 +260,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"search",
 				"upd",
 				"create",
-				"delete",
+				"delete_t",
 				"edit_topic",
 				"cli_commands",
 				"backward",
@@ -269,6 +275,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"search",
 				"upd",
+				"delete_cg",
 				"backward",
 				"forward",
 			},

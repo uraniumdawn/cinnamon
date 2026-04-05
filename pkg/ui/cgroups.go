@@ -28,6 +28,8 @@ const (
 	GetCgroupEventType EventType = "cgroup:get"
 	// ResetCgroupOffsetEventType is the event type for resetting consumer group offsets.
 	ResetCgroupOffsetEventType EventType = "cgroup:reset-offset"
+	// DeleteCgroupEventType is the event type for deleting a consumer group.
+	DeleteCgroupEventType EventType = "cgroup:delete"
 )
 
 // CgroupsChannel is the channel for consumer group events.
@@ -74,6 +76,11 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 						app.ResetConsumerGroupOffsetModal(groupName)
 						app.ShowModalPage(ResetOffset)
 					})
+
+				case DeleteCgroupEventType:
+					groupName := event.Payload.Data.(string)
+					app.DeleteConsumerGroup(groupName)
+					app.ShowModalPage(DeleteConsumerGroup)
 				}
 			}
 		}
@@ -118,6 +125,31 @@ func (app *App) ConsumerGroups() {
 							Publish(
 								CgroupsChannel,
 								GetCgroupEventType,
+								Payload{groupName, false},
+							)
+						}
+
+						if event.Key() == tcell.KeyCtrlD {
+							row, _ := table.GetSelection()
+							groupName := table.GetCell(row, 0).Text
+
+							for _, g := range groups.Valid {
+								if g.GroupID == groupName {
+									if g.State != kafka.ConsumerGroupStateEmpty {
+										msg := fmt.Sprintf(
+											"[red]cannot delete: consumer group state is %s, must be Empty",
+											g.State,
+										)
+										SendStatusWithDefaultTTL(msg)
+										return event
+									}
+									break
+								}
+							}
+
+							Publish(
+								CgroupsChannel,
+								DeleteCgroupEventType,
 								Payload{groupName, false},
 							)
 						}
@@ -504,4 +536,72 @@ func filterConsumerGroupsTable(
 		)
 		row++
 	}
+}
+
+// DeleteConsumerGroup shows a confirmation modal for deleting a consumer group.
+func (app *App) DeleteConsumerGroup(groupName string) {
+	messageText := tview.NewTextView().
+		SetText(fmt.Sprintf("Consumer group [red::b]%s[-::-] will be deleted. Confirm?", groupName)).
+		SetTextAlign(tview.AlignCenter).
+		SetDynamicColors(true)
+
+	messageText.SetBorder(true).
+		SetTitle(" Confirm Deletion ").
+		SetBorderPadding(0, 0, 1, 1)
+
+	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if IsKey(event, 's') {
+			app.DeleteConsumerGroupResultHandler(groupName)
+			app.HideModalPage(DeleteConsumerGroup)
+			Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.HideModalPage(DeleteConsumerGroup)
+		}
+
+		return event
+	})
+
+	modal := util.NewConfirmationModal(messageText)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(DeleteConsumerGroup, modal, true, true)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(DeleteConsumerGroup)
+}
+
+// DeleteConsumerGroupResultHandler performs the consumer group deletion.
+func (app *App) DeleteConsumerGroupResultHandler(name string) {
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	SendStatusInfinite("deleting consumer group")
+	c.DeleteConsumerGroup(name, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				SendStatus(
+					fmt.Sprintf("consumer group '%s' has been deleted", name),
+					2*time.Second,
+					false,
+				)
+				Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msg("failed to delete consumer group")
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to delete consumer group: %s", err.Error()),
+				)
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("timeout while deleting consumer group")
+				SendStatusWithDefaultTTL("[red]timeout while deleting consumer group")
+				return
+			}
+		}
+	}()
 }
