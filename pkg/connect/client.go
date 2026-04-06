@@ -6,6 +6,7 @@
 package connect
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -115,6 +116,49 @@ func (c *Client) GetConnectorConfig(name string, resultChan chan<- map[string]in
 	}()
 }
 
+// UpdateConnectorConfig updates the configuration of a specific connector.
+func (c *Client) UpdateConnectorConfig(
+	name string, config map[string]interface{},
+	resultChan chan<- bool, errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), c.HTTPClient.Timeout)
+		defer cancel()
+
+		body, err := json.Marshal(config)
+		if err != nil {
+			errorChan <- fmt.Errorf("marshaling config: %w", err)
+			return
+		}
+
+		req, err := http.NewRequestWithContext(
+			ctx, http.MethodPut,
+			c.BaseURL+"/connectors/"+name+"/config",
+			bytes.NewReader(body),
+		)
+		if err != nil {
+			errorChan <- fmt.Errorf("creating request: %w", err)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.HTTPClient.Do(req)
+		if err != nil {
+			errorChan <- fmt.Errorf("executing request: %w", err)
+			return
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			respBody, _ := io.ReadAll(resp.Body)
+			errorChan <- fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody))
+			return
+		}
+
+		resultChan <- true
+	}()
+}
+
 // DescribeConnector fetches both status and config for a connector in parallel.
 // Results are sent via resultChan; any errors are sent via errorChan.
 func (c *Client) DescribeConnector(name string, resultChan chan<- *ConnectorDetail, errorChan chan<- error) {
@@ -149,6 +193,63 @@ func (c *Client) DescribeConnector(name string, resultChan chan<- *ConnectorDeta
 		wg.Wait()
 		resultChan <- detail
 	}()
+}
+
+// doConnectorAction performs a connector state-change request (pause, resume,
+// restart, delete) asynchronously. The actionPath parameter is appended to the
+// connector URL (e.g. "pause", "resume"); pass an empty string when no suffix
+// is needed (e.g. delete).
+func (c *Client) doConnectorAction(name, method, actionPath string, resultChan chan<- bool, errorChan chan<- error) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), c.HTTPClient.Timeout)
+		defer cancel()
+
+		url := c.BaseURL + "/connectors/" + name
+		if actionPath != "" {
+			url += "/" + actionPath
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, url, nil)
+		if err != nil {
+			errorChan <- fmt.Errorf("creating request: %w", err)
+			return
+		}
+
+		resp, err := c.HTTPClient.Do(req)
+		if err != nil {
+			errorChan <- fmt.Errorf("executing request: %w", err)
+			return
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			errorChan <- fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+			return
+		}
+
+		resultChan <- true
+	}()
+}
+
+// PauseConnector pauses a running connector.
+func (c *Client) PauseConnector(name string, resultChan chan<- bool, errorChan chan<- error) {
+	c.doConnectorAction(name, http.MethodPut, "pause", resultChan, errorChan)
+}
+
+// ResumeConnector resumes a paused connector.
+func (c *Client) ResumeConnector(name string, resultChan chan<- bool, errorChan chan<- error) {
+	c.doConnectorAction(name, http.MethodPut, "resume", resultChan, errorChan)
+}
+
+// RestartConnector restarts a connector.
+func (c *Client) RestartConnector(name string, resultChan chan<- bool, errorChan chan<- error) {
+	c.doConnectorAction(name, http.MethodPost, "restart", resultChan, errorChan)
+}
+
+// DeleteConnector deletes a connector from the Kafka Connect cluster.
+func (c *Client) DeleteConnector(name string, resultChan chan<- bool, errorChan chan<- error) {
+	c.doConnectorAction(name, http.MethodDelete, "", resultChan, errorChan)
 }
 
 func (c *Client) listConnectors(ctx context.Context) ([]string, error) {

@@ -70,16 +70,18 @@ func (app *App) Cluster() {
 						util.BuildTitle(app.Selected.Cluster.Name, "info"),
 					)
 					desc.SetText(description.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(
-								ClustersChannel,
-								GetClusterEventType,
-								Payload{nil, true},
-							)
-						}
-						return event
-					})
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									ClustersChannel,
+									GetClusterEventType,
+									Payload{nil, true},
+								)
+							}
+							return event
+						}),
+					)
 
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, "info"),

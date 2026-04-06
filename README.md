@@ -24,8 +24,11 @@ A powerful Terminal UI (TUI) for Apache Kafka that provides an intuitive, keyboa
 - **Topics Management** - Browse, create, edit, and delete Kafka topics with full configuration support
 - **Consumer Groups** - Monitor consumer groups, view lag, partition assignments, and member details
 - **Schema Registry Integration** - Browse subjects, view schema versions, and inspect Avro schemas
+- **Kafka Connect Management** - View, manage, and monitor Kafka Connect connectors
 - **Broker & Node Management** - View cluster node information, configurations, and health status
 - **CLI Command Templates** - Execute external tools (kcat, kafka-console-consumer) with auto-filled parameters
+- **Enhanced Navigation** - Forward/backward navigation through opened pages with dynamic menu keybindings
+- **Dynamic Search & Filtering** - Fuzzy search and autocomplete for topics and other resources
 
 
 ## Available Resources
@@ -36,6 +39,7 @@ Access via `:` (colon) key:
 |----------|-------------|------------|
 | **Clusters** | Kafka cluster management | Select, describe, view brokers |
 | **Schema-registries** | Schema Registry instances | Select, browse subjects |
+| **Connectors** | Kafka Connect connectors | List, describe, pause/resume/restart, delete |
 | **Topics** | Kafka topics | List, create, edit, delete, describe, search |
 | **Consumer groups** | Consumer groups | List, describe, view lag, search |
 | **Nodes** | Kafka brokers | List, view configuration |
@@ -133,28 +137,39 @@ cinnamon:
     - name: prod
       # Required: Schema Registry URL
       schema.registry.url: http://schema-registry-prod:8081
-      
+
       # Optional: Basic authentication for Schema Registry
       # schema.registry.sasl.username: registry-user
       # schema.registry.sasl.password: registry-pass
       selected: true  # Auto-select this registry on startup
-    
+
     - name: dev
       schema.registry.url: http://schema-registry-dev:8081
       selected: false
-    
+
+  # Kafka Connect configurations (optional)
+  connect:
+    - name: prod
+      # Required: Kafka Connect REST API URL
+      connect.url: http://kafka-connect-prod:8083
+      selected: true  # Auto-select this connect cluster on startup
+
+    - name: dev
+      connect.url: http://kafka-connect-dev:8083
+      selected: false
+
   # CLI Templates for external tool integration (optional)
   # Use placeholders: {{bootstrap}} for broker address, {{topic}} for topic name
   cli_templates:
     # kcat example - consume from beginning with JSON formatting
     - kcat -b {{bootstrap}} -t {{topic}} -o beginning -f '{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n' -u | jq .
-    
+
     # kcat example - consume from end (live)
     - kcat -b {{bootstrap}} -t {{topic}}
-    
+
     # kafka-console-consumer
     - kafka-console-consumer --bootstrap-server {{bootstrap}} --topic {{topic}} --from-beginning
-    
+
     # Custom script example
     - ./scripts/analyze-topic.sh {{bootstrap}} {{topic}}
 ```
@@ -175,7 +190,7 @@ sasl.password: ${KAFKA_PASSWORD}
 ```
 
 **Selected Flag:**
-- Only one cluster and one schema registry should have `selected: true`
+- Only one cluster, one schema registry, and one Kafka Connect instance should have `selected: true`
 - Selection is persisted when changed via UI
 
 **API Timeout:**
@@ -190,7 +205,7 @@ Create `~/.config/cinnamon/style.yaml` to customize the UI colors (optional):
 ```yaml
 # Color configuration for Cinnamon UI
 # You can use tcell color names or RGB hex values (e.g., "#ffffff")
-# Available color names: black, white, red, green, blue, yellow, orange, purple, 
+# Available color names: black, white, red, green, blue, yellow, orange, purple,
 # pink, grey, brown, beige, cyan, etc.
 # Use "default" to inherit your terminal's default colors
 
@@ -377,7 +392,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Inspiration:**
 - `k9s` - Kubernetes terminal UI
-- `lazydocker` - Docker terminal UI  
+- `lazydocker` - Docker terminal UI
 
 
 

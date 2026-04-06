@@ -85,6 +85,10 @@ var keys = map[string]Pair{
 		Key:   "<Ctrl+d>",
 		Value: "Delete Group",
 	},
+	"delete_conn": {
+		Key:   "<Ctrl+d>",
+		Value: "Delete Connector",
+	},
 	"edit_topic": {
 		Key:   "<e>",
 		Value: "Edit Topic",
@@ -108,6 +112,10 @@ var keys = map[string]Pair{
 	"close": {
 		Key:   "<Esc>",
 		Value: "Close",
+	},
+	"actions": {
+		Key:   "<a>",
+		Value: "Actions",
 	},
 	"cancel": {
 		Key:   "<Esc>",
@@ -146,9 +154,13 @@ var keys = map[string]Pair{
 		Value: "Back",
 	},
 
-	"edit_preselected": {
+	"edit_switch": {
 		Key:   "<e>",
-		Value: "Edit or choose preselected",
+		Value: "Edit or switch",
+	},
+	"switch": {
+		Key:   "<e>",
+		Value: "Switch",
 	},
 	"esc_confirm": {
 		Key:   "<Esc>",
@@ -157,6 +169,10 @@ var keys = map[string]Pair{
 	"esc_confirm_opened": {
 		Key:   "<Esc, Enter>",
 		Value: "Confirm and back",
+	},
+	"hscroll": {
+		Key:   "<H,L>",
+		Value: "Scroll Left/Right",
 	},
 	"q": {
 		Key:   "<q>",
@@ -188,6 +204,9 @@ const (
 	CliExecutePageMenu            = "CliExecutePageMenu"
 	ConnectorsPageMenu            = "ConnectorsPageMenu"
 	ConnectorDetailPageMenu       = "ConnectorDetailPageMenu"
+	ConnectorConfigEditPageMenu   = "ConnectorConfigEditPageMenu"
+	ConnectorActionsPageMenu      = "ConnectorActionsPageMenu"
+	DeleteConnectorPageMenu       = "DeleteConnectorPageMenu"
 	ConnectPageMenu               = "ConnectPageMenu"
 )
 
@@ -208,7 +227,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			CreateTopicInputMenu:        {"esc_confirm"},
 			EditTopicPageMenu:           {"up", "dw", "edit", "submit", "close"},
 			EditTopicInputMenu:          {"esc_confirm"},
-			ResetOffsetPageMenu:         {"up", "dw", "edit_preselected", "submit_ctrl", "close"},
+			ResetOffsetPageMenu:         {"up", "dw", "edit_switch", "submit", "close"},
 			ResetOffsetInputMenu:        {"esc_confirm"},
 			DeleteTopicPageMenu:         {"confirm", "cancel"},
 			DeleteConsumerGroupPageMenu: {"confirm", "cancel"},
@@ -220,7 +239,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"opened",
 				"dsc",
-				"backward",
 				"forward",
 			},
 			SchemaRegistriesPageMenu: {
@@ -284,6 +302,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"upd",
 				"reset_offset",
+				"hscroll",
 				"esc",
 				"backward",
 				"forward",
@@ -317,6 +336,8 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"search",
 				"upd",
+				"actions",
+				"delete_conn",
 				"backward",
 				"forward",
 			},
@@ -324,11 +345,16 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"opened",
 				"upd",
+				"hscroll",
 				"esc",
+				"edit",
 				"backward",
 				"forward",
 			},
-			FinalPageMenu: {"res", "opened", "upd", "esc", "backward", "forward"},
+			ConnectorConfigEditPageMenu: {"submit", "cancel"},
+			ConnectorActionsPageMenu:    {"switch", "submit", "close"},
+			DeleteConnectorPageMenu:     {"confirm", "cancel"},
+			FinalPageMenu:               {"res", "opened", "upd", "hscroll", "esc", "backward", "forward"},
 		},
 		Colors: colors,
 	}

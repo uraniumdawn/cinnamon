@@ -14,13 +14,12 @@ import (
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
-// PagesRegistry manages the application's pages, navigation history, and page-menu mappings.
+// PagesRegistry manages the application's pages and page-menu mappings.
+// The OpenedPages table serves as the single source of truth for page order.
 type PagesRegistry struct {
-	UI               *UI
-	PageMenuMap      map[string]string
-	SearchablePages  []string
-	History          []string
-	CurrentPageIndex int
+	UI              *UI
+	PageMenuMap     map[string]string
+	SearchablePages []string
 }
 
 // UI contains the main UI components including pages and opened pages table.
@@ -49,9 +48,8 @@ func NewPagesRegistry(_ *config.ColorConfig) *PagesRegistry {
 			OpenedPages: table,
 			Main:        util.NewModal(table),
 		},
-		PageMenuMap:      make(map[string]string),
-		SearchablePages:  []string{},
-		CurrentPageIndex: -1,
+		PageMenuMap:     make(map[string]string),
+		SearchablePages: []string{},
 	}
 
 	registry.SetupPageMenus()
@@ -69,6 +67,8 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[DeleteConsumerGroup] = DeleteConsumerGroupPageMenu
 	pr.PageMenuMap[EditTopic] = EditTopicPageMenu
 	pr.PageMenuMap[ResetOffset] = ResetOffsetPageMenu
+	pr.PageMenuMap[ConnectorActions] = ConnectorActionsPageMenu
+	pr.PageMenuMap[DeleteConnector] = DeleteConnectorPageMenu
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
 }
 
@@ -90,23 +90,36 @@ func (app *App) AddToPagesRegistry(
 	registry := app.Layout.PagesRegistry
 	registry.PageMenuMap[name] = menu
 
-	// Check if page already exists in opened pages table
 	existingRow := registry.findPageInTable(name)
-
-	if existingRow >= 0 {
-		// Page exists - remove old component to replace with new
-		registry.UI.Pages.RemovePage(name)
-	} else {
-		// New page - clear forward history, append to opened pages table and history
-		registry.History = registry.History[:registry.CurrentPageIndex+1]
-		row := registry.UI.OpenedPages.GetRowCount()
-		registry.UI.OpenedPages.SetCell(row, 0, tview.NewTableCell(strconv.Itoa(row)))
-		registry.UI.OpenedPages.SetCell(row, 1, tview.NewTableCell(name))
-		registry.History = append(registry.History, name)
-		registry.CurrentPageIndex = len(registry.History) - 1
+	currentPage, _ := registry.UI.Pages.GetFrontPage()
+	currentRow := registry.findPageInTable(currentPage)
+	if currentRow < 0 {
+		currentRow = registry.UI.OpenedPages.GetRowCount() - 1
 	}
 
-	// Add to searchable pages if specified and not already present
+	if existingRow >= 0 {
+		registry.UI.Pages.RemovePage(name)
+		registry.UI.OpenedPages.RemoveRow(existingRow)
+		if existingRow < currentRow {
+			currentRow--
+		}
+	}
+
+	insertRow := currentRow + 1
+	rowCount := registry.UI.OpenedPages.GetRowCount()
+	if insertRow > rowCount {
+		insertRow = rowCount
+	}
+
+	registry.UI.OpenedPages.InsertRow(insertRow)
+	registry.UI.OpenedPages.SetCell(insertRow, 0, tview.NewTableCell(strconv.Itoa(insertRow)))
+	registry.UI.OpenedPages.SetCell(insertRow, 1, tview.NewTableCell(name))
+	registry.UI.OpenedPages.Select(insertRow, 0)
+
+	for i := insertRow + 1; i < registry.UI.OpenedPages.GetRowCount(); i++ {
+		registry.UI.OpenedPages.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(i)))
+	}
+
 	if searchable && !registry.isPageSearchable(name) {
 		registry.SearchablePages = append(registry.SearchablePages, name)
 	}
@@ -145,35 +158,36 @@ func (pr *PagesRegistry) isPageSearchable(name string) bool {
 
 func (app *App) Forward() {
 	registry := app.Layout.PagesRegistry
-	if registry.CurrentPageIndex < len(registry.History)-1 {
-		registry.CurrentPageIndex++
-		app.navigateToHistoryPage()
+	currentPage, _ := registry.UI.Pages.GetFrontPage()
+	currentRow := registry.findPageInTable(currentPage)
+
+	if currentRow >= 0 && currentRow < registry.UI.OpenedPages.GetRowCount()-1 {
+		nextCell := registry.UI.OpenedPages.GetCell(currentRow+1, 1)
+		if nextCell != nil {
+			nextPage := nextCell.Text
+			if menu, ok := registry.PageMenuMap[nextPage]; ok {
+				app.Layout.Menu.SetMenu(menu)
+				registry.UI.Pages.SwitchToPage(nextPage)
+			}
+		}
 	}
 }
 
 func (app *App) Backward() {
 	registry := app.Layout.PagesRegistry
-	if registry.CurrentPageIndex > 0 {
-		registry.CurrentPageIndex--
-		app.navigateToHistoryPage()
-	}
-}
+	currentPage, _ := registry.UI.Pages.GetFrontPage()
+	currentRow := registry.findPageInTable(currentPage)
 
-// navigateToHistoryPage navigates to the page at CurrentPageIndex.
-func (app *App) navigateToHistoryPage() {
-	registry := app.Layout.PagesRegistry
-	if registry.CurrentPageIndex < 0 || registry.CurrentPageIndex >= len(registry.History) {
-		return
+	if currentRow > 0 {
+		prevCell := registry.UI.OpenedPages.GetCell(currentRow-1, 1)
+		if prevCell != nil {
+			prevPage := prevCell.Text
+			if menu, ok := registry.PageMenuMap[prevPage]; ok {
+				app.Layout.Menu.SetMenu(menu)
+				registry.UI.Pages.SwitchToPage(prevPage)
+			}
+		}
 	}
-
-	name := registry.History[registry.CurrentPageIndex]
-	menu, ok := registry.PageMenuMap[name]
-	if !ok {
-		return
-	}
-
-	app.Layout.Menu.SetMenu(menu)
-	registry.UI.Pages.SwitchToPage(name)
 }
 
 func (app *App) SwitchToPage(name string) {
@@ -190,10 +204,8 @@ func (app *App) ShowModalPage(pageName string) {
 		registry.UI.Pages.ShowPage(pageName)
 		registry.UI.Pages.SendToFront(pageName)
 
-		// If showing OpenedPages modal, select the current page from history
-		if pageName == OpenedPages && registry.CurrentPageIndex >= 0 &&
-			registry.CurrentPageIndex < len(registry.History) {
-			currentPage := registry.History[registry.CurrentPageIndex]
+		if pageName == OpenedPages {
+			currentPage, _ := registry.UI.Pages.GetFrontPage()
 			tableRow := registry.findPageInTable(currentPage)
 			if tableRow >= 0 {
 				registry.UI.OpenedPages.Select(tableRow, 0)
@@ -226,40 +238,17 @@ func (app *App) IsCurrentPageSearchable() bool {
 func (app *App) RemoveFromPagesRegistry(name string) {
 	registry := app.Layout.PagesRegistry
 
-	// Remove from Pages
 	registry.UI.Pages.RemovePage(name)
-
-	// Remove from PageMenuMap
 	delete(registry.PageMenuMap, name)
 
-	// Remove from OpenedPages table
 	tableRow := registry.findPageInTable(name)
 	if tableRow >= 0 {
 		registry.UI.OpenedPages.RemoveRow(tableRow)
-		// Re-number remaining rows
 		for i := tableRow; i < registry.UI.OpenedPages.GetRowCount(); i++ {
 			registry.UI.OpenedPages.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(i)))
 		}
 	}
 
-	// Remove all occurrences from History (can have duplicates)
-	newHistory := make([]string, 0, len(registry.History))
-	for i, h := range registry.History {
-		if h != name {
-			newHistory = append(newHistory, h)
-		} else if i <= registry.CurrentPageIndex && registry.CurrentPageIndex > 0 {
-			// Adjust current index for each removed occurrence before or at current position
-			registry.CurrentPageIndex--
-		}
-	}
-	registry.History = newHistory
-
-	// Ensure CurrentPageIndex is within bounds
-	if registry.CurrentPageIndex >= len(registry.History) {
-		registry.CurrentPageIndex = len(registry.History) - 1
-	}
-
-	// Remove from SearchablePages
 	for i, p := range registry.SearchablePages {
 		if p == name {
 			registry.SearchablePages = append(
@@ -269,11 +258,16 @@ func (app *App) RemoveFromPagesRegistry(name string) {
 		}
 	}
 
-	// Remove from cache
 	app.Cache.Delete(name)
 
-	// Switch to current page in history if available
-	if len(registry.History) > 0 && registry.CurrentPageIndex >= 0 {
-		app.SwitchToPage(registry.History[registry.CurrentPageIndex])
+	if registry.UI.OpenedPages.GetRowCount() > 0 {
+		targetRow := tableRow
+		if targetRow >= registry.UI.OpenedPages.GetRowCount() {
+			targetRow = registry.UI.OpenedPages.GetRowCount() - 1
+		}
+		cell := registry.UI.OpenedPages.GetCell(targetRow, 1)
+		if cell != nil {
+			app.SwitchToPage(cell.Text)
+		}
 	}
 }

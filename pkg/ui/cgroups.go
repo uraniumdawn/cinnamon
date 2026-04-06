@@ -79,8 +79,10 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 
 				case DeleteCgroupEventType:
 					groupName := event.Payload.Data.(string)
-					app.DeleteConsumerGroup(groupName)
-					app.ShowModalPage(DeleteConsumerGroup)
+					app.QueueUpdateDraw(func() {
+						app.DeleteConsumerGroup(groupName)
+						app.ShowModalPage(DeleteConsumerGroup)
+					})
 				}
 			}
 		}
@@ -202,27 +204,33 @@ func (app *App) ConsumerGroup(name string) {
 						util.BuildTitle(ConsumerGroup, name),
 					)
 					desc.SetText(description.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(CgroupsChannel, GetCgroupEventType, Payload{name, true})
-						}
-						if IsKey(event, 'o') {
-							for _, d := range description.ConsumerGroupDescriptions {
-								if len(d.Members) > 0 {
-									SendStatusWithDefaultTTL(
-										"[red]cannot reset offsets: consumer group has active members",
-									)
-									return event
-								}
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									CgroupsChannel,
+									GetCgroupEventType,
+									Payload{name, true},
+								)
 							}
-							Publish(
-								CgroupsChannel,
-								ResetCgroupOffsetEventType,
-								Payload{name, false},
-							)
-						}
-						return event
-					})
+							if IsKey(event, 'o') {
+								for _, d := range description.ConsumerGroupDescriptions {
+									if len(d.Members) > 0 {
+										SendStatusWithDefaultTTL(
+											"[red]cannot reset offsets: consumer group has active members",
+										)
+										return event
+									}
+								}
+								Publish(
+									CgroupsChannel,
+									ResetCgroupOffsetEventType,
+									Payload{name, false},
+								)
+							}
+							return event
+						}),
+					)
 					app.AddToPagesRegistry(
 						util.BuildPageKey(
 							app.Selected.Cluster.Name,
@@ -378,7 +386,7 @@ func (app *App) ResetConsumerGroupOffsetModal(groupName string) {
 			}
 		}
 
-		if event.Key() == tcell.KeyCtrlS {
+		if IsKey(event, 's') {
 			topic := ""
 			if scopeOptions[scopeIdx] == "single topic" {
 				topic = topicField.GetText()

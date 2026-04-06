@@ -5,11 +5,17 @@
 package ui
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -25,6 +31,8 @@ const (
 	GetConnectorsEventType EventType = "connectors:get"
 	// GetConnectorEventType is the event type for fetching a single connector.
 	GetConnectorEventType EventType = "connector:get"
+	// DeleteConnectorEventType is the event type for deleting a connector.
+	DeleteConnectorEventType EventType = "connector:delete"
 )
 
 // ConnectorsChannel is the channel for connector events.
@@ -64,6 +72,13 @@ func (app *App) RunConnectorsEventHandler(ctx context.Context, in chan Event) {
 					} else {
 						app.ConnectorDetail(connectorName)
 					}
+
+				case DeleteConnectorEventType:
+					connectorName := event.Payload.Data.(string)
+					app.QueueUpdateDraw(func() {
+						app.DeleteConnector(connectorName)
+						app.ShowModalPage(DeleteConnector)
+					})
 				}
 			}
 		}
@@ -106,6 +121,24 @@ func (app *App) Connectors() {
 							Publish(
 								ConnectorsChannel,
 								GetConnectorEventType,
+								Payload{connectorName, false},
+							)
+						}
+
+						if IsKey(event, 'a') {
+							row, _ := table.GetSelection()
+							connectorName := table.GetCell(row, 0).Text
+							connectorState := table.GetCell(row, 1).Text
+							app.ConnectorActionsModal(connectorName, connectorState)
+							app.ShowModalPage(ConnectorActions)
+						}
+
+						if event.Key() == tcell.KeyCtrlD {
+							row, _ := table.GetSelection()
+							connectorName := table.GetCell(row, 0).Text
+							Publish(
+								ConnectorsChannel,
+								DeleteConnectorEventType,
 								Payload{connectorName, false},
 							)
 						}
@@ -178,16 +211,21 @@ func (app *App) ConnectorDetail(name string) {
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(util.BuildTitle(Connectors, name))
 					desc.SetText(detail.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(
-								ConnectorsChannel,
-								GetConnectorEventType,
-								Payload{name, true},
-							)
-						}
-						return event
-					})
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									ConnectorsChannel,
+									GetConnectorEventType,
+									Payload{name, true},
+								)
+							}
+							// if IsKey(event, 'e') {
+							// 	app.EditConnectorConfig(name)
+							// }
+							return event
+						}),
+					)
 
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Connect.Name, Connectors, name),
@@ -310,4 +348,379 @@ func runningTasks(tasks []connect.TaskStateInfo) int {
 		}
 	}
 	return count
+}
+
+// EditConnectorConfig opens the connector config in an external editor for editing.
+func (app *App) EditConnectorConfig(name string) {
+	resultCh := make(chan map[string]interface{})
+	errorCh := make(chan error)
+
+	c := app.GetCurrentConnectClient()
+	SendStatusInfinite("fetching connector config for edit...")
+	c.GetConnectorConfig(name, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		defer cancel()
+
+		select {
+		case config := <-resultCh:
+			app.QueueUpdateDraw(func() {
+				SendStatusInfinite("opening editor...")
+				app.openEditorForConfig(name, config)
+			})
+		case err := <-errorCh:
+			log.Error().Err(err).Msg("failed to fetch connector config for edit")
+			SendStatusWithDefaultTTL(
+				fmt.Sprintf("[red]failed to fetch connector config: %s", err.Error()),
+			)
+		case <-ctx.Done():
+			log.Error().Msg("timeout while fetching connector config for edit")
+			SendStatusWithDefaultTTL("[red]timeout while fetching connector config")
+		}
+	}()
+}
+
+// openEditorForConfig creates a temp file, opens the editor, and handles the result.
+func (app *App) openEditorForConfig(name string, config map[string]interface{}) {
+	// Marshal to pretty JSON
+	oldJSON, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		SendStatusWithDefaultTTL("[red]failed to marshal connector config")
+		return
+	}
+	oldHash := sha256.Sum256(oldJSON)
+
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "connector-config-*.json")
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create temp file")
+		SendStatusWithDefaultTTL("[red]failed to create temp file")
+		return
+	}
+	tmpPath := tmpFile.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
+
+	if _, err := tmpFile.Write(oldJSON); err != nil {
+		log.Error().Err(err).Msg("failed to write temp file")
+		SendStatusWithDefaultTTL("[red]failed to write temp file")
+		return
+	}
+	if err := tmpFile.Close(); err != nil {
+		log.Error().Err(err).Msg("failed to close temp file")
+		SendStatusWithDefaultTTL("[red]failed to close temp file")
+		return
+	}
+
+	// Open editor
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vim"
+	}
+
+	// Parse editor command and arguments
+	parts := strings.Fields(editor)
+	cmd := exec.Command(parts[0], append(parts[1:], tmpPath)...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Temporarily stop the TUI so the editor can take over the terminal
+	app.Suspend(func() {
+		_ = cmd.Run()
+	})
+
+	// Read edited content
+	newContent, err := os.ReadFile(tmpPath)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to read edited config")
+		SendStatusWithDefaultTTL("[red]failed to read edited config")
+		return
+	}
+
+	// Check if content changed
+	newHash := sha256.Sum256(newContent)
+	if bytes.Equal(oldHash[:], newHash[:]) {
+		SendStatusWithDefaultTTL("[yellow]no changes detected")
+		return
+	}
+
+	// Validate JSON
+	var newConfig map[string]interface{}
+	if err := json.Unmarshal(newContent, &newConfig); err != nil {
+		SendStatusWithDefaultTTL(fmt.Sprintf("[red]invalid JSON: %s", err.Error()))
+		return
+	}
+
+	// Show confirmation modal
+	app.ConnectorConfigConfirm(name, newConfig)
+}
+
+// ConnectorConfigConfirm shows a confirmation modal with the new connector config.
+func (app *App) ConnectorConfigConfirm(name string, newConfig map[string]interface{}) {
+	prettyJSON, err := json.MarshalIndent(newConfig, "", "    ")
+	if err != nil {
+		SendStatusWithDefaultTTL("[red]failed to format config for display")
+		return
+	}
+
+	messageText := tview.NewTextView().
+		SetText(string(prettyJSON)).
+		SetTextAlign(tview.AlignLeft).
+		SetDynamicColors(false)
+
+	messageText.SetBorder(true).
+		SetTitle(fmt.Sprintf(" Confirm Config Update: %s ", name)).
+		SetBorderPadding(0, 0, 1, 1)
+
+	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if IsKey(event, 's') {
+			app.UpdateConnectorConfig(name, newConfig)
+			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
+			app.Layout.Menu.SetMenu(ConnectorDetailPageMenu)
+			return nil
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
+			app.Layout.Menu.SetMenu(ConnectorDetailPageMenu)
+			return nil
+		}
+
+		return event
+	})
+
+	modal := util.NewConfirmationModal(messageText)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ConnectorConfigConfirm, modal, true, false)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(ConnectorConfigConfirm)
+	app.Layout.PagesRegistry.UI.Pages.SendToFront(ConnectorConfigConfirm)
+	app.Layout.Menu.SetMenu(ConnectorConfigEditPageMenu)
+}
+
+// UpdateConnectorConfig applies the updated connector config.
+func (app *App) UpdateConnectorConfig(name string, config map[string]interface{}) {
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentConnectClient()
+	SendStatusInfinite("updating connector config...")
+	c.UpdateConnectorConfig(name, config, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				SendStatus(
+					fmt.Sprintf("connector '%s' config updated", name),
+					2*time.Second,
+					false,
+				)
+				Publish(ConnectorsChannel, GetConnectorEventType, Payload{name, true})
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msg("failed to update connector config")
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to update connector config: %s", err.Error()),
+				)
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("timeout while updating connector config")
+				SendStatusWithDefaultTTL("[red]timeout while updating connector config")
+				return
+			}
+		}
+	}()
+}
+
+// ConnectorActionsModal shows a modal with available actions for a connector.
+func (app *App) ConnectorActionsModal(connectorName, state string) {
+	var actions []string
+	switch strings.ToUpper(state) {
+	case "RUNNING":
+		actions = []string{"PAUSE", "RESTART"}
+	case "PAUSED":
+		actions = []string{"RESUME", "RESTART"}
+	default:
+		actions = []string{"RESTART"}
+	}
+
+	actionIdx := 0
+	width := 40
+
+	actionField := tview.NewInputField().
+		SetFieldWidth(width).
+		SetText(actions[0]).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+	actionField.SetDisabled(true)
+
+	selection := tview.NewTable()
+	selection.SetCell(0, 0, tview.NewTableCell("Action:").SetAlign(tview.AlignRight))
+	selection.SetSelectable(true, false)
+	selection.SetBorderPadding(0, 0, 1, 0)
+	selection.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
+
+	f := tview.NewFlex().SetDirection(tview.FlexColumn)
+	f.AddItem(selection, 22, 0, true)
+	f.AddItem(tview.NewBox(), 1, 0, false)
+
+	inputs := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(actionField, 1, 0, false).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	f.AddItem(inputs, 40, 0, false).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if IsKey(event, 'e') {
+			actionIdx = (actionIdx + 1) % len(actions)
+			actionField.SetText(actions[actionIdx])
+		}
+
+		if IsKey(event, 's') {
+			app.ExecuteConnectorAction(connectorName, actions[actionIdx])
+			app.HideModalPage(ConnectorActions)
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.HideModalPage(ConnectorActions)
+		}
+
+		return event
+	})
+
+	flex := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(f, 0, 1, true)
+	flex.SetTitle(fmt.Sprintf(" Actions: %s ", connectorName))
+	flex.SetBorder(true)
+
+	modal := util.NewTopicModal(flex)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ConnectorActions, modal, true, false)
+}
+
+// ExecuteConnectorAction executes a connector action (pause, resume, restart).
+func (app *App) ExecuteConnectorAction(name, action string) {
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentConnectClient()
+	SendStatusInfinite(fmt.Sprintf("%sing connector...", action))
+
+	switch action {
+	case "pause":
+		c.PauseConnector(name, resultCh, errorCh)
+	case "resume":
+		c.ResumeConnector(name, resultCh, errorCh)
+	case "restart":
+		c.RestartConnector(name, resultCh, errorCh)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				SendStatus(
+					fmt.Sprintf("connector '%s' %sed", name, action),
+					2*time.Second,
+					false,
+				)
+				Publish(ConnectorsChannel, GetConnectorsEventType, Payload{nil, true})
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msgf("failed to %s connector", action)
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to %s connector: %s", action, err.Error()),
+				)
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msgf("timeout while %sing connector", action)
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]timeout while %sing connector", action),
+				)
+				return
+			}
+		}
+	}()
+}
+
+// DeleteConnector shows a confirmation modal for deleting a connector.
+func (app *App) DeleteConnector(connectorName string) {
+	messageText := tview.NewTextView().
+		SetText(fmt.Sprintf("Connector [red::b]%s[-::-] will be deleted. Confirm?", connectorName)).
+		SetTextAlign(tview.AlignCenter).
+		SetDynamicColors(true)
+
+	messageText.SetBorder(true).
+		SetTitle(" Confirm Deletion ").
+		SetBorderPadding(0, 0, 1, 1)
+
+	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if IsKey(event, 's') {
+			app.DeleteConnectorResultHandler(connectorName)
+			app.HideModalPage(DeleteConnector)
+			Publish(ConnectorsChannel, GetConnectorsEventType, Payload{nil, true})
+		}
+
+		if event.Key() == tcell.KeyEsc {
+			app.HideModalPage(DeleteConnector)
+		}
+
+		return event
+	})
+
+	modal := util.NewConfirmationModal(messageText)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(DeleteConnector, modal, true, true)
+	app.Layout.Menu.SetMenu(DeleteConnectorPageMenu)
+	app.Layout.PagesRegistry.UI.Pages.ShowPage(DeleteConnector)
+}
+
+// DeleteConnectorResultHandler performs the connector deletion.
+func (app *App) DeleteConnectorResultHandler(name string) {
+	resultCh := make(chan bool)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentConnectClient()
+	SendStatusInfinite("deleting connector")
+	c.DeleteConnector(name, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		for {
+			select {
+			case <-resultCh:
+				SendStatus(
+					fmt.Sprintf("connector '%s' has been deleted", name),
+					2*time.Second,
+					false,
+				)
+				Publish(ConnectorsChannel, GetConnectorsEventType, Payload{nil, true})
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msg("failed to delete connector")
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to delete connector: %s", err.Error()),
+				)
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("timeout while deleting connector")
+				SendStatusWithDefaultTTL("[red]timeout while deleting connector")
+				return
+			}
+		}
+	}()
 }

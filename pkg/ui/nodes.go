@@ -146,16 +146,18 @@ func (app *App) Node(id, url string) {
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(util.BuildTitle(Node, url, id))
 					desc.SetText(description.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(
-								NodesChannel,
-								GetNodeEventType,
-								Payload{NodeIDURLPair{id, url}, true},
-							)
-						}
-						return event
-					})
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									NodesChannel,
+									GetNodeEventType,
+									Payload{NodeIDURLPair{id, url}, true},
+								)
+							}
+							return event
+						}),
+					)
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Node, id),
 						desc,

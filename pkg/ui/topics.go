@@ -208,12 +208,18 @@ func (app *App) Topic(name string) {
 				app.QueueUpdateDraw(func() {
 					desc := app.NewDescription(util.BuildTitle(Topic, name))
 					desc.SetText(description.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(TopicsChannel, GetTopicEventType, Payload{name, true})
-						}
-						return event
-					})
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									TopicsChannel,
+									GetTopicEventType,
+									Payload{name, true},
+								)
+							}
+							return event
+						}),
+					)
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Topic, name),
 						desc,

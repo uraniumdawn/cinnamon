@@ -26,25 +26,28 @@ import (
 )
 
 const (
-	Resources           = "Resources"
-	Clusters            = "Clusters"
-	SchemaRegistries    = "Schema-registries"
-	Topics              = "Topics"
-	Topic               = "Topic"
-	Nodes               = "Nodes"
-	Node                = "Node"
-	ConsumerGroups      = "Consumer groups"
-	ConsumerGroup       = "Consumer group"
-	Subjects            = "Subjects"
-	Connectors          = "Connectors"
-	Connect             = "Connect"
-	OpenedPages         = "Opened pages"
-	CreateTopic         = "Create Topic"
-	DeleteTopic         = "Delete Topic"
-	DeleteConsumerGroup = "Delete Consumer Group"
-	EditTopic           = "Edit Topic"
-	ResetOffset         = "Reset Offset"
-	CliTemplates        = "CLI Templates"
+	Resources              = "Resources"
+	Clusters               = "Clusters"
+	SchemaRegistries       = "Schema-registries"
+	Topics                 = "Topics"
+	Topic                  = "Topic"
+	Nodes                  = "Nodes"
+	Node                   = "Node"
+	ConsumerGroups         = "Consumer groups"
+	ConsumerGroup          = "Consumer group"
+	Subjects               = "Subjects"
+	Connectors             = "Connectors"
+	Connect                = "Connect"
+	OpenedPages            = "Opened pages"
+	CreateTopic            = "Create Topic"
+	DeleteTopic            = "Delete Topic"
+	DeleteConsumerGroup    = "Delete Consumer Group"
+	EditTopic              = "Edit Topic"
+	ResetOffset            = "Reset Offset"
+	ConnectorConfigConfirm = "Connector Config Confirm"
+	ConnectorActions       = "Connector Actions"
+	DeleteConnector        = "Delete Connector"
+	CliTemplates           = "CLI Templates"
 )
 
 type App struct {
@@ -329,14 +332,34 @@ func (app *App) NewDescription(title string) *tview.TextView {
 	desc := tview.NewTextView().
 		SetTextAlign(tview.AlignLeft).
 		SetDynamicColors(true).
-		SetWrap(true).
-		SetWordWrap(false)
+		SetWrap(false)
 	desc.
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(title)
 	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
 	return desc
+}
+
+// WithHScroll wraps an input capture handler to add H/L horizontal scrolling to a TextView.
+func (app *App) WithHScroll(
+	desc *tview.TextView,
+	handler func(*tcell.EventKey) *tcell.EventKey,
+) func(*tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		row, col := desc.GetScrollOffset()
+		if IsKey(event, 'H') {
+			if col > 0 {
+				desc.ScrollTo(row, col-5)
+			}
+			return nil
+		}
+		if IsKey(event, 'L') {
+			desc.ScrollTo(row, col+5)
+			return nil
+		}
+		return handler(event)
+	}
 }
 
 // ClearCurrentFilter clears the saved filter for the current page.

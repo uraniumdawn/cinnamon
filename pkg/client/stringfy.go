@@ -207,9 +207,60 @@ func (r *DescribeConsumerGroupResult) String() string {
 		)
 	}
 
+	// Flush w before starting members tabwriter to preserve section order.
+	_ = w.Flush()
+
+	// Members section - grouped by member
+	_, _ = sb.WriteString("\nMembers:\n")
+	w3 := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(w3, "Member\tHost\tLag")
+
+	for _, desc := range r.ConsumerGroupDescriptions {
+		sortedMembers := make([]kafka.MemberDescription, len(desc.Members))
+		copy(sortedMembers, desc.Members)
+		sort.Slice(sortedMembers, func(i, j int) bool {
+			return sortedMembers[i].ConsumerID < sortedMembers[j].ConsumerID
+		})
+		for _, member := range sortedMembers {
+			var memberLag int64
+			partsByTopic := make(map[string][]int32)
+			lagByTopic := make(map[string]int64)
+			for _, tp := range member.Assignment.TopicPartitions {
+				topicName := *tp.Topic
+				partsByTopic[topicName] = append(partsByTopic[topicName], tp.Partition)
+				if lag, ok := r.lag[TopicPartition{topicName, tp.Partition}]; ok {
+					lagByTopic[topicName] += int64(lag)
+					memberLag += int64(lag)
+				}
+			}
+
+			topics := make([]string, 0, len(partsByTopic))
+			for t := range partsByTopic {
+				topics = append(topics, t)
+			}
+			sort.Strings(topics)
+
+			_, _ = fmt.Fprintf(w3, "%s\t%s\t%d\n", member.ConsumerID, member.Host, memberLag)
+
+			for _, t := range topics {
+				parts := partsByTopic[t]
+				sort.Slice(parts, func(i, j int) bool { return parts[i] < parts[j] })
+				partStrs := make([]string, len(parts))
+				for i, p := range parts {
+					partStrs[i] = fmt.Sprintf("%d", p)
+				}
+				_, _ = fmt.Fprintf(w3, "  %s:%s\t\t%d\n",
+					t,
+					strings.Join(partStrs, ","),
+					lagByTopic[t],
+				)
+			}
+		}
+	}
+	_ = w3.Flush()
+
 	// Partition details table
-	_, _ = fmt.Fprintln(w, "")
-	_, _ = fmt.Fprintln(w, "Partition Details:")
+	_, _ = sb.WriteString("\nPartition Details:\n")
 	w2 := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(
 		w2,
@@ -262,7 +313,6 @@ func (r *DescribeConsumerGroupResult) String() string {
 	})
 	_ = w2.Flush()
 
-	_ = w.Flush()
 	return sb.String()
 }
 

@@ -270,13 +270,15 @@ func (app *App) Schema(subject string, version int) {
 						util.BuildTitle(subject, v),
 					)
 
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(SubjectsChannel, GetSchemaEventType,
-								Payload{SubjectVersionPair{subject, v}, true})
-						}
-						return event
-					})
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(SubjectsChannel, GetSchemaEventType,
+									Payload{SubjectVersionPair{subject, v}, true})
+							}
+							return event
+						}),
+					)
 
 					writer := tview.ANSIWriter(desc)
 					_, err := writer.Write([]byte(formattedSchema))
