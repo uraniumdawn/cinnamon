@@ -153,14 +153,9 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Back",
 	},
-
-	"edit_switch": {
-		Key:   "<e>",
-		Value: "Edit or switch",
-	},
 	"switch": {
-		Key:   "<e>",
-		Value: "Switch",
+		Key:   "<Tab>",
+		Value: "Switch section",
 	},
 	"esc_confirm": {
 		Key:   "<Esc>",
@@ -173,6 +168,22 @@ var keys = map[string]Pair{
 	"hscroll": {
 		Key:   "<H,L>",
 		Value: "Scroll Left/Right",
+	},
+	"set_st_sc": {
+		Key:   "<Enter>",
+		Value: "Cycle strategy/scope",
+	},
+	"batch_set_st": {
+		Key:   "<Enter>",
+		Value: "Cycle strategy",
+	},
+	"batch_edit_ts": {
+		Key:   "<e>",
+		Value: "Edit timestamp",
+	},
+	"batch_nav_ts": {
+		Key:   "<Enter>",
+		Value: "Enter timestamp",
 	},
 	"q": {
 		Key:   "<q>",
@@ -195,6 +206,7 @@ const (
 	EditTopicInputMenu            = "EditTopicInputMenu"
 	ResetOffsetPageMenu           = "ResetOffsetPageMenu"
 	ResetOffsetInputMenu          = "ResetOffsetInputMenu"
+	ResetOffsetBatchPageMenu      = "ResetOffsetBatchPageMenu"
 	ConsumerGroupsPageMenu        = "ConsumerGroupsPageMenu"
 	ConsumerGroupDescribePageMenu = "ConsumerGroupDescribePageMenu"
 	SubjectsPageMenu              = "SubjectsPageMenu"
@@ -221,14 +233,23 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			ResourcesPageMenu:           {"up", "dw", "select", "close"},
-			OpenedPagesMenu:             {"up", "dw", "remove_page", "esc_confirm_opened"},
-			CreateTopicPageMenu:         {"up", "dw", "edit", "submit", "default", "close"},
-			CreateTopicInputMenu:        {"esc_confirm"},
-			EditTopicPageMenu:           {"up", "dw", "edit", "submit", "close"},
-			EditTopicInputMenu:          {"esc_confirm"},
-			ResetOffsetPageMenu:         {"up", "dw", "edit_switch", "submit", "close"},
-			ResetOffsetInputMenu:        {"esc_confirm"},
+			ResourcesPageMenu:    {"up", "dw", "select", "close"},
+			OpenedPagesMenu:      {"up", "dw", "remove_page", "esc_confirm_opened"},
+			CreateTopicPageMenu:  {"up", "dw", "edit", "submit", "default", "close"},
+			CreateTopicInputMenu: {"esc_confirm"},
+			EditTopicPageMenu:    {"up", "dw", "edit", "submit", "close"},
+			EditTopicInputMenu:   {"esc_confirm"},
+			ResetOffsetPageMenu:  {"up", "dw", "switch", "set_st_sc", "batch_edit_ts", "submit", "close"},
+			ResetOffsetInputMenu: {"esc_confirm"},
+			ResetOffsetBatchPageMenu: {
+				"up",
+				"dw",
+				"switch",
+				"batch_set_st",
+				"batch_edit_ts",
+				"submit",
+				"close",
+			},
 			DeleteTopicPageMenu:         {"confirm", "cancel"},
 			DeleteConsumerGroupPageMenu: {"confirm", "cancel"},
 			CliTemplatesPageMenu:        {"up", "dw", "copy_cli", "execute_cli", "close"},

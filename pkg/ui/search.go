@@ -93,6 +93,16 @@ func (app *App) IsSearchInFocus() bool {
 	return false
 }
 
+func (app *App) IsInputFieldInFocus() bool {
+	focused := app.GetFocus()
+	if focused == nil {
+		return false
+	}
+	// Check if the focused component is an InputField
+	_, isInputField := focused.(*tview.InputField)
+	return isInputField
+}
+
 func (l *Layout) ShowInlineSearch(currentPage string) {
 	l.Content.Clear()
 	l.Content.AddItem(l.Header, headerHeight, 0, false)

@@ -26,6 +26,12 @@ type ClusterResult struct {
 	kafka.DescribeClusterResult
 }
 
+// TopicStrategy holds the reset strategy for a single topic in batch mode.
+type TopicStrategy struct {
+	Strategy    string
+	TimestampMs int64
+}
+
 // ResourceResult contains configuration resource results.
 type ResourceResult struct {
 	Results []kafka.ConfigResourceResult
@@ -661,6 +667,115 @@ func (client *Client) ResetConsumerGroupOffsets(
 			ctx,
 			[]kafka.ConsumerGroupTopicPartitions{
 				{Group: group, Partitions: tpOffsets},
+			},
+			kafka.SetAdminRequestTimeout(client.Timeout),
+		)
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to alter consumer group offsets: %w", err)
+			return
+		}
+
+		for _, result := range alterResult.ConsumerGroupsTopicPartitions {
+			for _, tp := range result.Partitions {
+				if tp.Error != nil {
+					errorChan <- fmt.Errorf(
+						"failed to reset offset for %s[%d]: %s",
+						*tp.Topic, tp.Partition, tp.Error,
+					)
+					return
+				}
+			}
+		}
+
+		resultChan <- true
+	}()
+}
+
+// BatchResetConsumerGroupOffsets resets committed offsets for multiple topics with different strategies.
+// Groups topics by strategy, resolves offsets per group, then makes a single AlterConsumerGroupOffsets call.
+func (client *Client) BatchResetConsumerGroupOffsets(
+	group string,
+	topicStrategies map[string]TopicStrategy,
+	resultChan chan<- bool,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		listResult, err := client.ListConsumerGroupOffsets(
+			ctx,
+			[]kafka.ConsumerGroupTopicPartitions{{Group: group}},
+		)
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to list consumer group offsets: %w", err)
+			return
+		}
+
+		strategyGroups := make(map[string][]kafka.TopicPartition)
+		for topic, ts := range topicStrategies {
+			if ts.Strategy == "none" {
+				continue
+			}
+			for _, tps := range listResult.ConsumerGroupsTopicPartitions {
+				for _, tp := range tps.Partitions {
+					if tp.Topic != nil && *tp.Topic == topic {
+						strategyGroups[ts.Strategy] = append(strategyGroups[ts.Strategy], tp)
+					}
+				}
+			}
+		}
+
+		if len(strategyGroups) == 0 {
+			errorChan <- fmt.Errorf("no topics with non-none strategy found")
+			return
+		}
+
+		allOffsets := make([]kafka.TopicPartition, 0)
+
+		for strategy, partitions := range strategyGroups {
+			var spec kafka.OffsetSpec
+			switch strategy {
+			case "to-earliest":
+				spec = kafka.EarliestOffsetSpec
+			case "to-latest":
+				spec = kafka.LatestOffsetSpec
+			case "to-timestamp":
+				ts := topicStrategies[*partitions[0].Topic]
+				spec = kafka.NewOffsetSpecForTimestamp(ts.TimestampMs)
+			default:
+				errorChan <- fmt.Errorf("unknown reset strategy: %s", strategy)
+				return
+			}
+
+			offsetsRequest := make(map[kafka.TopicPartition]kafka.OffsetSpec)
+			for _, tp := range partitions {
+				offsetsRequest[tp] = spec
+			}
+
+			targetOffsets, err := client.ListOffsets(ctx, offsetsRequest,
+				kafka.SetAdminIsolationLevel(kafka.IsolationLevelReadCommitted))
+			if err != nil {
+				errorChan <- fmt.Errorf("failed to resolve target offsets for strategy %s: %w", strategy, err)
+				return
+			}
+
+			for tp, info := range targetOffsets.ResultInfos {
+				tpCopy := tp
+				tpCopy.Offset = info.Offset
+				allOffsets = append(allOffsets, tpCopy)
+			}
+		}
+
+		if len(allOffsets) == 0 {
+			errorChan <- fmt.Errorf("no offsets resolved")
+			return
+		}
+
+		alterResult, err := client.AlterConsumerGroupOffsets(
+			ctx,
+			[]kafka.ConsumerGroupTopicPartitions{
+				{Group: group, Partitions: allOffsets},
 			},
 			kafka.SetAdminRequestTimeout(client.Timeout),
 		)

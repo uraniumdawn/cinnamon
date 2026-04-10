@@ -82,7 +82,7 @@ func (app *App) OpenPagesKeyHandler(table *tview.Table) {
 func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if IsKey(event, ':') {
-			if !app.IsSearchInFocus() {
+			if !app.IsSearchInFocus() && !app.IsInputFieldInFocus() {
 				app.ShowModalPage(Resources)
 			}
 		}
