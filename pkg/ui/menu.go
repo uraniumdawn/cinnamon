@@ -157,6 +157,10 @@ var keys = map[string]Pair{
 		Key:   "<Tab>",
 		Value: "Switch section",
 	},
+	"switch_act": {
+		Key:   "<Tab>",
+		Value: "Switch action",
+	},
 	"esc_confirm": {
 		Key:   "<Esc>",
 		Value: "Confirm and back",
@@ -373,7 +377,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			ConnectorConfigEditPageMenu: {"submit", "cancel"},
-			ConnectorActionsPageMenu:    {"switch", "submit", "close"},
+			ConnectorActionsPageMenu:    {"switch_act", "submit", "close"},
 			DeleteConnectorPageMenu:     {"confirm", "cancel"},
 			FinalPageMenu:               {"res", "opened", "upd", "hscroll", "esc", "backward", "forward"},
 		},

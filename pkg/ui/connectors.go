@@ -568,9 +568,9 @@ func (app *App) ConnectorActionsModal(connectorName, state string) {
 		),
 	)
 
-	f := tview.NewFlex().SetDirection(tview.FlexColumn)
-	f.AddItem(selection, 22, 0, true)
-	f.AddItem(tview.NewBox(), 1, 0, false)
+	f := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(selection, 12, 0, true).
+		AddItem(tview.NewBox(), 1, 0, false)
 
 	inputs := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(actionField, 1, 0, false).
@@ -580,7 +580,7 @@ func (app *App) ConnectorActionsModal(connectorName, state string) {
 		AddItem(tview.NewBox(), 0, 1, false)
 
 	selection.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if IsKey(event, 'e') {
+		if event.Key() == tcell.KeyTab {
 			actionIdx = (actionIdx + 1) % len(actions)
 			actionField.SetText(actions[actionIdx])
 		}
