@@ -487,12 +487,15 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				}
 				timestampMs = t.UnixMilli()
 			}
-			app.ResetConsumerGroupOffsetResultHandler(
-				groupName,
-				topic,
-				strategyOptions[strategyIdx],
-				timestampMs,
-			)
+
+			// Build topic strategies map for batch handler
+			topicStrategies := map[string]client.TopicStrategy{
+				topic: {
+					Strategy:    strategyOptions[strategyIdx],
+					TimestampMs: timestampMs,
+				},
+			}
+			app.ResetConsumerGroupOffsetBatchResultHandler(groupName, topicStrategies)
 			app.HideModalPage(ResetOffset)
 
 		case event.Key() == tcell.KeyEsc:
@@ -757,30 +760,40 @@ func (app *App) newOffsetBatchTimestampRow(width int) (*tview.TextView, *tview.I
 	return label, field, flex
 }
 
-// ResetConsumerGroupOffsetResultHandler performs the offset reset and shows the result status.
-func (app *App) ResetConsumerGroupOffsetResultHandler(
+// ResetConsumerGroupOffsetBatchResultHandler performs batch offset reset and shows the result status.
+func (app *App) ResetConsumerGroupOffsetBatchResultHandler(
 	group string,
-	topic string,
-	strategy string,
-	timestampMs int64,
+	topicStrategies map[string]client.TopicStrategy,
 ) {
 	resultCh := make(chan bool)
 	errorCh := make(chan error)
 
 	c := app.GetCurrentKafkaClient()
 	SendStatusInfinite("resetting consumer group offsets")
-	c.ResetConsumerGroupOffsets(group, topic, strategy, timestampMs, resultCh, errorCh)
+	c.BatchResetConsumerGroupOffsets(group, topicStrategies, resultCh, errorCh)
 	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
 
 	go func() {
 		for {
 			select {
 			case <-resultCh:
-				SendStatus(
-					fmt.Sprintf("offsets for '%s' have been reset (%s)", group, strategy),
-					2*time.Second,
-					false,
-				)
+				topicCount := len(topicStrategies)
+				msg := fmt.Sprintf("offsets for '%s' have been reset", group)
+				if topicCount == 1 {
+					for topic := range topicStrategies {
+						if topic != "" {
+							msg = fmt.Sprintf(
+								"offsets for '%s' have been reset [%s]",
+								group,
+								topic,
+							)
+						}
+						break
+					}
+				} else if topicCount > 1 {
+					msg = fmt.Sprintf("offsets for '%s' have been reset [%d topics]", group, topicCount)
+				}
+				SendStatus(msg, 2*time.Second, false)
 				cancel()
 				return
 			case err := <-errorCh:
@@ -793,46 +806,6 @@ func (app *App) ResetConsumerGroupOffsetResultHandler(
 			case <-ctx.Done():
 				log.Error().Msg("timeout while resetting consumer group offsets")
 				SendStatusWithDefaultTTL("[red]timeout while resetting consumer group offsets")
-				return
-			}
-		}
-	}()
-}
-
-// ResetConsumerGroupOffsetBatchResultHandler performs batch offset reset and shows the result status.
-func (app *App) ResetConsumerGroupOffsetBatchResultHandler(
-	group string,
-	topicStrategies map[string]client.TopicStrategy,
-) {
-	resultCh := make(chan bool)
-	errorCh := make(chan error)
-
-	c := app.GetCurrentKafkaClient()
-	SendStatusInfinite("resetting consumer group offsets (batch)")
-	c.BatchResetConsumerGroupOffsets(group, topicStrategies, resultCh, errorCh)
-	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
-
-	go func() {
-		for {
-			select {
-			case <-resultCh:
-				SendStatus(
-					fmt.Sprintf("offsets for '%s' have been reset", group),
-					2*time.Second,
-					false,
-				)
-				cancel()
-				return
-			case err := <-errorCh:
-				log.Error().Err(err).Msg("failed to batch reset consumer group offsets")
-				SendStatusWithDefaultTTL(
-					fmt.Sprintf("[red]failed to batch reset offsets: %s", err.Error()),
-				)
-				cancel()
-				return
-			case <-ctx.Done():
-				log.Error().Msg("timeout while batch resetting consumer group offsets")
-				SendStatusWithDefaultTTL("[red]timeout while batch resetting consumer group offsets")
 				return
 			}
 		}
