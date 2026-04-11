@@ -603,7 +603,7 @@ func (app *App) ConnectorActionsModal(connectorName, state string) {
 	flex.SetTitle(fmt.Sprintf(" Actions: %s ", connectorName))
 	flex.SetBorder(true)
 
-	modal := util.NewTopicModal(flex)
+	modal := util.NewConnectorActionModal(flex)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(ConnectorActions, modal, true, false)
 }
 
