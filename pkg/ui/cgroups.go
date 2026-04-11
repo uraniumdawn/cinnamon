@@ -169,8 +169,9 @@ func (app *App) ConsumerGroups() {
 						return event
 					})
 
+					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 					app.AssignSearch(func(text string) {
-						filterConsumerGroupsTable(table, groups.Valid, text)
+						filterConsumerGroupsTable(table, groups.Valid, text, labelColor)
 						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
@@ -812,6 +813,15 @@ func (app *App) ResetConsumerGroupOffsetBatchResultHandler(
 	}()
 }
 
+// addGroupsTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addGroupsTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("State"))
+}
+
 // NewGroupsTable creates a table displaying consumer groups.
 func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table {
 	table := tview.NewTable()
@@ -825,10 +835,14 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addGroupsTableHeader(table, labelColor)
 
 	for i, r := range groups.Valid {
-		table.SetCell(i, 0, tview.NewTableCell(r.GroupID))
-		table.SetCell(i, 1, tview.NewTableCell("STATE: "+r.State.String()))
+		table.SetCell(i+1, 0, tview.NewTableCell(r.GroupID))
+		table.SetCell(i+1, 1, tview.NewTableCell(r.State.String()))
 	}
 
 	return table
@@ -838,8 +852,10 @@ func filterConsumerGroupsTable(
 	table *tview.Table,
 	groupListing []kafka.ConsumerGroupListing,
 	filter string,
+	labelColor tcell.Color,
 ) {
 	table.Clear()
+	addGroupsTableHeader(table, labelColor)
 
 	var groups []string
 	for _, g := range groupListing {
@@ -849,13 +865,13 @@ func filterConsumerGroupsTable(
 	if filter == "" {
 		// Show all consumer groups sorted alphabetically when filter is empty
 		sort.Strings(groups)
-		row := 0
+		row := 1
 		for _, groupID := range groups {
 			// Find the matching group in groupListing
 			for _, g := range groupListing {
 				if g.GroupID == groupID {
 					table.SetCell(row, 0, tview.NewTableCell(g.GroupID))
-					table.SetCell(row, 1, tview.NewTableCell("STATE: "+g.State.String()))
+					table.SetCell(row, 1, tview.NewTableCell(g.State.String()))
 					row++
 					break
 				}
@@ -866,13 +882,13 @@ func filterConsumerGroupsTable(
 
 	matches := fuzzy.Find(filter, groups)
 
-	row := 0
+	row := 1
 	for _, match := range matches {
 		table.SetCell(row, 0, tview.NewTableCell(match.Str))
 		table.SetCell(
 			row,
 			1,
-			tview.NewTableCell("STATE: "+groupListing[match.Index].State.String()),
+			tview.NewTableCell(groupListing[match.Index].State.String()),
 		)
 		row++
 	}

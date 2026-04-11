@@ -152,8 +152,9 @@ func (app *App) Connectors() {
 						ConnectorsPageMenu, true,
 					)
 
+					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 					app.AssignSearch(func(text string) {
-						filterConnectorsTable(table, connectorNames, statuses, text)
+						filterConnectorsTable(table, connectorNames, statuses, text, labelColor)
 						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
@@ -252,6 +253,17 @@ func (app *App) ConnectorDetail(name string) {
 	}()
 }
 
+// addConnectorsTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addConnectorsTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("State"))
+	table.SetCell(0, 2, mkHeader("Type"))
+	table.SetCell(0, 3, mkHeader("Tasks"))
+}
+
 // NewConnectorsTable creates a table displaying connectors with their status.
 func (app *App) NewConnectorsTable(connectorNames []string, statuses map[string]*connect.ConnectorStatus) *tview.Table {
 	table := tview.NewTable()
@@ -268,12 +280,10 @@ func (app *App) NewConnectorsTable(connectorNames []string, statuses map[string]
 			),
 		)
 	}
+	table.SetFixed(1, 0)
 
-	// Header row
-	table.SetCell(0, 0, tview.NewTableCell("Name").SetSelectable(false))
-	table.SetCell(0, 1, tview.NewTableCell("State").SetSelectable(false))
-	table.SetCell(0, 2, tview.NewTableCell("Type").SetSelectable(false))
-	table.SetCell(0, 3, tview.NewTableCell("Tasks").SetSelectable(false))
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addConnectorsTableHeader(table, labelColor)
 
 	sort.Strings(connectorNames)
 
@@ -305,8 +315,10 @@ func filterConnectorsTable(
 	connectorNames []string,
 	statuses map[string]*connect.ConnectorStatus,
 	filter string,
+	labelColor tcell.Color,
 ) {
 	table.Clear()
+	addConnectorsTableHeader(table, labelColor)
 
 	var names []string
 	if filter == "" {

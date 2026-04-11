@@ -168,8 +168,9 @@ func (app *App) Topics() {
 						return event
 					})
 
+					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 					app.AssignSearch(func(text string) {
-						filterTopicsTable(table, topics.Result, text)
+						filterTopicsTable(table, topics.Result, text, labelColor)
 						util.SetSearchableTableTitle(table, title, text)
 						table.ScrollToBeginning()
 					})
@@ -672,13 +673,17 @@ func (app *App) NewTopicsTable(topics *client.TopicsResult) *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addTopicsTableHeader(table, labelColor)
 
 	sorted := treemap.NewWithStringComparator()
 	for topicName, metadata := range topics.Result {
 		sorted.Put(topicName, metadata)
 	}
 
-	row := 0
+	row := 1
 	partitions := 0
 	replicas := 0
 	sorted.Each(func(key, value any) {
@@ -895,18 +900,30 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	app.Layout.PagesRegistry.UI.Pages.AddPage(EditTopic, modal, true, false)
 }
 
+// addTopicsTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addTopicsTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("Partitions"))
+	table.SetCell(0, 2, mkHeader("Replication"))
+}
+
 func populateTable(table *tview.Table, row int, t string, partitions, replicas int) {
 	table.SetCell(row, 0, tview.NewTableCell(t))
-	table.SetCell(row, 1, tview.NewTableCell("P: "+strconv.Itoa(partitions)))
-	table.SetCell(row, 2, tview.NewTableCell("R: "+strconv.Itoa(replicas)))
+	table.SetCell(row, 1, tview.NewTableCell(strconv.Itoa(partitions)))
+	table.SetCell(row, 2, tview.NewTableCell(strconv.Itoa(replicas)))
 }
 
 func filterTopicsTable(
 	table *tview.Table,
 	metadata map[string]*kafka.TopicMetadata,
 	filter string,
+	labelColor tcell.Color,
 ) {
 	table.Clear()
+	addTopicsTableHeader(table, labelColor)
 
 	var topics []string
 	for topicName := range metadata {
@@ -924,7 +941,7 @@ func filterTopicsTable(
 				replicas = len(meta.Partitions[0].Replicas)
 			}
 
-			populateTable(table, i, topicName, partitions, replicas)
+			populateTable(table, i+1, topicName, partitions, replicas)
 		}
 		return
 	}
@@ -940,7 +957,7 @@ func filterTopicsTable(
 			replicas = len(meta.Partitions[0].Replicas)
 		}
 
-		populateTable(table, i, topicName, partitions, replicas)
+		populateTable(table, i+1, topicName, partitions, replicas)
 	}
 }
 
