@@ -255,7 +255,6 @@ func (app *App) CreateTopic() {
 	topicName := tview.NewInputField().
 		SetFieldWidth(width).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("-").
 		SetPlaceholderStyle(
 			tcell.StyleDefault.Foreground(
 				tcell.GetColor(app.Colors.Cinnamon.Foreground),
@@ -267,8 +266,7 @@ func (app *App) CreateTopic() {
 
 	replicationFactor := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("1")
+		SetFieldBackgroundColor(tcell.ColorDefault)
 	replicationFactor.SetAcceptanceFunc(tview.InputFieldInteger)
 	replicationFactor.SetPlaceholderStyle(
 		tcell.StyleDefault.Foreground(
@@ -281,8 +279,7 @@ func (app *App) CreateTopic() {
 
 	partitions := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("1")
+		SetFieldBackgroundColor(tcell.ColorDefault)
 	partitions.SetAcceptanceFunc(tview.InputFieldInteger)
 	partitions.
 		SetPlaceholderStyle(
@@ -305,10 +302,34 @@ retention.ms=604800000`).
 			))
 
 	selection := tview.NewTable()
-	selection.SetCell(0, 0, tview.NewTableCell("Name:").SetAlign(tview.AlignRight))
-	selection.SetCell(1, 0, tview.NewTableCell("Replication factor:").SetAlign(tview.AlignRight))
-	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
-	selection.SetCell(3, 0, tview.NewTableCell("Configs (optional):").SetAlign(tview.AlignRight))
+	selection.SetCell(
+		0,
+		0,
+		tview.NewTableCell("Name:").
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
+	selection.SetCell(
+		1,
+		0,
+		tview.NewTableCell("Replication factor:").
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
+	selection.SetCell(
+		2,
+		0,
+		tview.NewTableCell("Partitions:").
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
+	selection.SetCell(
+		3,
+		0,
+		tview.NewTableCell("Configs (optional):").
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
 	selection.SetSelectable(true, false)
 	selection.SetBorderPadding(0, 0, 1, 0)
 	selection.SetSelectedStyle(
@@ -737,16 +758,45 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 	}
 
 	selection := tview.NewTable()
-	selection.SetCell(0, 0, tview.NewTableCell("[grey]Name:").SetAlign(tview.AlignRight).SetSelectable(false))
+	selection.SetCell(
+		0,
+		0,
+		tview.NewTableCell("Name:").
+			SetAlign(tview.AlignRight).
+			SetSelectable(false).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
 	selection.SetCell(
 		1,
 		0,
-		tview.NewTableCell("[grey]Replication factor:").SetAlign(tview.AlignRight).SetSelectable(false),
+		tview.NewTableCell("Replication factor:").
+			SetAlign(tview.AlignRight).
+			SetSelectable(false).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
 	)
-	selection.SetCell(2, 0, tview.NewTableCell("Partitions:").SetAlign(tview.AlignRight))
-	selection.SetCell(3, 0, tview.NewTableCell("Configs:").SetAlign(tview.AlignRight))
+	selection.SetCell(
+		2,
+		0,
+		tview.NewTableCell("Partitions:").
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
+	selection.SetCell(
+		3,
+		0,
+		tview.NewTableCell("Configs:").
+			SetAlign(tview.AlignRight).
+			SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)),
+	)
 	selection.SetSelectable(true, false)
 	selection.SetBorderPadding(0, 0, 1, 0)
+	selection.SetSelectedStyle(
+		tcell.StyleDefault.Foreground(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
+		).Background(
+			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
+		),
+	)
 
 	f := tview.NewFlex()
 	f.SetDirection(tview.FlexColumn)
