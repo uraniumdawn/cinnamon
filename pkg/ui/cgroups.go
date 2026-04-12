@@ -310,7 +310,6 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	selection := app.newOffsetSelectionTable(labelColor, selectedStyle)
 	scopeField, strategyField, topicField, timestampField := app.newOffsetInputFields(fieldWidth)
 	batchTable := app.newOffsetBatchTable(batchTopics, labelColor, selectedStyle)
-	batchTimestampLabel, batchTimestampField, batchTimestampFlex := app.newOffsetBatchTimestampRow(fieldWidth)
 
 	scopeField.SetText(scopeOptions[0])
 	strategyField.SetText(strategyOptions[0])
@@ -343,15 +342,15 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		topic := batchTable.GetCell(row, 0).Text
 		ts, exists := topicStrategies[topic]
 		if !exists || ts.Strategy != "to-timestamp" {
-			batchTimestampField.SetText("")
+			timestampField.SetText("")
 			return
 		}
 		if cell := batchTable.GetCell(row, 2).Text; cell != "" {
-			batchTimestampField.SetText(cell)
+			timestampField.SetText(cell)
 		} else if ts.TimestampMs > 0 {
-			batchTimestampField.SetText(time.UnixMilli(ts.TimestampMs).Format("2006-01-02T15:04:05.000"))
+			timestampField.SetText(time.UnixMilli(ts.TimestampMs).Format("2006-01-02T15:04:05.000"))
 		} else {
-			batchTimestampField.SetText("")
+			timestampField.SetText("")
 		}
 	}
 
@@ -395,17 +394,15 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			syncSelectionRows()
 			setBatchTableColors(batchTable, false, labelColor, fgColor)
 			batchTable.SetSelectable(false, false)
-			batchTimestampLabel.SetTextColor(tcell.ColorGrey)
-			batchTimestampField.SetDisabled(true)
+			timestampField.SetDisabled(true)
 			app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
 			app.SetFocus(selection)
 		} else {
 			selection.SetSelectable(false, false)
 			setSelectionTableColors(selection, tcell.ColorGrey)
 			setBatchTableColors(batchTable, true, labelColor, fgColor)
-			batchTable.SetSelectable(true, true)
-			batchTimestampLabel.SetTextColor(labelColor)
-			batchTimestampField.SetDisabled(false)
+			batchTable.SetSelectable(true, false)
+			timestampField.SetDisabled(false)
 			app.Layout.Menu.SetMenu(ResetOffsetBatchPageMenu)
 			app.SetFocus(batchTable)
 		}
@@ -415,8 +412,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	setLabelActive(selection.GetCell(2, 0), false)
 	setLabelActive(selection.GetCell(3, 0), false)
 	setBatchTableColors(batchTable, false, labelColor, fgColor)
-	batchTimestampLabel.SetTextColor(tcell.ColorGrey)
-	batchTimestampField.SetDisabled(true)
+	timestampField.SetDisabled(true)
 
 	// ── Main section input handlers ───────────────────────────────────────
 	topicField.SetDoneFunc(func(_ tcell.Key) {
@@ -425,14 +421,53 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	})
 
 	timestampField.SetDoneFunc(func(_ tcell.Key) {
-		app.SetFocus(selection)
-		app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
+		// Check if we're in batch section context
+		rowsSelectable, _ := selection.GetSelectable()
+		if !rowsSelectable {
+			row, _ := batchTable.GetSelection()
+			if row > 0 {
+				topic := batchTable.GetCell(row, 0).Text
+				tsStr := timestampField.GetText()
+				if tsStr != "" {
+					t, err := parseTimestamp(tsStr)
+					if err == nil {
+						ts := topicStrategies[topic]
+						ts.TimestampMs = t.UnixMilli()
+						topicStrategies[topic] = ts
+						formatted := time.UnixMilli(ts.TimestampMs).
+							Format("2006-01-02T15:04:05.000")
+						batchTable.GetCell(row, 2).SetText(formatted)
+						batchTable.GetCell(row, 2).SetTextColor(labelColor)
+						delete(invalidTimestamps, topic)
+					} else {
+						batchTable.GetCell(row, 2).SetText(tsStr)
+						batchTable.GetCell(row, 2).SetTextColor(tcell.ColorRed)
+						invalidTimestamps[topic] = true
+					}
+				} else {
+					topicStrategies[topic] = client.TopicStrategy{Strategy: "to-timestamp", TimestampMs: 0}
+					batchTable.GetCell(row, 2).SetText("")
+					delete(invalidTimestamps, topic)
+				}
+			}
+			app.SetFocus(batchTable)
+			app.Layout.Menu.SetMenu(ResetOffsetBatchPageMenu)
+		} else {
+			app.SetFocus(selection)
+			app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
+		}
 	})
 
 	timestampField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			app.SetFocus(selection)
-			app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
+			rowsSelectable, _ := selection.GetSelectable()
+			if !rowsSelectable {
+				app.SetFocus(batchTable)
+				app.Layout.Menu.SetMenu(ResetOffsetBatchPageMenu)
+			} else {
+				app.SetFocus(selection)
+				app.Layout.Menu.SetMenu(ResetOffsetPageMenu)
+			}
 			return nil
 		}
 		return event
@@ -506,36 +541,6 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	})
 
 	// ── Batch section handlers ────────────────────────────────────────────
-	batchTimestampField.SetDoneFunc(func(_ tcell.Key) {
-		row, _ := batchTable.GetSelection()
-		if row > 0 {
-			topic := batchTable.GetCell(row, 0).Text
-			tsStr := batchTimestampField.GetText()
-			if tsStr != "" {
-				t, err := parseTimestamp(tsStr)
-				if err == nil {
-					ts := topicStrategies[topic]
-					ts.TimestampMs = t.UnixMilli()
-					topicStrategies[topic] = ts
-					formatted := time.UnixMilli(ts.TimestampMs).Format("2006-01-02T15:04:05.000")
-					batchTable.GetCell(row, 2).SetText(formatted)
-					batchTable.GetCell(row, 2).SetTextColor(labelColor)
-					delete(invalidTimestamps, topic)
-				} else {
-					batchTable.GetCell(row, 2).SetText(tsStr)
-					batchTable.GetCell(row, 2).SetTextColor(tcell.ColorRed)
-					invalidTimestamps[topic] = true
-				}
-			} else {
-				topicStrategies[topic] = client.TopicStrategy{Strategy: "to-timestamp", TimestampMs: 0}
-				batchTable.GetCell(row, 2).SetText("")
-				delete(invalidTimestamps, topic)
-			}
-		}
-		app.SetFocus(batchTable)
-		app.Layout.Menu.SetMenu(ResetOffsetBatchPageMenu)
-	})
-
 	batchTable.SetSelectionChangedFunc(func(row, _ int) {
 		updateBatchTimestampField(row)
 	})
@@ -558,7 +563,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				topic := batchTable.GetCell(row, 0).Text
 				if ts, ok := topicStrategies[topic]; ok && ts.Strategy == "to-timestamp" {
 					updateBatchTimestampField(row)
-					app.SetFocus(batchTimestampField)
+					app.SetFocus(timestampField)
 					app.Layout.Menu.SetMenu(ResetOffsetInputMenu)
 				}
 			}
@@ -606,12 +611,11 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		AddItem(tview.NewBox(), 0, 1, false)
 
 	batchSection := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(batchTimestampFlex, 1, 0, false).
 		AddItem(batchTable, 0, 1, false)
 
 	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(mainSection, 0, 1, true).
-		AddItem(batchSection, 0, 1, false)
+		AddItem(batchSection, 0, 2, false)
 	mainFlex.SetTitle(fmt.Sprintf(" Reset Offsets: %s ", groupName))
 	mainFlex.SetBorder(true)
 
@@ -718,7 +722,7 @@ func (app *App) newOffsetBatchTable(
 	table := tview.NewTable()
 	table.SetBorder(false)
 	table.SetBorderPadding(0, 0, 1, 0)
-	table.SetSelectable(false, false)
+	table.SetSelectable(true, false)
 	table.SetFixed(1, 0)
 	table.SetSelectedStyle(selectedStyle)
 	table.SetCell(0, 0, mkHeader("Topic"))
@@ -726,39 +730,11 @@ func (app *App) newOffsetBatchTable(
 	table.SetCell(0, 2, mkHeader("Timestamp"))
 	for i, topic := range topics {
 		row := i + 1
-		table.SetCell(row, 0, tview.NewTableCell(topic))
-		table.SetCell(row, 1, tview.NewTableCell(""))
-		table.SetCell(row, 2, tview.NewTableCell(""))
+		table.SetCell(row, 0, tview.NewTableCell(topic).SetSelectable(true))
+		table.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		table.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	}
 	return table
-}
-
-// newOffsetBatchTimestampRow builds the timestamp label, input field, and their flex row.
-func (app *App) newOffsetBatchTimestampRow(width int) (*tview.TextView, *tview.InputField, *tview.Flex) {
-	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
-	phStyle := tcell.StyleDefault.
-		Foreground(tcell.GetColor(app.Colors.Cinnamon.Foreground)).
-		Background(tcell.GetColor(app.Colors.Cinnamon.Background))
-
-	label := tview.NewTextView().
-		SetText("Timestamp:").
-		SetTextAlign(tview.AlignLeft).
-		SetTextColor(labelColor)
-
-	field := tview.NewInputField().
-		SetFieldWidth(width).
-		SetPlaceholder("eg: 2025-02-23T00:00:00.000").
-		SetPlaceholderStyle(phStyle).
-		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
-
-	flex := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox(), 1, 0, false).
-		AddItem(label, 11, 0, false).
-		AddItem(tview.NewBox(), 1, 0, false).
-		AddItem(field, 0, 1, false)
-
-	return label, field, flex
 }
 
 // ResetConsumerGroupOffsetBatchResultHandler performs batch offset reset and shows the result status.
