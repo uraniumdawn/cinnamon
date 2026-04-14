@@ -493,7 +493,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		case event.Key() == tcell.KeyEsc:
 			app.HideModalPage(ResetOffset)
 
-		case event.Key() == tcell.KeyEnter:
+		case event.Key() == tcell.KeyTab:
 			if row > 0 {
 				cycleTopicStrategy(row)
 			}
@@ -606,11 +606,6 @@ func parseTimestamp(s string) (time.Time, error) {
 // allTopicsRowName is the special row name that applies strategy to all topics.
 const allTopicsRowName = "__all topics"
 
-// newOffsetBatchTable builds and populates the batch topics table with a fixed header row,
-// a special "__all topics" row after the header, and a dedicated timestamp InputField
-// for each data row displayed alongside as the 4th column.
-// Returns the main table (Topic + Strategy columns), the timestamp inputs map keyed by row,
-// and a container flex that holds both the table and timestamp inputs.
 func (app *App) newOffsetBatchTable(
 	topics []string,
 	labelColor tcell.Color,

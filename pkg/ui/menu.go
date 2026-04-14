@@ -170,16 +170,12 @@ var keys = map[string]Pair{
 		Value: "Scroll Left/Right",
 	},
 	"batch_set_st": {
-		Key:   "<Enter>",
+		Key:   "<Tab>",
 		Value: "Cycle strategy",
 	},
 	"batch_edit_ts": {
 		Key:   "<e>",
 		Value: "Edit timestamp",
-	},
-	"batch_nav_ts": {
-		Key:   "<Enter>",
-		Value: "Enter timestamp",
 	},
 	"q": {
 		Key:   "<q>",
