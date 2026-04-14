@@ -153,10 +153,6 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Back",
 	},
-	"switch": {
-		Key:   "<Tab>",
-		Value: "Switch section",
-	},
 	"switch_act": {
 		Key:   "<Tab>",
 		Value: "Switch action",
@@ -172,10 +168,6 @@ var keys = map[string]Pair{
 	"hscroll": {
 		Key:   "<H,L>",
 		Value: "Scroll Left/Right",
-	},
-	"set_st_sc": {
-		Key:   "<Enter>",
-		Value: "Cycle strategy/scope",
 	},
 	"batch_set_st": {
 		Key:   "<Enter>",
@@ -209,8 +201,6 @@ const (
 	EditTopicPageMenu             = "EditTopicPageMenu"
 	EditTopicInputMenu            = "EditTopicInputMenu"
 	ResetOffsetPageMenu           = "ResetOffsetPageMenu"
-	ResetOffsetInputMenu          = "ResetOffsetInputMenu"
-	ResetOffsetBatchPageMenu      = "ResetOffsetBatchPageMenu"
 	ConsumerGroupsPageMenu        = "ConsumerGroupsPageMenu"
 	ConsumerGroupDescribePageMenu = "ConsumerGroupDescribePageMenu"
 	SubjectsPageMenu              = "SubjectsPageMenu"
@@ -243,12 +233,9 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			CreateTopicInputMenu: {"esc_confirm"},
 			EditTopicPageMenu:    {"up", "dw", "edit", "submit", "close"},
 			EditTopicInputMenu:   {"esc_confirm"},
-			ResetOffsetPageMenu:  {"up", "dw", "switch", "set_st_sc", "batch_edit_ts", "submit", "close"},
-			ResetOffsetInputMenu: {"esc_confirm"},
-			ResetOffsetBatchPageMenu: {
+			ResetOffsetPageMenu: {
 				"up",
 				"dw",
-				"switch",
 				"batch_set_st",
 				"batch_edit_ts",
 				"submit",
