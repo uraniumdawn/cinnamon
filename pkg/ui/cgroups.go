@@ -298,12 +298,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		Foreground(tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor)).
 		Background(tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor))
 
-	// ── Build widgets ─────────────────────────────────────────────────────
 	table, tsInputs, container := app.newOffsetBatchTable(batchTopics, labelColor, selectedStyle)
-
-	// ── Helpers ───────────────────────────────────────────────────────────
-
-	// formatTimestampMs formats a unix millisecond timestamp as a string.
 	formatTimestampMs := func(ms int64) string {
 		return time.UnixMilli(ms).Format("2006-01-02T15:04:05.000")
 	}
@@ -365,9 +360,8 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		if ts.TimestampMs > 0 {
 			tsInput.SetText(formatTimestampMs(ts.TimestampMs))
 			tsInput.SetFieldTextColor(labelColor)
-		} else {
-			tsInput.SetText("")
 		}
+		// When TimestampMs == 0, leave the input as-is to preserve any uncommitted user input.
 	}
 
 	// cycleTopicStrategy advances the strategy for the topic on the given row.
