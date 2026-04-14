@@ -305,6 +305,28 @@ func (app *App) ResetConsumerGroupOffsetModal(
 
 	// ── Helpers ───────────────────────────────────────────────────────────
 
+	// applyStrategyToAll applies the given strategy to all topics.
+	applyStrategyToAll := func(strategy string, timestampMs int64) {
+		for _, topic := range batchTopics {
+			topicStrategies[topic] = client.TopicStrategy{
+				Strategy:    strategy,
+				TimestampMs: timestampMs,
+			}
+			row := topicToRow(table, topic)
+			if row > 0 {
+				table.GetCell(row, 1).SetText(strategy)
+				if strategy == "to-timestamp" && timestampMs > 0 {
+					ts := time.UnixMilli(timestampMs).Format("2006-01-02T15:04:05.000")
+					table.GetCell(row, 2).SetText(ts)
+					table.GetCell(row, 2).SetTextColor(labelColor)
+				} else if strategy != "to-timestamp" {
+					table.GetCell(row, 2).SetText("")
+					delete(invalidTimestamps, topic)
+				}
+			}
+		}
+	}
+
 	// updateBatchTimestampCell syncs the timestamp cell with the selected batch row.
 	updateBatchTimestampCell := func(row int) {
 		if row <= 0 || row >= table.GetRowCount() {
@@ -312,6 +334,27 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		}
 		topic := table.GetCell(row, 0).Text
 		ts, exists := topicStrategies[topic]
+
+		// Handle "__all topics" row - use first topic's timestamp.
+		if topic == allTopicsRowName {
+			if len(batchTopics) == 0 {
+				table.GetCell(row, 2).SetText("")
+				return
+			}
+			ts = topicStrategies[batchTopics[0]]
+			if ts.Strategy != "to-timestamp" {
+				table.GetCell(row, 2).SetText("")
+				return
+			}
+			if ts.TimestampMs > 0 {
+				table.GetCell(row, 2).SetText(
+					time.UnixMilli(ts.TimestampMs).Format("2006-01-02T15:04:05.000"))
+			} else {
+				table.GetCell(row, 2).SetText("")
+			}
+			return
+		}
+
 		if !exists || ts.Strategy != "to-timestamp" {
 			table.GetCell(row, 2).SetText("")
 			return
@@ -330,6 +373,40 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			return
 		}
 		topic := table.GetCell(row, 0).Text
+
+		// Handle "__all topics" row - apply strategy to all topics.
+		if topic == allTopicsRowName {
+			// Get current strategy from any topic to determine next state.
+			currentStrategy := ""
+			currentTimestamp := int64(0)
+			if len(batchTopics) > 0 {
+				ts := topicStrategies[batchTopics[0]]
+				currentStrategy = ts.Strategy
+				currentTimestamp = ts.TimestampMs
+			}
+			currentIdx := 0
+			for i, s := range batchStrategies {
+				if s == currentStrategy {
+					currentIdx = i
+					break
+				}
+			}
+			next := batchStrategies[(currentIdx+1)%len(batchStrategies)]
+			nextTimestamp := currentTimestamp
+			if next != "to-timestamp" {
+				nextTimestamp = 0
+			}
+			applyStrategyToAll(next, nextTimestamp)
+			table.GetCell(row, 1).SetText(next)
+			if next == "to-timestamp" && currentTimestamp > 0 {
+				ts := time.UnixMilli(currentTimestamp).Format("2006-01-02T15:04:05.000")
+				table.GetCell(row, 2).SetText(ts)
+			} else if next != "to-timestamp" {
+				table.GetCell(row, 2).SetText("")
+			}
+			return
+		}
+
 		ts, exists := topicStrategies[topic]
 		if !exists {
 			return
@@ -381,21 +458,37 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			if tsStr != "" {
 				t, err := parseTimestamp(tsStr)
 				if err == nil {
-					ts.TimestampMs = t.UnixMilli()
-					topicStrategies[topic] = ts
-					formatted := time.UnixMilli(ts.TimestampMs).Format("2006-01-02T15:04:05.000")
-					table.GetCell(row, 2).SetText(formatted)
-					table.GetCell(row, 2).SetTextColor(labelColor)
-					delete(invalidTimestamps, topic)
+					tsMs := t.UnixMilli()
+					formatted := time.UnixMilli(tsMs).Format("2006-01-02T15:04:05.000")
+					if topic == allTopicsRowName {
+						applyStrategyToAll("to-timestamp", tsMs)
+						table.GetCell(row, 2).SetText(formatted)
+						table.GetCell(row, 2).SetTextColor(labelColor)
+					} else {
+						topicStrategies[topic] = client.TopicStrategy{
+							Strategy:    "to-timestamp",
+							TimestampMs: tsMs,
+						}
+						table.GetCell(row, 2).SetText(formatted)
+						table.GetCell(row, 2).SetTextColor(labelColor)
+						delete(invalidTimestamps, topic)
+					}
 				} else {
-					table.GetCell(row, 2).SetText(tsStr)
-					table.GetCell(row, 2).SetTextColor(tcell.ColorRed)
-					invalidTimestamps[topic] = true
+					if topic != allTopicsRowName {
+						table.GetCell(row, 2).SetText(tsStr)
+						table.GetCell(row, 2).SetTextColor(tcell.ColorRed)
+						invalidTimestamps[topic] = true
+					}
 				}
 			} else {
-				topicStrategies[topic] = client.TopicStrategy{Strategy: "to-timestamp", TimestampMs: 0}
-				table.GetCell(row, 2).SetText("")
-				delete(invalidTimestamps, topic)
+				if topic == allTopicsRowName {
+					applyStrategyToAll("to-timestamp", 0)
+					table.GetCell(row, 2).SetText("")
+				} else {
+					topicStrategies[topic] = client.TopicStrategy{Strategy: "to-timestamp", TimestampMs: 0}
+					table.GetCell(row, 2).SetText("")
+					delete(invalidTimestamps, topic)
+				}
 			}
 			app.SetFocus(table)
 			app.Layout.PagesRegistry.UI.Pages.RemovePage("timestamp-input")
@@ -433,7 +526,12 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		case IsKey(event, 'e'):
 			if row > 0 {
 				topic := table.GetCell(row, 0).Text
-				if ts, ok := topicStrategies[topic]; ok && ts.Strategy == "to-timestamp" {
+				// For "__all topics" row, check first real topic's strategy.
+				checkTopic := topic
+				if topic == allTopicsRowName && len(batchTopics) > 0 {
+					checkTopic = batchTopics[0]
+				}
+				if ts, ok := topicStrategies[checkTopic]; ok && ts.Strategy == "to-timestamp" {
 					editTimestampInline(row)
 				}
 			}
@@ -506,7 +604,11 @@ func setBatchTableColors(table *tview.Table, active bool, labelColor, fgColor tc
 	}
 }
 
-// newOffsetBatchTable builds and populates the batch topics table with a fixed header row.
+// allTopicsRowName is the special row name that applies strategy to all topics.
+const allTopicsRowName = "__all topics"
+
+// newOffsetBatchTable builds and populates the batch topics table with a fixed header row
+// and a special "__all topics" row after the header.
 func (app *App) newOffsetBatchTable(
 	topics []string,
 	labelColor tcell.Color,
@@ -524,13 +626,29 @@ func (app *App) newOffsetBatchTable(
 	table.SetCell(0, 0, mkHeader("Topic"))
 	table.SetCell(0, 1, mkHeader("Strategy"))
 	table.SetCell(0, 2, mkHeader("Timestamp"))
+
+	// Add "__all topics" row after header.
+	table.SetCell(1, 0, tview.NewTableCell(allTopicsRowName).SetSelectable(true))
+	table.SetCell(1, 1, tview.NewTableCell("").SetSelectable(false))
+	table.SetCell(1, 2, tview.NewTableCell("").SetSelectable(false))
+
 	for i, topic := range topics {
-		row := i + 1
+		row := i + 2
 		table.SetCell(row, 0, tview.NewTableCell(topic).SetSelectable(true))
 		table.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 		table.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	}
 	return table
+}
+
+// topicToRow returns the table row index for a given topic name.
+func topicToRow(table *tview.Table, topic string) int {
+	for row := 0; row < table.GetRowCount(); row++ {
+		if cell := table.GetCell(row, 0); cell != nil && cell.Text == topic {
+			return row
+		}
+	}
+	return -1
 }
 
 // ResetConsumerGroupOffsetBatchResultHandler performs batch offset reset and shows the result status.
