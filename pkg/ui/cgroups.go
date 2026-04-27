@@ -517,20 +517,21 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			return event
 		})
 
-		const pickerH = 6 // 4 strategy rows + 2 border lines
+		const pickerH = 6  // 4 strategy rows + 2 border lines
+		const pickerW = 20 // wide enough for all strategy labels + borders
 		pickerWrapper := tview.NewFlex().SetDirection(tview.FlexColumn).
-			AddItem(nil, 0, 2, false).
+			AddItem(nil, 0, 1, false).
 			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-				AddItem(nil, 0, 1, false).
+				AddItem(nil, 0, 0, false).
 				AddItem(pickerTable, pickerH, 0, true).
 				AddItem(nil, 0, 1, false),
-				0, 1, true)
+				pickerW, 0, true).
+			AddItem(nil, 1, 0, false)
 
 		innerPages.AddPage("picker", pickerWrapper, true, true)
 		app.SetFocus(pickerTable)
 	}
 
-	// ── Batch table handlers ──────────────────────────────────────────────
 	table.SetSelectionChangedFunc(func(row, _ int) {
 		syncTimestampCell(row)
 	})
