@@ -6,6 +6,7 @@ package ui
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rivo/tview"
@@ -125,6 +126,16 @@ func (app *App) AddToPagesRegistry(
 	}
 
 	app.Cache.Set(name, name, Expiration)
+
+	type titledPrimitive interface {
+		GetTitle() string
+		SetTitle(string) *tview.Box
+	}
+	if t, ok := component.(titledPrimitive); ok {
+		ts := time.Now().Format("2006-01-02T15:04:05")
+		t.SetTitle(strings.TrimRight(t.GetTitle(), " ") + " [" + ts + "] ")
+	}
+
 	app.Layout.Menu.SetMenu(menu)
 	registry.UI.Pages.AddAndSwitchToPage(name, component, true)
 }
