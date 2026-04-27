@@ -42,6 +42,16 @@ func (app *App) RunConnectEventHandler(ctx context.Context, in chan Event) {
 	}()
 }
 
+// addConnectTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addConnectTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("URL"))
+	table.SetCell(0, 2, mkHeader("Mode"))
+}
+
 // NewConnectTable creates a table displaying connect clusters.
 func (app *App) NewConnectTable() *tview.Table {
 	table := tview.NewTable()
@@ -56,8 +66,11 @@ func (app *App) NewConnectTable() *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addConnectTableHeader(table, labelColor)
 
-	row := 0
+	row := 1
 	for _, connect := range app.Config.Cinnamon.Connect {
 		modeText := connect.Mode
 		if modeText == "" {

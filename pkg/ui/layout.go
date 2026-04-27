@@ -183,12 +183,18 @@ func (l *Layout) SetSelected(
 
 	if cluster != nil {
 		clusterName = cluster.Name
+		if cluster.IsReadOnly() {
+			clusterName += " [read-only]"
+		}
 	}
 	if sr != nil {
 		srName = sr.Name
 	}
 	if connect != nil {
 		connectName = connect.Name
+		if connect.IsReadOnly() {
+			connectName += " [read-only]"
+		}
 	}
 
 	l.Cluster.GetCell(0, 1).SetText(clusterName)

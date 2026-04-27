@@ -108,6 +108,15 @@ func (app *App) Cluster() {
 	}()
 }
 
+func addClustersTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("Servers"))
+	table.SetCell(0, 2, mkHeader("Mode"))
+}
+
 func (app *App) NewClustersTable() *tview.Table {
 	table := tview.NewTable()
 	table.SetTitle(" Clusters ")
@@ -121,9 +130,13 @@ func (app *App) NewClustersTable() *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addClustersTableHeader(table, labelColor)
 
 	// Iterate over the config slice to preserve order from config file
-	row := 0
+	row := 1
 	for _, cluster := range app.Config.Cinnamon.Clusters {
 		modeText := cluster.Mode
 		if modeText == "" {

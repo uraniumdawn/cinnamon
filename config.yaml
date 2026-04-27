@@ -1,8 +1,9 @@
 cinnamon:
   api:
-    timeout: 30  # API call timeout in seconds
+    timeout: 30 # API call timeout in seconds
   clusters:
     - name: prod
+      mode: read-only
       properties:
         bootstrap.servers: kafka-prod:9094
     - name: dev
@@ -13,7 +14,15 @@ cinnamon:
       schema.registry.url: http://schema-registry-prod:8081
     - name: dev
       schema.registry.url: http://schema-registry-dev:8081
+  connect:
+    - name: prod
+      mode: read-only
+      url: https://connect-prod:8083
+      selected: true
+    - name: dev
+      url: https://connect-dev:8083
   cli_templates:
-    - kcat -b {{bootstrap}} -t {{topic}} -o beginning -f '{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n' -u | jq .
+    - kcat -b {{bootstrap}} -t {{topic}} -o beginning -f
+      '{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n'
+      -u | jq .
     - kcat -b {{bootstrap}} -t {{topic}}
-
