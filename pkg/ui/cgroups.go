@@ -284,8 +284,6 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	description *client.DescribeConsumerGroupResult,
 	extraTopics ...string,
 ) {
-	batchStrategies := []string{"", "to-earliest", "to-latest", "to-timestamp"}
-
 	allTopics := description.GetTopicNames()
 	// Make a copy so we can add new topics to it; extraTopics carries user-added entries.
 	allTopicsCopy := make([]string, len(allTopics), len(allTopics)+len(extraTopics))
@@ -304,6 +302,11 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		Background(tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor))
 
 	table, tsInputs, tsColumnFlex, container := app.newOffsetBatchTable(allTopics, labelColor, selectedStyle)
+
+	// innerPages hosts the batch table as the base layer and the strategy picker as an overlay.
+	innerPages := tview.NewPages()
+	innerPages.AddPage("batch", container, true, true)
+
 	formatTimestampMs := func(ms int64) string {
 		return time.UnixMilli(ms).Format("2006-01-02T15:04:05.000")
 	}
@@ -375,75 +378,43 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		// When TimestampMs == 0, leave the input as-is to preserve any uncommitted user input.
 	}
 
-	// cycleTopicStrategy advances the strategy for the topic on the given row.
-	cycleTopicStrategy := func(row int) {
-		if row <= 0 || row >= table.GetRowCount() {
-			return
-		}
-		topic := table.GetCell(row, 0).Text
-
-		// Skip cycling for "__all topics" and "+ new topic" rows.
-		if topic == allTopicsRowName || topic == newTopicRowName {
-			return
-		}
-
-		// Handle "__all topics" row - apply strategy to all topics.
+	// applyStrategy sets the chosen strategy directly on the given topic row.
+	applyStrategy := func(topic string, row int, strategy string) {
 		if topic == allTopicsRowName {
-			currentStrategy := ""
 			currentTimestamp := int64(0)
 			if len(allTopics) > 0 {
-				ts := topicStrategies[allTopics[0]]
-				currentStrategy = ts.Strategy
-				currentTimestamp = ts.TimestampMs
+				currentTimestamp = topicStrategies[allTopics[0]].TimestampMs
 			}
-			currentIdx := 0
-			for i, s := range batchStrategies {
-				if s == currentStrategy {
-					currentIdx = i
-					break
-				}
-			}
-			next := batchStrategies[(currentIdx+1)%len(batchStrategies)]
 			nextTimestamp := currentTimestamp
-			if next != "to-timestamp" {
+			if strategy != "to-timestamp" {
 				nextTimestamp = 0
 			}
-			applyStrategyToAll(next, nextTimestamp)
-			table.GetCell(row, 1).SetText(next)
+			applyStrategyToAll(strategy, nextTimestamp)
+			table.GetCell(row, 1).SetText(strategy)
 			if tsInput, ok := tsInputs[row]; ok {
-				if next == "to-timestamp" && currentTimestamp > 0 {
+				if strategy == "to-timestamp" && currentTimestamp > 0 {
 					tsInput.SetText(formatTimestampMs(currentTimestamp))
 					tsInput.SetFieldTextColor(labelColor)
-				} else if next != "to-timestamp" {
+				} else if strategy != "to-timestamp" {
 					tsInput.SetText("")
 				}
 			}
 			return
 		}
-
-		ts, exists := topicStrategies[topic]
-		if !exists {
-			return
+		ts := topicStrategies[topic]
+		newTs := client.TopicStrategy{Strategy: strategy, TimestampMs: ts.TimestampMs}
+		if strategy != "to-timestamp" {
+			newTs.TimestampMs = 0
+			delete(invalidTimestamps, topic)
 		}
-		currentIdx := 0
-		for i, s := range batchStrategies {
-			if s == ts.Strategy {
-				currentIdx = i
-				break
-			}
-		}
-		next := batchStrategies[(currentIdx+1)%len(batchStrategies)]
-		topicStrategies[topic] = client.TopicStrategy{Strategy: next, TimestampMs: ts.TimestampMs}
-		table.GetCell(row, 1).SetText(next)
+		topicStrategies[topic] = newTs
+		table.GetCell(row, 1).SetText(strategy)
 		if tsInput, ok := tsInputs[row]; ok {
-			if next == "to-timestamp" {
-				if ts.TimestampMs > 0 {
-					tsInput.SetText(formatTimestampMs(ts.TimestampMs))
-					tsInput.SetFieldTextColor(labelColor)
-				}
-			} else {
+			if strategy == "to-timestamp" && ts.TimestampMs > 0 {
+				tsInput.SetText(formatTimestampMs(ts.TimestampMs))
+				tsInput.SetFieldTextColor(labelColor)
+			} else if strategy != "to-timestamp" {
 				tsInput.SetText("")
-				delete(invalidTimestamps, topic)
 			}
 		}
 	}
@@ -492,6 +463,73 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		return true
 	}
 
+	// openStrategyPicker overlays a small strategy selection table over innerPages.
+	openStrategyPicker := func(topic string, row int) {
+		pickerLabels := []string{" __clear", " to-earliest", " to-latest", " to-timestamp"}
+		pickerValues := []string{"", "to-earliest", "to-latest", "to-timestamp"}
+
+		currentStrategy := ""
+		if topic == allTopicsRowName {
+			if len(allTopics) > 0 {
+				currentStrategy = topicStrategies[allTopics[0]].Strategy
+			}
+		} else {
+			currentStrategy = topicStrategies[topic].Strategy
+		}
+
+		pickerTable := tview.NewTable()
+		pickerTable.SetBorder(true)
+		pickerTable.SetTitle(" Strategy ")
+		pickerTable.SetSelectable(true, false)
+		pickerTable.SetSelectedStyle(selectedStyle)
+
+		initialRow := 0
+		for i, label := range pickerLabels {
+			pickerTable.SetCell(i, 0, tview.NewTableCell(label).SetSelectable(true))
+			if pickerValues[i] == currentStrategy {
+				initialRow = i
+			}
+		}
+		pickerTable.Select(initialRow, 0)
+
+		closePicker := func() {
+			innerPages.RemovePage("picker")
+			app.SetFocus(table)
+		}
+
+		pickerTable.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyEsc:
+				closePicker()
+				return nil
+			case tcell.KeyEnter:
+				selectedIdx, _ := pickerTable.GetSelection()
+				strategy := pickerValues[selectedIdx]
+				applyStrategy(topic, row, strategy)
+				closePicker()
+				if strategy == "to-timestamp" {
+					if tsInput, ok := tsInputs[row]; ok {
+						app.SetFocus(tsInput)
+					}
+				}
+				return nil
+			}
+			return event
+		})
+
+		const pickerH = 6 // 4 strategy rows + 2 border lines
+		pickerWrapper := tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(nil, 0, 2, false).
+			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+				AddItem(nil, 0, 1, false).
+				AddItem(pickerTable, pickerH, 0, true).
+				AddItem(nil, 0, 1, false),
+				0, 1, true)
+
+		innerPages.AddPage("picker", pickerWrapper, true, true)
+		app.SetFocus(pickerTable)
+	}
+
 	// ── Batch table handlers ──────────────────────────────────────────────
 	table.SetSelectionChangedFunc(func(row, _ int) {
 		syncTimestampCell(row)
@@ -503,6 +541,15 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		case event.Key() == tcell.KeyEsc:
 			app.HideModalPage(ResetOffset)
 
+		case event.Key() == tcell.KeyEnter:
+			if row > 0 {
+				topic := table.GetCell(row, 0).Text
+				if topic != newTopicRowName {
+					openStrategyPicker(topic, row)
+				}
+			}
+			return nil
+
 		case event.Key() == tcell.KeyTab:
 			if row > 0 {
 				topic := table.GetCell(row, 0).Text
@@ -510,8 +557,6 @@ func (app *App) ResetConsumerGroupOffsetModal(
 					if tsInput, ok := tsInputs[row]; ok {
 						app.SetFocus(tsInput)
 					}
-				} else {
-					cycleTopicStrategy(row)
 				}
 			}
 
@@ -670,7 +715,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 
 	// ── Layout ────────────────────────────────────────────────────────────
 	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(container, 0, 1, true)
+		AddItem(innerPages, 0, 1, true)
 	mainFlex.SetTitle(fmt.Sprintf(" Reset Offsets: %s ", groupName))
 	mainFlex.SetBorder(true)
 
