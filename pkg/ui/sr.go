@@ -47,6 +47,15 @@ func (app *App) RunSchemaRegistriesEventHandler(ctx context.Context, in chan Eve
 	}()
 }
 
+// addSchemaRegistriesTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addSchemaRegistriesTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("URL"))
+}
+
 // NewSchemaRegistriesTable creates a table displaying schema registries.
 func (app *App) NewSchemaRegistriesTable() *tview.Table {
 	table := tview.NewTable()
@@ -61,9 +70,13 @@ func (app *App) NewSchemaRegistriesTable() *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addSchemaRegistriesTableHeader(table, labelColor)
 
 	// Iterate over the config slice to preserve order from config file
-	row := 0
+	row := 1
 	for _, sr := range app.Config.Cinnamon.SchemaRegistries {
 		table.
 			SetCell(row, 0, tview.NewTableCell(sr.Name)).

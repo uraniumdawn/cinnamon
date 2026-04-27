@@ -181,6 +181,15 @@ func (app *App) Node(id, url string) {
 	}()
 }
 
+// addNodesTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addNodesTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("ID"))
+	table.SetCell(0, 1, mkHeader("Host"))
+}
+
 // NewNodesTable creates a table displaying Kafka nodes.
 func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 	table := tview.NewTable()
@@ -194,10 +203,14 @@ func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addNodesTableHeader(table, labelColor)
 
 	for i, node := range nodes {
-		table.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(node.ID)))
-		table.SetCell(i, 1, tview.NewTableCell(node.Host))
+		table.SetCell(i+1, 0, tview.NewTableCell(strconv.Itoa(node.ID)))
+		table.SetCell(i+1, 1, tview.NewTableCell(node.Host))
 	}
 	table.SetTitle(
 		util.BuildTitle(Nodes,
