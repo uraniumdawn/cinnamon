@@ -282,13 +282,18 @@ func (app *App) ConsumerGroup(name string) {
 func (app *App) ResetConsumerGroupOffsetModal(
 	groupName string,
 	description *client.DescribeConsumerGroupResult,
+	extraTopics ...string,
 ) {
 	batchStrategies := []string{"", "to-earliest", "to-latest", "to-timestamp"}
 
-	batchTopics := description.GetTopicNames()
-	topicStrategies := make(map[string]client.TopicStrategy, len(batchTopics))
+	allTopics := description.GetTopicNames()
+	// Make a copy so we can add new topics to it; extraTopics carries user-added entries.
+	allTopicsCopy := make([]string, len(allTopics), len(allTopics)+len(extraTopics))
+	copy(allTopicsCopy, allTopics)
+	allTopics = append(allTopicsCopy, extraTopics...)
+	topicStrategies := make(map[string]client.TopicStrategy, len(allTopics)+1)
 	invalidTimestamps := make(map[string]bool)
-	for _, t := range batchTopics {
+	for _, t := range allTopics {
 		topicStrategies[t] = client.TopicStrategy{}
 	}
 
@@ -298,14 +303,14 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		Foreground(tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor)).
 		Background(tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor))
 
-	table, tsInputs, container := app.newOffsetBatchTable(batchTopics, labelColor, selectedStyle)
+	table, tsInputs, tsColumnFlex, container := app.newOffsetBatchTable(allTopics, labelColor, selectedStyle)
 	formatTimestampMs := func(ms int64) string {
 		return time.UnixMilli(ms).Format("2006-01-02T15:04:05.000")
 	}
 
 	// applyStrategyToAll applies the given strategy to all topics.
 	applyStrategyToAll := func(strategy string, timestampMs int64) {
-		for _, topic := range batchTopics {
+		for _, topic := range allTopics {
 			topicStrategies[topic] = client.TopicStrategy{
 				Strategy:    strategy,
 				TimestampMs: timestampMs,
@@ -343,11 +348,17 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			return
 		}
 
+		// Skip syncing for special rows.
+		if topic == allTopicsRowName || topic == newTopicRowName {
+			tsInput.SetText("")
+			return
+		}
+
 		// For "__all topics" row, use first topic's timestamp.
 		var ts client.TopicStrategy
 		if topic == allTopicsRowName {
-			if len(batchTopics) > 0 {
-				ts = topicStrategies[batchTopics[0]]
+			if len(allTopics) > 0 {
+				ts = topicStrategies[allTopics[0]]
 			}
 		} else {
 			ts = topicStrategies[topic]
@@ -371,12 +382,17 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		}
 		topic := table.GetCell(row, 0).Text
 
+		// Skip cycling for "__all topics" and "+ new topic" rows.
+		if topic == allTopicsRowName || topic == newTopicRowName {
+			return
+		}
+
 		// Handle "__all topics" row - apply strategy to all topics.
 		if topic == allTopicsRowName {
 			currentStrategy := ""
 			currentTimestamp := int64(0)
-			if len(batchTopics) > 0 {
-				ts := topicStrategies[batchTopics[0]]
+			if len(allTopics) > 0 {
+				ts := topicStrategies[allTopics[0]]
 				currentStrategy = ts.Strategy
 				currentTimestamp = ts.TimestampMs
 			}
@@ -489,19 +505,32 @@ func (app *App) ResetConsumerGroupOffsetModal(
 
 		case event.Key() == tcell.KeyTab:
 			if row > 0 {
-				cycleTopicStrategy(row)
+				topic := table.GetCell(row, 0).Text
+				if topic == newTopicRowName {
+					if tsInput, ok := tsInputs[row]; ok {
+						app.SetFocus(tsInput)
+					}
+				} else {
+					cycleTopicStrategy(row)
+				}
 			}
 
 		case IsKey(event, 'e'):
 			if row > 0 {
 				topic := table.GetCell(row, 0).Text
-				checkTopic := topic
-				if topic == allTopicsRowName && len(batchTopics) > 0 {
-					checkTopic = batchTopics[0]
-				}
-				if ts, ok := topicStrategies[checkTopic]; ok && ts.Strategy == "to-timestamp" {
+				if topic == newTopicRowName {
 					if tsInput, ok := tsInputs[row]; ok {
 						app.SetFocus(tsInput)
+					}
+				} else {
+					checkTopic := topic
+					if topic == allTopicsRowName && len(allTopics) > 0 {
+						checkTopic = allTopics[0]
+					}
+					if ts, ok := topicStrategies[checkTopic]; ok && ts.Strategy == "to-timestamp" {
+						if tsInput, ok := tsInputs[row]; ok {
+							app.SetFocus(tsInput)
+						}
 					}
 				}
 			}
@@ -540,15 +569,12 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	})
 
 	// ── Timestamp input field handlers ────────────────────────────────────
-	for row, tsInput := range tsInputs {
-		tsInput := tsInput
-		row := row
-
+	// wireTimestampInput attaches commit/navigation handlers to a regular topic row's input.
+	wireTimestampInput := func(row int, tsInput *tview.InputField) {
 		tsInput.SetDoneFunc(func(_ tcell.Key) {
 			commitTimestampInput(row)
 			app.SetFocus(table)
 		})
-
 		tsInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			switch {
 			case event.Key() == tcell.KeyEsc:
@@ -561,7 +587,6 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				return nil
 			case event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab:
 				commitTimestampInput(row)
-				// Move focus to the next/prev timestamp input, or back to table.
 				nextRow := row + 1
 				if event.Key() == tcell.KeyBacktab {
 					nextRow = row - 1
@@ -577,6 +602,70 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			}
 			return event
 		})
+	}
+
+	newTopicInputHandler := func(tsInput *tview.InputField) {
+		tsInput.SetDoneFunc(func(key tcell.Key) {
+			if key == tcell.KeyEnter {
+				newTopicName := strings.TrimSpace(tsInput.GetText())
+				if newTopicName == "" {
+					SendStatusWithDefaultTTL("[red]topic name cannot be empty")
+					return
+				}
+				for _, t := range allTopics {
+					if t == newTopicName {
+						SendStatusWithDefaultTTL("[red]topic already exists in the list")
+						return
+					}
+				}
+				// + new topic row is always at len(allTopics)+2 before the append.
+				insertRow := len(allTopics) + 2
+				allTopics = append(allTopics, newTopicName)
+				topicStrategies[newTopicName] = client.TopicStrategy{}
+
+				// Insert a new table row before "+ new topic", shifting it down.
+				table.InsertRow(insertRow)
+				table.SetCell(insertRow, 0, tview.NewTableCell(newTopicName).SetSelectable(true))
+				table.SetCell(insertRow, 1, tview.NewTableCell("").SetSelectable(false))
+
+				// Create a timestamp InputField for the new topic row.
+				newTsInput := tview.NewInputField().
+					SetFieldWidth(30).
+					SetPlaceholder("eg: 2025-02-23T00:00:00.000").
+					SetPlaceholderStyle(tcell.StyleDefault.
+						Foreground(tcell.GetColor(app.Colors.Cinnamon.Foreground)).
+						Background(tcell.GetColor(app.Colors.Cinnamon.Background))).
+					SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+					SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+
+				// Slide the "+ new topic" input down in the map and register the new input.
+				tsInputs[insertRow+1] = tsInputs[insertRow]
+				tsInputs[insertRow] = newTsInput
+
+				// Reorder the timestamp column flex: remove "+ new topic", append new input, re-append
+				// it.
+				tsColumnFlex.RemoveItem(tsInput)
+				tsColumnFlex.AddItem(newTsInput, 1, 0, false)
+				tsColumnFlex.AddItem(tsInput, 1, 0, false)
+
+				wireTimestampInput(insertRow, newTsInput)
+
+				tsInput.SetText("")
+			}
+			app.SetFocus(table)
+		})
+	}
+
+	for row, tsInput := range tsInputs {
+		tsInput := tsInput
+		row := row
+
+		if row == len(allTopics)+2 { // new topic row
+			newTopicInputHandler(tsInput)
+			continue
+		}
+
+		wireTimestampInput(row, tsInput)
 	}
 
 	// ── Layout ────────────────────────────────────────────────────────────
@@ -600,11 +689,14 @@ func parseTimestamp(s string) (time.Time, error) {
 // allTopicsRowName is the special row name that applies strategy to all topics.
 const allTopicsRowName = "__all topics"
 
+// newTopicRowName is the special row name for adding a new topic.
+const newTopicRowName = "+ new topic"
+
 func (app *App) newOffsetBatchTable(
 	topics []string,
 	labelColor tcell.Color,
 	selectedStyle tcell.Style,
-) (*tview.Table, map[int]*tview.InputField, *tview.Flex) {
+) (*tview.Table, map[int]*tview.InputField, *tview.Flex, *tview.Flex) {
 	mkHeader := func(text string) *tview.TableCell {
 		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
 	}
@@ -669,13 +761,32 @@ func (app *App) newOffsetBatchTable(
 		tsColumnFlex.AddItem(tsInput, 1, 0, false)
 	}
 
+	// "+ new topic" row for adding custom topics
+	newTopicRow := len(topics) + 2
+	table.SetCell(newTopicRow, 0, tview.NewTableCell(newTopicRowName).SetSelectable(true))
+	table.SetCell(newTopicRow, 1, tview.NewTableCell("").SetSelectable(false))
+
+	newTopicInput := tview.NewInputField().
+		SetFieldWidth(30).
+		SetPlaceholder("enter topic name").
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+	tsInputs[newTopicRow] = newTopicInput
+	tsColumnFlex.AddItem(newTopicInput, 1, 0, false)
+
 	// Build the combined container.
 	container := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(table, 0, 2, true).
 		AddItem(tview.NewBox(), 1, 0, false).
 		AddItem(tsColumnFlex, 0, 1, false)
 
-	return table, tsInputs, container
+	return table, tsInputs, tsColumnFlex, container
 }
 
 // topicToRow returns the table row index for a given topic name.
