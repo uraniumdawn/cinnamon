@@ -142,11 +142,23 @@ func (app *App) Topics() {
 						}
 
 						if IsKey(event, 'c') {
+							if app.IsCurrentClusterReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
 							app.CreateTopic()
 							app.ShowModalPage(CreateTopic)
 						}
 
 						if event.Key() == tcell.KeyCtrlD {
+							if app.IsCurrentClusterReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.DeleteTopic(topicName)
@@ -154,6 +166,12 @@ func (app *App) Topics() {
 						}
 
 						if IsKey(event, 'e') {
+							if app.IsCurrentClusterReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
 							row, _ := table.GetSelection()
 							topicName := table.GetCell(row, 0).Text
 							app.UpdateTopic(topicName)

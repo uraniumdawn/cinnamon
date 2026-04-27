@@ -36,6 +36,12 @@ type ClusterConfig struct {
 	Name       string            `yaml:"name"`
 	Properties map[string]string `yaml:"properties"`
 	Selected   bool              `yaml:"selected,omitempty"`
+	Mode       string            `yaml:"mode,omitempty"`
+}
+
+// IsReadOnly returns true when the cluster mode is set to "read-only".
+func (c *ClusterConfig) IsReadOnly() bool {
+	return c.Mode == "read-only"
 }
 
 func (c *ClusterConfig) GetBootstrapServers() string {
@@ -70,6 +76,12 @@ type ConnectConfig struct {
 	Username string `yaml:"username,omitempty"`
 	Password string `yaml:"password,omitempty"`
 	Selected bool   `yaml:"selected,omitempty"`
+	Mode     string `yaml:"mode,omitempty"`
+}
+
+// IsReadOnly returns true when the Connect cluster mode is set to "read-only".
+func (c *ConnectConfig) IsReadOnly() bool {
+	return c.Mode == "read-only"
 }
 
 // LoadAppConfig loads the application configuration from the config file.

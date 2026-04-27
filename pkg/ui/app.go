@@ -77,6 +77,16 @@ func (app *App) GetCurrentKafkaClient() *client.Client {
 	return app.KafkaClients[app.Selected.Cluster.Name]
 }
 
+// IsCurrentClusterReadOnly reports whether the selected cluster is in read-only mode.
+func (app *App) IsCurrentClusterReadOnly() bool {
+	return app.Selected.Cluster != nil && app.Selected.Cluster.IsReadOnly()
+}
+
+// IsCurrentConnectReadOnly reports whether the selected Connect cluster is in read-only mode.
+func (app *App) IsCurrentConnectReadOnly() bool {
+	return app.Selected.Connect != nil && app.Selected.Connect.IsReadOnly()
+}
+
 func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
 	if app.Selected.SchemaRegistry == nil {
 		return nil

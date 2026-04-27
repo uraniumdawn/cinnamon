@@ -59,9 +59,14 @@ func (app *App) NewConnectTable() *tview.Table {
 
 	row := 0
 	for _, connect := range app.Config.Cinnamon.Connect {
+		modeText := connect.Mode
+		if modeText == "" {
+			modeText = "regular"
+		}
 		table.
 			SetCell(row, 0, tview.NewTableCell(connect.Name)).
-			SetCell(row, 1, tview.NewTableCell(connect.URL))
+			SetCell(row, 1, tview.NewTableCell(connect.URL)).
+			SetCell(row, 2, tview.NewTableCell(modeText))
 		row++
 	}
 	return table

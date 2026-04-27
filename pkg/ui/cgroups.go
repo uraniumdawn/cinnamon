@@ -142,6 +142,12 @@ func (app *App) ConsumerGroups() {
 						}
 
 						if event.Key() == tcell.KeyCtrlD {
+							if app.IsCurrentClusterReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
 							row, _ := table.GetSelection()
 							groupName := table.GetCell(row, 0).Text
 
@@ -225,6 +231,12 @@ func (app *App) ConsumerGroup(name string) {
 								)
 							}
 							if IsKey(event, 'o') {
+								if app.IsCurrentClusterReadOnly() {
+									SendStatusWithDefaultTTL(
+										"[red]cluster is in read-only mode",
+									)
+									return event
+								}
 								for _, d := range description.ConsumerGroupDescriptions {
 									if len(d.Members) > 0 {
 										SendStatusWithDefaultTTL(

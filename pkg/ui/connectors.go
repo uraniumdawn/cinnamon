@@ -126,6 +126,12 @@ func (app *App) Connectors() {
 						}
 
 						if IsKey(event, 'a') {
+							if app.IsCurrentConnectReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
 							row, _ := table.GetSelection()
 							connectorName := table.GetCell(row, 0).Text
 							connectorState := table.GetCell(row, 1).Text
@@ -134,6 +140,12 @@ func (app *App) Connectors() {
 						}
 
 						if event.Key() == tcell.KeyCtrlD {
+							if app.IsCurrentConnectReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
 							row, _ := table.GetSelection()
 							connectorName := table.GetCell(row, 0).Text
 							Publish(
@@ -487,6 +499,10 @@ func (app *App) ConnectorConfigConfirm(name string, newConfig map[string]interfa
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if IsKey(event, 's') {
+			if app.IsCurrentConnectReadOnly() {
+				SendStatusWithDefaultTTL("[red]cluster is in read-only mode")
+				return nil
+			}
 			app.UpdateConnectorConfig(name, newConfig)
 			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
 			app.Layout.Menu.SetMenu(ConnectorDetailPageMenu)

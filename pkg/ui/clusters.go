@@ -125,9 +125,14 @@ func (app *App) NewClustersTable() *tview.Table {
 	// Iterate over the config slice to preserve order from config file
 	row := 0
 	for _, cluster := range app.Config.Cinnamon.Clusters {
+		modeText := cluster.Mode
+		if modeText == "" {
+			modeText = "regular"
+		}
 		table.
 			SetCell(row, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"]))
+			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"])).
+			SetCell(row, 2, tview.NewTableCell(modeText))
 		row++
 	}
 	return table
