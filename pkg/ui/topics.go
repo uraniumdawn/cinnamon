@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
@@ -127,6 +126,10 @@ func (app *App) Topics() {
 
 					// app.InitConsumingParams()
 
+					sortCol := 0
+					sortDesc := false
+					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
@@ -183,10 +186,33 @@ func (app *App) Topics() {
 							app.CliTemplates(topicName)
 						}
 
+						if IsKey(event, '1') && !app.IsSearchInFocus() {
+							if sortCol == 0 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 0
+								sortDesc = false
+							}
+							sortTopicsTable(table, topics.Result, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
+						if IsKey(event, '2') && !app.IsSearchInFocus() {
+							if sortCol == 1 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 1
+								sortDesc = false
+							}
+							sortTopicsTable(table, topics.Result, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
 						return event
 					})
 
-					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 					app.AssignSearch(func(text string) {
 						filterTopicsTable(table, topics.Result, text, labelColor)
 						util.SetSearchableTableTitle(table, title, text)
@@ -694,27 +720,7 @@ func (app *App) NewTopicsTable(topics *client.TopicsResult) *tview.Table {
 	table.SetFixed(1, 0)
 
 	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
-	addTopicsTableHeader(table, labelColor)
-
-	sorted := treemap.NewWithStringComparator()
-	for topicName, metadata := range topics.Result {
-		sorted.Put(topicName, metadata)
-	}
-
-	row := 1
-	partitions := 0
-	replicas := 0
-	sorted.Each(func(key, value any) {
-		t := key.(string)
-		m := value.(*kafka.TopicMetadata)
-		partitions = len(m.Partitions)
-		if len(m.Partitions) > 0 {
-			replicas = len(m.Partitions[0].Replicas)
-		}
-
-		populateTable(table, row, t, partitions, replicas)
-		row++
-	})
+	sortTopicsTable(table, topics.Result, 0, false, labelColor)
 
 	return table
 }
@@ -932,6 +938,68 @@ func populateTable(table *tview.Table, row int, t string, partitions, replicas i
 	table.SetCell(row, 0, tview.NewTableCell(t))
 	table.SetCell(row, 1, tview.NewTableCell(strconv.Itoa(partitions)))
 	table.SetCell(row, 2, tview.NewTableCell(strconv.Itoa(replicas)))
+}
+
+// sortTopicsTable rebuilds the table sorted by col (0=Name, 1=Partitions).
+// Partitions tiebreaks by Name ascending. Adds ↑/↓ indicator to the active header cell.
+func sortTopicsTable(
+	table *tview.Table,
+	metadata map[string]*kafka.TopicMetadata,
+	col int,
+	desc bool,
+	labelColor tcell.Color,
+) {
+	type entry struct {
+		name       string
+		partitions int
+		replicas   int
+	}
+
+	entries := make([]entry, 0, len(metadata))
+	for name, meta := range metadata {
+		p := len(meta.Partitions)
+		r := 0
+		if p > 0 {
+			r = len(meta.Partitions[0].Replicas)
+		}
+		entries = append(entries, entry{name, p, r})
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		switch col {
+		case 1:
+			if entries[i].partitions != entries[j].partitions {
+				if desc {
+					return entries[i].partitions > entries[j].partitions
+				}
+				return entries[i].partitions < entries[j].partitions
+			}
+			return entries[i].name < entries[j].name
+		default:
+			if desc {
+				return entries[i].name > entries[j].name
+			}
+			return entries[i].name < entries[j].name
+		}
+	})
+
+	table.Clear()
+	addTopicsTableHeader(table, labelColor)
+
+	indicator := "[↑]"
+	if desc {
+		indicator = "[↓]"
+	}
+	switch col {
+	case 0:
+		table.GetCell(0, 0).SetText("Name" + indicator)
+	case 1:
+		table.GetCell(0, 1).SetText("Partitions" + indicator)
+	}
+
+	for i, e := range entries {
+		populateTable(table, i+1, e.name, e.partitions, e.replicas)
+	}
 }
 
 func filterTopicsTable(
