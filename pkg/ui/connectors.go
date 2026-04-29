@@ -166,7 +166,14 @@ func (app *App) Connectors() {
 								sortCol = 0
 								sortDesc = false
 							}
-							sortConnectorsTable(table, connectorNames, statuses, sortCol, sortDesc, labelColor)
+							sortConnectorsTable(
+								table,
+								connectorNames,
+								statuses,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}
@@ -178,7 +185,14 @@ func (app *App) Connectors() {
 								sortCol = 1
 								sortDesc = false
 							}
-							sortConnectorsTable(table, connectorNames, statuses, sortCol, sortDesc, labelColor)
+							sortConnectorsTable(
+								table,
+								connectorNames,
+								statuses,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}
@@ -190,7 +204,14 @@ func (app *App) Connectors() {
 								sortCol = 2
 								sortDesc = false
 							}
-							sortConnectorsTable(table, connectorNames, statuses, sortCol, sortDesc, labelColor)
+							sortConnectorsTable(
+								table,
+								connectorNames,
+								statuses,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}

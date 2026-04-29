@@ -193,7 +193,13 @@ func (app *App) Topics() {
 								sortCol = 0
 								sortDesc = false
 							}
-							sortTopicsTable(table, topics.Result, sortCol, sortDesc, labelColor)
+							sortTopicsTable(
+								table,
+								topics.Result,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}
@@ -205,7 +211,13 @@ func (app *App) Topics() {
 								sortCol = 1
 								sortDesc = false
 							}
-							sortTopicsTable(table, topics.Result, sortCol, sortDesc, labelColor)
+							sortTopicsTable(
+								table,
+								topics.Result,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}

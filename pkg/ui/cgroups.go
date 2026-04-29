@@ -183,7 +183,13 @@ func (app *App) ConsumerGroups() {
 								sortCol = 0
 								sortDesc = false
 							}
-							sortGroupsTable(table, groups.Valid, sortCol, sortDesc, labelColor)
+							sortGroupsTable(
+								table,
+								groups.Valid,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}
@@ -195,7 +201,13 @@ func (app *App) ConsumerGroups() {
 								sortCol = 1
 								sortDesc = false
 							}
-							sortGroupsTable(table, groups.Valid, sortCol, sortDesc, labelColor)
+							sortGroupsTable(
+								table,
+								groups.Valid,
+								sortCol,
+								sortDesc,
+								labelColor,
+							)
 							table.ScrollToBeginning()
 							return event
 						}
@@ -915,7 +927,11 @@ func (app *App) ResetConsumerGroupOffsetBatchResultHandler(
 						break
 					}
 				} else if topicCount > 1 {
-					msg = fmt.Sprintf("offsets for '%s' have been reset [%d topics]", group, topicCount)
+					msg = fmt.Sprintf(
+						"offsets for '%s' have been reset [%d topics]",
+						group,
+						topicCount,
+					)
 				}
 				SendStatus(msg, 2*time.Second, false)
 				cancel()
