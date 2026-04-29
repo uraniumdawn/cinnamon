@@ -332,6 +332,7 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 		)
 	}
 
+	sort.Strings(subjects)
 	for i, subject := range subjects {
 		table.SetCell(i, 0, tview.NewTableCell(subject))
 	}

@@ -936,6 +936,7 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 	addGroupsTableHeader(table, labelColor)
 
+	sort.Slice(groups.Valid, func(i, j int) bool { return groups.Valid[i].GroupID < groups.Valid[j].GroupID })
 	for i, r := range groups.Valid {
 		table.SetCell(i+1, 0, tview.NewTableCell(r.GroupID))
 		table.SetCell(i+1, 1, tview.NewTableCell(r.State.String()))

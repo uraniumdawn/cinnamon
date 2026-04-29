@@ -7,6 +7,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -208,6 +209,7 @@ func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 	addNodesTableHeader(table, labelColor)
 
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
 	for i, node := range nodes {
 		table.SetCell(i+1, 0, tview.NewTableCell(strconv.Itoa(node.ID)))
 		table.SetCell(i+1, 1, tview.NewTableCell(node.Host))
