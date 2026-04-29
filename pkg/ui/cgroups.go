@@ -126,6 +126,10 @@ func (app *App) ConsumerGroups() {
 						table,
 						ConsumerGroupsPageMenu, true,
 					)
+					sortCol := 0
+					sortDesc := false
+					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
@@ -172,10 +176,33 @@ func (app *App) ConsumerGroups() {
 							)
 						}
 
+						if IsKey(event, '1') && !app.IsSearchInFocus() {
+							if sortCol == 0 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 0
+								sortDesc = false
+							}
+							sortGroupsTable(table, groups.Valid, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
+						if IsKey(event, '2') && !app.IsSearchInFocus() {
+							if sortCol == 1 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 1
+								sortDesc = false
+							}
+							sortGroupsTable(table, groups.Valid, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
 						return event
 					})
 
-					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 					app.AssignSearch(func(text string) {
 						filterConsumerGroupsTable(table, groups.Valid, text, labelColor)
 						util.SetSearchableTableTitle(table, title, text)
@@ -918,6 +945,57 @@ func addGroupsTableHeader(table *tview.Table, labelColor tcell.Color) {
 	table.SetCell(0, 1, mkHeader("State"))
 }
 
+// sortGroupsTable rebuilds the table sorted by col (0=Name, 1=State).
+// State tiebreaks by Name ascending. Adds ↑/↓ indicator to the active header cell.
+func sortGroupsTable(
+	table *tview.Table,
+	listing []kafka.ConsumerGroupListing,
+	col int,
+	desc bool,
+	labelColor tcell.Color,
+) {
+	entries := make([]kafka.ConsumerGroupListing, len(listing))
+	copy(entries, listing)
+
+	sort.Slice(entries, func(i, j int) bool {
+		switch col {
+		case 1:
+			si, sj := entries[i].State.String(), entries[j].State.String()
+			if si != sj {
+				if desc {
+					return si > sj
+				}
+				return si < sj
+			}
+			return entries[i].GroupID < entries[j].GroupID
+		default:
+			if desc {
+				return entries[i].GroupID > entries[j].GroupID
+			}
+			return entries[i].GroupID < entries[j].GroupID
+		}
+	})
+
+	table.Clear()
+	addGroupsTableHeader(table, labelColor)
+
+	indicator := "[↑]"
+	if desc {
+		indicator = "[↓]"
+	}
+	switch col {
+	case 0:
+		table.GetCell(0, 0).SetText("Name" + indicator)
+	case 1:
+		table.GetCell(0, 1).SetText("State" + indicator)
+	}
+
+	for i, r := range entries {
+		table.SetCell(i+1, 0, tview.NewTableCell(r.GroupID))
+		table.SetCell(i+1, 1, tview.NewTableCell(r.State.String()))
+	}
+}
+
 // NewGroupsTable creates a table displaying consumer groups.
 func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table {
 	table := tview.NewTable()
@@ -934,13 +1012,7 @@ func (app *App) NewGroupsTable(groups *client.ConsumerGroupsResult) *tview.Table
 	table.SetFixed(1, 0)
 
 	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
-	addGroupsTableHeader(table, labelColor)
-
-	sort.Slice(groups.Valid, func(i, j int) bool { return groups.Valid[i].GroupID < groups.Valid[j].GroupID })
-	for i, r := range groups.Valid {
-		table.SetCell(i+1, 0, tview.NewTableCell(r.GroupID))
-		table.SetCell(i+1, 1, tview.NewTableCell(r.State.String()))
-	}
+	sortGroupsTable(table, groups.Valid, 0, false, labelColor)
 
 	return table
 }

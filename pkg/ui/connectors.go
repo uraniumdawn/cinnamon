@@ -106,6 +106,10 @@ func (app *App) Connectors() {
 					title := util.BuildTitle(Connectors,
 						"["+strconv.Itoa(len(connectorNames))+"]")
 					table.SetTitle(title)
+					sortCol := 0
+					sortDesc := false
+					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(
@@ -155,6 +159,42 @@ func (app *App) Connectors() {
 							)
 						}
 
+						if IsKey(event, '1') && !app.IsSearchInFocus() {
+							if sortCol == 0 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 0
+								sortDesc = false
+							}
+							sortConnectorsTable(table, connectorNames, statuses, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
+						if IsKey(event, '2') && !app.IsSearchInFocus() {
+							if sortCol == 1 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 1
+								sortDesc = false
+							}
+							sortConnectorsTable(table, connectorNames, statuses, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
+						if IsKey(event, '3') && !app.IsSearchInFocus() {
+							if sortCol == 2 {
+								sortDesc = !sortDesc
+							} else {
+								sortCol = 2
+								sortDesc = false
+							}
+							sortConnectorsTable(table, connectorNames, statuses, sortCol, sortDesc, labelColor)
+							table.ScrollToBeginning()
+							return event
+						}
+
 						return event
 					})
 
@@ -164,7 +204,6 @@ func (app *App) Connectors() {
 						ConnectorsPageMenu, true,
 					)
 
-					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
 					app.AssignSearch(func(text string) {
 						filterConnectorsTable(table, connectorNames, statuses, text, labelColor)
 						util.SetSearchableTableTitle(table, title, text)
@@ -276,6 +315,87 @@ func addConnectorsTableHeader(table *tview.Table, labelColor tcell.Color) {
 	table.SetCell(0, 3, mkHeader("Tasks"))
 }
 
+// sortConnectorsTable rebuilds the table sorted by col (0=Name, 1=State, 2=Type).
+// State and Type tiebreak by Name ascending. Adds ↑/↓ indicator to the active header cell.
+func sortConnectorsTable(
+	table *tview.Table,
+	connectorNames []string,
+	statuses map[string]*connect.ConnectorStatus,
+	col int,
+	desc bool,
+	labelColor tcell.Color,
+) {
+	type entry struct {
+		name  string
+		state string
+		ctype string
+		tasks string
+	}
+
+	entries := make([]entry, 0, len(connectorNames))
+	for _, name := range connectorNames {
+		if status, ok := statuses[name]; ok {
+			entries = append(entries, entry{
+				name:  name,
+				state: status.Connector.State,
+				ctype: strings.ToLower(status.Type),
+				tasks: fmt.Sprintf("%d/%d", runningTasks(status.Tasks), len(status.Tasks)),
+			})
+		} else {
+			entries = append(entries, entry{name: name, state: "unknown", ctype: "-", tasks: "-"})
+		}
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		switch col {
+		case 1:
+			if entries[i].state != entries[j].state {
+				if desc {
+					return entries[i].state > entries[j].state
+				}
+				return entries[i].state < entries[j].state
+			}
+			return entries[i].name < entries[j].name
+		case 2:
+			if entries[i].ctype != entries[j].ctype {
+				if desc {
+					return entries[i].ctype > entries[j].ctype
+				}
+				return entries[i].ctype < entries[j].ctype
+			}
+			return entries[i].name < entries[j].name
+		default:
+			if desc {
+				return entries[i].name > entries[j].name
+			}
+			return entries[i].name < entries[j].name
+		}
+	})
+
+	table.Clear()
+	addConnectorsTableHeader(table, labelColor)
+
+	indicator := "[↑]"
+	if desc {
+		indicator = "[↓]"
+	}
+	switch col {
+	case 0:
+		table.GetCell(0, 0).SetText("Name" + indicator)
+	case 1:
+		table.GetCell(0, 1).SetText("State" + indicator)
+	case 2:
+		table.GetCell(0, 2).SetText("Type" + indicator)
+	}
+
+	for i, e := range entries {
+		table.SetCell(i+1, 0, tview.NewTableCell(e.name))
+		table.SetCell(i+1, 1, tview.NewTableCell(e.state))
+		table.SetCell(i+1, 2, tview.NewTableCell(e.ctype))
+		table.SetCell(i+1, 3, tview.NewTableCell(e.tasks))
+	}
+}
+
 // NewConnectorsTable creates a table displaying connectors with their status.
 func (app *App) NewConnectorsTable(connectorNames []string, statuses map[string]*connect.ConnectorStatus) *tview.Table {
 	table := tview.NewTable()
@@ -295,29 +415,7 @@ func (app *App) NewConnectorsTable(connectorNames []string, statuses map[string]
 	table.SetFixed(1, 0)
 
 	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
-	addConnectorsTableHeader(table, labelColor)
-
-	sort.Strings(connectorNames)
-
-	row := 1
-	for _, name := range connectorNames {
-		if status, ok := statuses[name]; ok {
-			table.SetCell(row, 0, tview.NewTableCell(name))
-			table.SetCell(row, 1, tview.NewTableCell(status.Connector.State))
-			table.SetCell(row, 2, tview.NewTableCell(strings.ToLower(status.Type)))
-			table.SetCell(
-				row,
-				3,
-				tview.NewTableCell(fmt.Sprintf("%d/%d", runningTasks(status.Tasks), len(status.Tasks))),
-			)
-		} else {
-			table.SetCell(row, 0, tview.NewTableCell(name))
-			table.SetCell(row, 1, tview.NewTableCell("unknown"))
-			table.SetCell(row, 2, tview.NewTableCell("-"))
-			table.SetCell(row, 3, tview.NewTableCell("-"))
-		}
-		row++
-	}
+	sortConnectorsTable(table, connectorNames, statuses, 0, false, labelColor)
 
 	return table
 }
