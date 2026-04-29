@@ -632,7 +632,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				}
 			}
 
-		case IsKey(event, 's'):
+		case event.Key() == tcell.KeyCtrlB:
 			// Commit all timestamp inputs before validation.
 			for r := range tsInputs {
 				commitTimestampInput(r)

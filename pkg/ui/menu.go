@@ -21,13 +21,9 @@ type Pair struct {
 }
 
 var keys = map[string]Pair{
-	"dw": {
-		Key:   "<j,↓>",
-		Value: "Down",
-	},
-	"up": {
-		Key:   "<k,↑>",
-		Value: "Up",
+	"sel": {
+		Key:   "<j/↓, k,↑>",
+		Value: "Selection",
 	},
 	"forward": {
 		Key:   "<l>",
@@ -173,10 +169,6 @@ var keys = map[string]Pair{
 		Key:   "<Enter>",
 		Value: "Select strategy",
 	},
-	"batch_edit_ts": {
-		Key:   "<e>",
-		Value: "Edit timestamp",
-	},
 	"q": {
 		Key:   "<q>",
 		Value: "",
@@ -223,26 +215,23 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			ResourcesPageMenu:    {"up", "dw", "select", "close"},
-			OpenedPagesMenu:      {"up", "dw", "remove_page", "esc_confirm_opened"},
-			CreateTopicPageMenu:  {"up", "dw", "edit", "submit", "default", "close"},
+			ResourcesPageMenu:    {"sel", "select", "close"},
+			OpenedPagesMenu:      {"sel", "remove_page", "esc_confirm_opened"},
+			CreateTopicPageMenu:  {"sel", "edit", "submit", "default", "close"},
 			CreateTopicInputMenu: {"esc_confirm"},
-			EditTopicPageMenu:    {"up", "dw", "edit", "submit", "close"},
+			EditTopicPageMenu:    {"sel", "edit", "submit", "close"},
 			EditTopicInputMenu:   {"esc_confirm"},
 			ResetOffsetPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"batch_set_st",
-				"batch_edit_ts",
-				"submit",
+				"submit_ctrl",
 				"close",
 			},
 			DeleteTopicPageMenu:         {"confirm", "cancel"},
 			DeleteConsumerGroupPageMenu: {"confirm", "cancel"},
-			CliTemplatesPageMenu:        {"up", "dw", "copy_cli", "execute_cli", "close"},
+			CliTemplatesPageMenu:        {"sel", "copy_cli", "execute_cli", "close"},
 			ClustersPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"select",
 				"res",
 				"opened",
@@ -250,8 +239,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			SchemaRegistriesPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"select",
 				"res",
 				"opened",
@@ -259,8 +247,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			ConnectPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"select",
 				"res",
 				"opened",
@@ -268,8 +255,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			NodesPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"res",
 				"opened",
 				"dsc",
@@ -278,8 +264,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			TopicsPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"res",
 				"opened",
 				"dsc",
@@ -294,8 +279,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			CliExecutePageMenu: {"terminate_cli", "kill_cli", "backward", "forward"},
 			ConsumerGroupsPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"res",
 				"opened",
 				"dsc",
@@ -316,8 +300,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			SubjectsPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"select",
 				"res",
 				"opened",
@@ -327,8 +310,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			VersionsPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"res",
 				"opened",
 				"dsc",
@@ -337,8 +319,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"forward",
 			},
 			ConnectorsPageMenu: {
-				"up",
-				"dw",
+				"sel",
 				"res",
 				"opened",
 				"dsc",
