@@ -584,7 +584,11 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		case event.Key() == tcell.KeyEnter:
 			if row > 0 {
 				topic := table.GetCell(row, 0).Text
-				if topic != newTopicRowName {
+				if topic == newTopicRowName {
+					if tsInput, ok := tsInputs[row]; ok {
+						app.SetFocus(tsInput)
+					}
+				} else {
 					openStrategyPicker(topic, row)
 				}
 			}
@@ -603,11 +607,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		case IsKey(event, 'e'):
 			if row > 0 {
 				topic := table.GetCell(row, 0).Text
-				if topic == newTopicRowName {
-					if tsInput, ok := tsInputs[row]; ok {
-						app.SetFocus(tsInput)
-					}
-				} else {
+				if topic != newTopicRowName {
 					checkTopic := topic
 					if topic == allTopicsRowName && len(allTopics) > 0 {
 						checkTopic = allTopics[0]
