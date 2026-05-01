@@ -26,9 +26,10 @@ func (r *ClusterResult) String() string {
 	output += fmt.Sprintf("Allowed operations: %s\n", r.AuthorizedOperations)
 	var sb strings.Builder
 	func(res kafka.DescribeClusterResult) {
+		sb.WriteString("\n")
 		sb.WriteString("Nodes:\n")
 		for _, node := range res.Nodes {
-			sb.WriteString(fmt.Sprintf("  %s\n", node.String()))
+			sb.WriteString(fmt.Sprintf("%s\n", node.String()))
 		}
 	}(r.DescribeClusterResult)
 	output += sb.String()
@@ -38,8 +39,9 @@ func (r *ClusterResult) String() string {
 func (r *ResourceResult) String() string {
 	var sb strings.Builder
 	for _, result := range r.Results {
+		sb.WriteString("Configuration:\n")
 		w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
-		_, err := fmt.Fprintln(w, "\n"+"Name\tValue\tSource\tRead-only\tDefault")
+		_, err := fmt.Fprintln(w, "Name\tValue\tSource\tRead-only\tDefault")
 		if err != nil {
 			log.Error().Err(err).Msg("Error to write Node description")
 		}
@@ -74,24 +76,26 @@ func (r *ResourceResult) String() string {
 
 func (r *TopicResult) String() string {
 	var sb strings.Builder
-	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	for _, desc := range r.TopicDescriptions {
 		_, _ = fmt.Fprintf(w, "Topic Id:\t%s\n", desc.TopicID)
 		_, _ = fmt.Fprintf(w, "Allowed operations:\t%s\n", desc.AuthorizedOperations)
 		_, _ = fmt.Fprintf(w, "Partitions count:\t%d\n", len(desc.Partitions))
 
-		// Add size information
 		totalMessages := r.GetTotalMessages()
 		estimatedSize, isEstimate := r.GetEstimatedSizeBytes()
 		_, _ = fmt.Fprintf(w, "Total Messages:\t%s\n", util.FormatNumber(totalMessages))
 		_, _ = fmt.Fprintf(w, "Estimated Size:\t%s\n",
 			util.FormatSizeWithFallback(estimatedSize, totalMessages, isEstimate))
 		_, _ = fmt.Fprintf(w, "Messages Last Hour:\t%s\n", util.FormatNumber(r.GetMessagesLastHour()))
+	}
+	_ = w.Flush()
 
-		_, _ = fmt.Fprintln(w, "")
-		_, _ = fmt.Fprintln(w, "Offsets:")
-		_, _ = fmt.Fprintln(w, "\tPartition\t[Start, End]\tDifference\t(+on last hour)")
+	_, _ = sb.WriteString("\nOffsets:\n")
+	wOffsets := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(wOffsets, "Partition\t[Start, End]\tDifference\t(+on last hour)")
+	for _, desc := range r.TopicDescriptions {
 		for _, p := range desc.Partitions {
 			end := r.endOffsets[int32(p.Partition)]
 			st := r.startOffsets[int32(p.Partition)]
@@ -101,8 +105,8 @@ func (r *TopicResult) String() string {
 				hourlyDelta = int64(end - hourAgo)
 			}
 			_, _ = fmt.Fprintf(
-				w,
-				"\t%d:\t[%d, %d]\t%s\t(%s)\n",
+				wOffsets,
+				"%d:\t[%d, %d]\t%s\t%s\n",
 				p.Partition,
 				st,
 				end,
@@ -110,29 +114,34 @@ func (r *TopicResult) String() string {
 				util.FormatNumber(hourlyDelta),
 			)
 		}
-		_, _ = fmt.Fprintln(w, "")
-		_, _ = fmt.Fprintln(w, "Partitions details:")
+	}
+	_ = wOffsets.Flush()
+
+	_, _ = sb.WriteString("\nPartitions details:\n")
+	wParts := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(wParts, "Partition\tLeader\tISRs")
+	for _, desc := range r.TopicDescriptions {
 		for _, p := range desc.Partitions {
-			_, _ = fmt.Fprintf(w, "\tPartition:\t%d\n", p.Partition)
+			leader := "-"
 			if p.Leader != nil {
-				_, _ = fmt.Fprintf(w, "\tLeader:\t%s\n", p.Leader.String())
-			} else {
-				_, _ = fmt.Fprintf(w, "\tLeader:\t-\n")
+				leader = p.Leader.String()
 			}
+			isrs := "-"
 			if len(p.Isr) > 0 {
-				isrs := make([]string, len(p.Isr))
+				istrings := make([]string, len(p.Isr))
 				for i, isr := range p.Isr {
-					isrs[i] = isr.String()
+					istrings[i] = isr.String()
 				}
-				_, _ = fmt.Fprintf(w, "\tISRs:\t%s\n", strings.Join(isrs, ", "))
+				isrs = strings.Join(istrings, ", ")
 			}
+			_, _ = fmt.Fprintf(wParts, "%d\t%s\t%s\n", p.Partition, leader, isrs)
 		}
 	}
-
-	_ = w.Flush()
+	_ = wParts.Flush()
 
 	for _, result := range r.Config {
 		sb.WriteString("\n")
+		sb.WriteString("Configuration:\n")
 		w2 := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 		_, _ = fmt.Fprintln(w2, "Name\tValue\tSource\tRead-only\tDefault")
 
@@ -181,7 +190,6 @@ func (r *DescribeConsumerGroupResult) String() string {
 		}
 	}
 
-	// Total lag summary
 	totalLag := r.GetTotalLag()
 	topicCount := len(r.GetTopicNames())
 	_, _ = fmt.Fprintf(w, "Total Lag:\t%d messages across %d topic%s\n",
@@ -189,15 +197,14 @@ func (r *DescribeConsumerGroupResult) String() string {
 		topicCount,
 		pluralize(topicCount),
 	)
+	_ = w.Flush()
 
-	// Per-topic lag summary (sorted by lag descending)
-	_, _ = fmt.Fprintln(w, "")
-	_, _ = fmt.Fprintln(w, "Topic Lag Summary:")
-	_, _ = fmt.Fprintln(w, "\tTopic:Partitions\tLag")
+	_, _ = sb.WriteString("\nTopic Lag Summary:\n")
+	wLag := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(wLag, "Topic:Partitions\tLag")
 	lagByTopic := r.GetLagByTopic()
 	partitionsByTopic := r.GetPartitionCountByTopic()
 
-	// Create slice for sorting by lag
 	type topicLagPair struct {
 		topic string
 		lag   int64
@@ -206,24 +213,17 @@ func (r *DescribeConsumerGroupResult) String() string {
 	for topic, lag := range lagByTopic {
 		topicLags = append(topicLags, topicLagPair{topic, lag})
 	}
-
-	// Sort by lag descending (highest first)
 	sort.Slice(topicLags, func(i, j int) bool {
 		return topicLags[i].lag > topicLags[j].lag
 	})
-
-	// Display sorted topics
 	for _, tl := range topicLags {
-		partitionCount := partitionsByTopic[tl.topic]
-		_, _ = fmt.Fprintf(w, "\t%s:%d\t%d\n",
+		_, _ = fmt.Fprintf(wLag, "%s:%d\t%d\n",
 			tl.topic,
-			partitionCount,
+			partitionsByTopic[tl.topic],
 			tl.lag,
 		)
 	}
-
-	// Flush w before starting members tabwriter to preserve section order.
-	_ = w.Flush()
+	_ = wLag.Flush()
 
 	// Members section - grouped by member
 	_, _ = sb.WriteString("\nMembers:\n")
