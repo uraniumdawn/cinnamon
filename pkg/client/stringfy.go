@@ -90,7 +90,8 @@ func (r *TopicResult) String() string {
 		_, _ = fmt.Fprintf(w, "Messages Last Hour:\t%s\n", util.FormatNumber(r.GetMessagesLastHour()))
 
 		_, _ = fmt.Fprintln(w, "")
-		_, _ = fmt.Fprintln(w, "Offsets:\tpartition\t[start, end]\t(difference)\t(+on last hour)")
+		_, _ = fmt.Fprintln(w, "Offsets:")
+		_, _ = fmt.Fprintln(w, "\tPartition\t[Start, End]\tDifference\t(+on last hour)")
 		for _, p := range desc.Partitions {
 			end := r.endOffsets[int32(p.Partition)]
 			st := r.startOffsets[int32(p.Partition)]
@@ -101,7 +102,7 @@ func (r *TopicResult) String() string {
 			}
 			_, _ = fmt.Fprintf(
 				w,
-				"\t%d:\t[%d, %d]\t(%s)\t(%s)\n",
+				"\t%d:\t[%d, %d]\t%s\t(%s)\n",
 				p.Partition,
 				st,
 				end,
@@ -192,6 +193,7 @@ func (r *DescribeConsumerGroupResult) String() string {
 	// Per-topic lag summary (sorted by lag descending)
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "Topic Lag Summary:")
+	_, _ = fmt.Fprintln(w, "\tTopic:Partitions\tLag")
 	lagByTopic := r.GetLagByTopic()
 	partitionsByTopic := r.GetPartitionCountByTopic()
 
@@ -213,11 +215,10 @@ func (r *DescribeConsumerGroupResult) String() string {
 	// Display sorted topics
 	for _, tl := range topicLags {
 		partitionCount := partitionsByTopic[tl.topic]
-		_, _ = fmt.Fprintf(w, "\t%s:\t%d messages (%d partition%s)\n",
+		_, _ = fmt.Fprintf(w, "\t%s:%d\t%d\n",
 			tl.topic,
-			tl.lag,
 			partitionCount,
-			pluralize(partitionCount),
+			tl.lag,
 		)
 	}
 
