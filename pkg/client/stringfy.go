@@ -19,37 +19,32 @@ import (
 )
 
 func (r *ClusterResult) String() string {
-	var output string
-	output += fmt.Sprintf("Name: %s\n", r.Name)
-	output += fmt.Sprintf("ClusterId: %s\n", *r.ClusterID)
-	output += fmt.Sprintf("Controller: %s\n", *r.Controller)
-	output += fmt.Sprintf("Allowed operations: %s\n", r.AuthorizedOperations)
 	var sb strings.Builder
-	func(res kafka.DescribeClusterResult) {
-		sb.WriteString("\n")
-		sb.WriteString("Nodes:\n")
-		for _, node := range res.Nodes {
-			sb.WriteString(fmt.Sprintf("%s\n", node.String()))
-		}
-	}(r.DescribeClusterResult)
-	output += sb.String()
-	return output
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintf(w, "Name:\t%s\n", r.Name)
+	_, _ = fmt.Fprintf(w, "ClusterId:\t%s\n", *r.ClusterID)
+	_, _ = fmt.Fprintf(w, "Controller:\t%s\n", *r.Controller)
+	_, _ = fmt.Fprintf(w, "Allowed operations:\t%s\n", r.AuthorizedOperations)
+	_ = w.Flush()
+
+	sb.WriteString("\nNodes:\n")
+	for _, node := range r.DescribeClusterResult.Nodes {
+		_, _ = fmt.Fprintf(&sb, "%s\n", node.String())
+	}
+	return sb.String()
 }
 
 func (r *ResourceResult) String() string {
 	var sb strings.Builder
 	for _, result := range r.Results {
 		sb.WriteString("Configuration:\n")
-		w := tabwriter.NewWriter(&sb, 0, 0, 1, ' ', 0)
-		_, err := fmt.Fprintln(w, "Name\tValue\tSource\tRead-only\tDefault")
-		if err != nil {
-			log.Error().Err(err).Msg("Error to write Node description")
-		}
+		w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "Name\tValue\tSource\tRead-only\tDefault")
+
 		sorted := treemap.NewWithStringComparator()
 		for k, v := range result.Config {
 			sorted.Put(k, v)
 		}
-
 		sorted.Each(func(key, value any) {
 			e := value.(kafka.ConfigEntryResult)
 			_, err := fmt.Fprintf(
@@ -62,14 +57,10 @@ func (r *ResourceResult) String() string {
 				e.IsReadOnly,
 			)
 			if err != nil {
-				log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
+				log.Error().Err(err).Msg("failed to write config entry")
 			}
 		})
-
-		err = w.Flush()
-		if err != nil {
-			log.Error().Err(err).Msg("Error to flush Node description")
-		}
+		_ = w.Flush()
 	}
 	return sb.String()
 }
@@ -162,7 +153,7 @@ func (r *TopicResult) String() string {
 				e.IsReadOnly,
 			)
 			if err != nil {
-				log.Error().Err(err).Msg("Error to write Consumer Group Offsets description")
+				log.Error().Err(err).Msg("failed to write config entry")
 			}
 		})
 
@@ -282,7 +273,7 @@ func (r *DescribeConsumerGroupResult) String() string {
 		"Topic\tPartition\tCurrent-Offset\tLog-End-Offset\tLag\tConsumer-ID\tHost",
 	)
 
-	comparator := func(a, b interface{}) int {
+	comparator := func(a, b any) int {
 		tp1 := a.(TopicPartition)
 		tp2 := b.(TopicPartition)
 		if tp1.Topic == tp2.Topic {
@@ -300,7 +291,7 @@ func (r *DescribeConsumerGroupResult) String() string {
 	for tp, offset := range r.currentOffsets {
 		sorted.Put(tp, offset)
 	}
-	sorted.Each(func(key, value interface{}) {
+	sorted.Each(func(key, value any) {
 		tp := key.(TopicPartition)
 		offsets := value.(kafka.Offset)
 		consumerID := "-"

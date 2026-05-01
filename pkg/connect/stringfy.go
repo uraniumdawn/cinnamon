@@ -55,7 +55,7 @@ func (d *ConnectorDetail) String() string {
 
 		_, _ = fmt.Fprintf(w, "Tasks:\t%d\n", len(d.Status.Tasks))
 		for _, task := range d.Status.Tasks {
-			_, _ = fmt.Fprintf(w, "  Task %d:\t%s\n", task.ID, task.State)
+			_, _ = fmt.Fprintf(w, "Task %d:\t%s\n", task.ID, task.State)
 			if task.Trace != "" {
 				lines := strings.Split(task.Trace, "\n")
 				for i, line := range lines {
@@ -77,6 +77,7 @@ func (d *ConnectorDetail) String() string {
 
 	if len(d.Config) > 0 {
 		sb.WriteString("\n")
+		sb.WriteString("Configuration:\n")
 		w2 := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 		_, _ = fmt.Fprintln(w2, "Name\tValue")
 
