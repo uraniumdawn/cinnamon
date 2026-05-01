@@ -208,10 +208,21 @@ func (r *DescribeConsumerGroupResult) String() string {
 		return topicLags[i].lag > topicLags[j].lag
 	})
 	for _, tl := range topicLags {
-		_, _ = fmt.Fprintf(wLag, "%s:%d\t%d\n",
+		trend := ""
+		if r.prevLagByTopic != nil {
+			if prev, ok := r.prevLagByTopic[tl.topic]; ok {
+				if tl.lag > prev {
+					trend = "[↑]"
+				} else if tl.lag < prev {
+					trend = "[↓]"
+				}
+			}
+		}
+		_, _ = fmt.Fprintf(wLag, "%s:%d\t%d%s\n",
 			tl.topic,
 			partitionsByTopic[tl.topic],
 			tl.lag,
+			trend,
 		)
 	}
 	_ = wLag.Flush()

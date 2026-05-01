@@ -65,6 +65,7 @@ type App struct {
 	Colors                *config.ColorConfig
 	// ModalHideTimer        *time.Timer
 	CurrentFilters map[string]string // pageName -> filter text for search preservation
+	cgroupPrevLag  map[string]map[string]int64
 }
 
 type Selected struct {
@@ -128,6 +129,7 @@ func NewApp() *App {
 		Config:                cfg,
 		Colors:                colors,
 		CurrentFilters:        make(map[string]string),
+		cgroupPrevLag:         make(map[string]map[string]int64),
 	}
 
 	return app

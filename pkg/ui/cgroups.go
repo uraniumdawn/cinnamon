@@ -256,6 +256,8 @@ func (app *App) ConsumerGroup(name string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					description.SetPrevLagByTopic(app.cgroupPrevLag[name])
+					app.cgroupPrevLag[name] = description.GetLagByTopic()
 					desc := app.NewDescription(
 						util.BuildTitle(ConsumerGroup, name),
 					)

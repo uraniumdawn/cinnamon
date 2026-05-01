@@ -65,7 +65,14 @@ type DescribeConsumerGroupResult struct {
 	currentOffsets map[TopicPartition]kafka.Offset
 	logEndOffsets  map[TopicPartition]kafka.Offset
 	lag            map[TopicPartition]kafka.Offset
+	prevLagByTopic map[string]int64
 	mx             sync.RWMutex
+}
+
+// SetPrevLagByTopic sets the previous lag snapshot used to compute trend arrows in String().
+// Pass nil to suppress trend display (e.g. on first load).
+func (r *DescribeConsumerGroupResult) SetPrevLagByTopic(m map[string]int64) {
+	r.prevLagByTopic = m
 }
 
 // TopicPartition represents a topic and partition pair.
