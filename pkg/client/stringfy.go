@@ -87,13 +87,27 @@ func (r *TopicResult) String() string {
 		_, _ = fmt.Fprintf(w, "Total Messages:\t%s\n", util.FormatNumber(totalMessages))
 		_, _ = fmt.Fprintf(w, "Estimated Size:\t%s\n",
 			util.FormatSizeWithFallback(estimatedSize, totalMessages, isEstimate))
+		_, _ = fmt.Fprintf(w, "Messages Last Hour:\t%s\n", util.FormatNumber(r.GetMessagesLastHour()))
 
 		_, _ = fmt.Fprintln(w, "")
-		_, _ = fmt.Fprintln(w, "Offsets:")
+		_, _ = fmt.Fprintln(w, "Offsets:\tpartition\t[start, end]\t(difference)\t(+on last hour)")
 		for _, p := range desc.Partitions {
 			end := r.endOffsets[int32(p.Partition)]
 			st := r.startOffsets[int32(p.Partition)]
-			_, _ = fmt.Fprintf(w, "\t%d:\t[%d, %d] %d\n", p.Partition, st, end, end-st)
+			hourAgo := r.hourAgoOffsets[int32(p.Partition)]
+			var hourlyDelta int64
+			if hourAgo >= 0 {
+				hourlyDelta = int64(end - hourAgo)
+			}
+			_, _ = fmt.Fprintf(
+				w,
+				"\t%d:\t[%d, %d]\t(%s)\t(%s)\n",
+				p.Partition,
+				st,
+				end,
+				util.FormatNumber(int64(end)-int64(st)),
+				util.FormatNumber(hourlyDelta),
+			)
 		}
 		_, _ = fmt.Fprintln(w, "")
 		_, _ = fmt.Fprintln(w, "Partitions details:")

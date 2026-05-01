@@ -47,10 +47,11 @@ type TopicResult struct {
 	Name string
 	kafka.DescribeTopicsResult
 	kafka.DescribeACLsResult
-	Config       []kafka.ConfigResourceResult
-	startOffsets map[int32]kafka.Offset
-	endOffsets   map[int32]kafka.Offset
-	mx           sync.RWMutex
+	Config         []kafka.ConfigResourceResult
+	startOffsets   map[int32]kafka.Offset
+	endOffsets     map[int32]kafka.Offset
+	hourAgoOffsets map[int32]kafka.Offset
+	mx             sync.RWMutex
 }
 
 // ConsumerGroupsResult contains the list of consumer groups.
@@ -530,6 +531,13 @@ func (r *TopicResult) SetEndOffsets(o map[int32]kafka.Offset) {
 	r.endOffsets = o
 }
 
+// SetHourAgoOffsets stores the per-partition offsets at one hour ago.
+func (r *TopicResult) SetHourAgoOffsets(o map[int32]kafka.Offset) {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	r.hourAgoOffsets = o
+}
+
 func (r *TopicResult) SetTopicResultConfig(o []kafka.ConfigResourceResult) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -550,6 +558,20 @@ func (r *TopicResult) GetTotalMessages() int64 {
 		end := r.endOffsets[partition]
 		start := r.startOffsets[partition]
 		total += int64(end - start)
+	}
+	return total
+}
+
+// GetMessagesLastHour returns the total number of messages produced in the last hour across all partitions.
+// A partition contributes 0 if its hour-ago offset is negative (no messages produced in the last hour).
+func (r *TopicResult) GetMessagesLastHour() int64 {
+	var total int64
+	for partition, end := range r.endOffsets {
+		hourAgo := r.hourAgoOffsets[partition]
+		if hourAgo < 0 {
+			continue
+		}
+		total += int64(end - hourAgo)
 	}
 	return total
 }
@@ -765,7 +787,7 @@ func (client *Client) DescribeTopic(
 		topicResult.DescribeTopicsResult = desc
 
 		var wg sync.WaitGroup
-		wg.Add(3)
+		wg.Add(4)
 		go func() {
 			defer wg.Done()
 			tc, errConf := client.DescribeTopicConfig(name)
@@ -778,11 +800,14 @@ func (client *Client) DescribeTopic(
 
 		startOffsetsRq := make(map[kafka.TopicPartition]kafka.OffsetSpec)
 		endOffsetsRq := make(map[kafka.TopicPartition]kafka.OffsetSpec)
+		hourAgoOffsetsRq := make(map[kafka.TopicPartition]kafka.OffsetSpec)
+		hourAgoMs := time.Now().Add(-time.Hour).UnixMilli()
 		for _, d := range desc.TopicDescriptions {
 			for _, p := range d.Partitions {
 				tp := kafka.TopicPartition{Topic: &name, Partition: int32(p.Partition)}
 				startOffsetsRq[tp] = kafka.EarliestOffsetSpec
 				endOffsetsRq[tp] = kafka.LatestOffsetSpec
+				hourAgoOffsetsRq[tp] = kafka.NewOffsetSpecForTimestamp(hourAgoMs)
 			}
 		}
 
@@ -815,6 +840,17 @@ func (client *Client) DescribeTopic(
 				return
 			}
 			topicResult.SetEndOffsets(toOffsetsByPartition(end))
+		}()
+
+		go func() {
+			defer wg.Done()
+			hourAgo, err := client.ListOffsets(ctx, hourAgoOffsetsRq,
+				kafka.SetAdminIsolationLevel(kafka.IsolationLevelReadCommitted))
+			if err != nil {
+				errorChan <- err
+				return
+			}
+			topicResult.SetHourAgoOffsets(toOffsetsByPartition(hourAgo))
 		}()
 
 		wg.Wait()
