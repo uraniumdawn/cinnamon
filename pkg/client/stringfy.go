@@ -212,9 +212,9 @@ func (r *DescribeConsumerGroupResult) String() string {
 		if r.prevLagByTopic != nil {
 			if prev, ok := r.prevLagByTopic[tl.topic]; ok {
 				if tl.lag > prev {
-					trend = "[↑]"
+					trend = " ↑"
 				} else if tl.lag < prev {
-					trend = "[↓]"
+					trend = " ↓"
 				}
 			}
 		}

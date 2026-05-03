@@ -55,7 +55,7 @@ var keys = map[string]Pair{
 	},
 	"dsc": {
 		Key:   "<d>",
-		Value: "Describe Resource",
+		Value: "Describe",
 	},
 	"upd": {
 		Key:   "<Ctrl+u>",
@@ -173,6 +173,14 @@ var keys = map[string]Pair{
 		Key:   "<q>",
 		Value: "",
 	},
+	"sort_2": {
+		Key:   "<1/2>",
+		Value: "Sort by column",
+	},
+	"sort_3": {
+		Key:   "<1/2/3>",
+		Value: "Sort by column",
+	},
 }
 
 const (
@@ -269,6 +277,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"dsc",
 				"search",
+				"sort_2",
 				"upd",
 				"create",
 				"delete_t",
@@ -284,6 +293,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"dsc",
 				"search",
+				"sort_2",
 				"upd",
 				"delete_cg",
 				"backward",
@@ -324,6 +334,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"dsc",
 				"search",
+				"sort_3",
 				"upd",
 				"actions",
 				"delete_conn",
