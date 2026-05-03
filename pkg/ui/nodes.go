@@ -162,7 +162,7 @@ func (app *App) Node(id, url string) {
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Node, id),
 						desc,
-						FinalPageMenu, false,
+						NodeDecriptionPageMenu, false,
 					)
 					ClearStatus()
 				})

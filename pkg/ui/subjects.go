@@ -294,7 +294,7 @@ func (app *App) Schema(subject string, version int) {
 							v,
 						),
 						desc,
-						FinalPageMenu, false,
+						SubjectDecriptionPageMenu, false,
 					)
 					ClearStatus()
 				})

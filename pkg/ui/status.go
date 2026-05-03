@@ -30,9 +30,9 @@ func SendStatus(message string, ttl time.Duration, spinner bool) {
 	StatusLineCh <- Status{Message: message, TTL: ttl, Spinner: spinner}
 }
 
-// SendStatusWithDefaultTTL sends a status message with 10 second TTL and spinner
+// SendStatusWithDefaultTTL sends a status message with 10 second TTL and no spinner
 func SendStatusWithDefaultTTL(message string) {
-	StatusLineCh <- Status{Message: message, TTL: 10 * time.Second, Spinner: true}
+	StatusLineCh <- Status{Message: message, TTL: 10 * time.Second, Spinner: false}
 }
 
 // SendStatusInfinite sends a status message that never auto-clears with spinner

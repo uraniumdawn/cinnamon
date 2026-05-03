@@ -303,7 +303,7 @@ func (app *App) ConnectorDetail(name string) {
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Connect.Name, Connectors, name),
 						desc,
-						ConnectorDetailPageMenu, false,
+						ConnectorDescriptionPageMenu, false,
 					)
 					ClearStatus()
 				})
@@ -624,13 +624,13 @@ func (app *App) ConnectorConfigConfirm(name string, newConfig map[string]interfa
 			}
 			app.UpdateConnectorConfig(name, newConfig)
 			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
-			app.Layout.Menu.SetMenu(ConnectorDetailPageMenu)
+			app.Layout.Menu.SetMenu(ConnectorDescriptionPageMenu)
 			return nil
 		}
 
 		if event.Key() == tcell.KeyEsc {
 			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
-			app.Layout.Menu.SetMenu(ConnectorDetailPageMenu)
+			app.Layout.Menu.SetMenu(ConnectorDescriptionPageMenu)
 			return nil
 		}
 

@@ -33,6 +33,10 @@ var keys = map[string]Pair{
 		Key:   "<h>",
 		Value: "Backward",
 	},
+	"b/f": {
+		Key:   "<h/l>",
+		Value: "Backward/Forward",
+	},
 	"select": {
 		Key:   "<Enter>",
 		Value: "Select",
@@ -161,7 +165,7 @@ var keys = map[string]Pair{
 		Key:   "<Esc, Enter>",
 		Value: "Confirm and back",
 	},
-	"hscroll": {
+	"hlscroll": {
 		Key:   "<H,L>",
 		Value: "Scroll Left/Right",
 	},
@@ -198,14 +202,16 @@ const (
 	EditTopicInputMenu            = "EditTopicInputMenu"
 	ResetOffsetPageMenu           = "ResetOffsetPageMenu"
 	ConsumerGroupsPageMenu        = "ConsumerGroupsPageMenu"
-	ConsumerGroupDescribePageMenu = "ConsumerGroupDescribePageMenu"
 	SubjectsPageMenu              = "SubjectsPageMenu"
 	VersionsPageMenu              = "VersionsPageMenu"
-	FinalPageMenu                 = "FinalPageMenu"
+	ConsumerGroupDescribePageMenu = "ConsumerGroupDescribePageMenu"
+	TopicDecriptionPageMenu       = "TopicDescriptionPageMenu"
+	SubjectDecriptionPageMenu     = "SubjectDescriptionPageMenu"
+	NodeDecriptionPageMenu        = "NodeDescriptionPageMenu"
+	ConnectorDescriptionPageMenu  = "ConnectorDescriptionPageMenu"
 	CliTemplatesPageMenu          = "CliTemplatesPageMenu"
 	CliExecutePageMenu            = "CliExecutePageMenu"
 	ConnectorsPageMenu            = "ConnectorsPageMenu"
-	ConnectorDetailPageMenu       = "ConnectorDetailPageMenu"
 	ConnectorConfigEditPageMenu   = "ConnectorConfigEditPageMenu"
 	ConnectorActionsPageMenu      = "ConnectorActionsPageMenu"
 	DeleteConnectorPageMenu       = "DeleteConnectorPageMenu"
@@ -223,27 +229,61 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Content: table,
 		Flex:    flex,
 		Map: &map[string]*[]string{
-			ResourcesPageMenu:    {"sel", "select", "close"},
-			OpenedPagesMenu:      {"sel", "remove_page", "esc_confirm_opened"},
-			CreateTopicPageMenu:  {"sel", "edit", "submit", "default", "close"},
-			CreateTopicInputMenu: {"esc_confirm"},
-			EditTopicPageMenu:    {"sel", "edit", "submit", "close"},
-			EditTopicInputMenu:   {"esc_confirm"},
+			ResourcesPageMenu: {
+				"sel",
+				"select",
+				"close",
+			},
+			OpenedPagesMenu: {
+				"sel",
+				"remove_page",
+				"esc_confirm_opened",
+			},
+			CreateTopicPageMenu: {
+				"sel",
+				"edit",
+				"submit",
+				"default",
+				"close",
+			},
+			CreateTopicInputMenu: {
+				"esc_confirm",
+			},
+			EditTopicPageMenu: {
+				"sel",
+				"edit",
+				"submit",
+				"close",
+			},
+			EditTopicInputMenu: {
+				"esc_confirm",
+			},
 			ResetOffsetPageMenu: {
 				"sel",
 				"batch_set_st",
 				"submit_ctrl",
 				"close",
 			},
-			DeleteTopicPageMenu:         {"confirm", "cancel"},
-			DeleteConsumerGroupPageMenu: {"confirm", "cancel"},
-			CliTemplatesPageMenu:        {"sel", "copy_cli", "execute_cli", "close"},
+			DeleteTopicPageMenu: {
+				"confirm",
+				"cancel",
+			},
+			DeleteConsumerGroupPageMenu: {
+				"confirm",
+				"cancel",
+			},
+			CliTemplatesPageMenu: {
+				"sel",
+				"copy_cli",
+				"execute_cli",
+				"close",
+			},
 			ClustersPageMenu: {
 				"sel",
 				"select",
 				"res",
-				"opened",
 				"dsc",
+				"opened",
 				"forward",
 			},
 			SchemaRegistriesPageMenu: {
@@ -251,110 +291,133 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"select",
 				"res",
 				"opened",
-				"backward",
-				"forward",
+				"b/f",
 			},
 			ConnectPageMenu: {
 				"sel",
 				"select",
 				"res",
 				"opened",
-				"backward",
-				"forward",
+				"b/f",
 			},
 			NodesPageMenu: {
 				"sel",
 				"res",
-				"opened",
 				"dsc",
 				"upd",
-				"backward",
-				"forward",
+				"opened",
+				"b/f",
 			},
 			TopicsPageMenu: {
 				"sel",
 				"res",
-				"opened",
 				"dsc",
-				"search",
 				"sort_2",
-				"upd",
 				"create",
 				"delete_t",
 				"edit_topic",
 				"cli_commands",
-				"backward",
-				"forward",
+				"search",
+				"upd",
+				"opened",
+				"b/f",
 			},
-			CliExecutePageMenu: {"terminate_cli", "kill_cli", "backward", "forward"},
+			CliExecutePageMenu: {
+				"terminate_cli",
+				"kill_cli",
+				"b/f",
+			},
 			ConsumerGroupsPageMenu: {
 				"sel",
 				"res",
-				"opened",
 				"dsc",
-				"search",
 				"sort_2",
-				"upd",
 				"delete_cg",
-				"backward",
-				"forward",
+				"search",
+				"upd",
+				"opened",
+				"b/f",
 			},
 			ConsumerGroupDescribePageMenu: {
 				"res",
+				"reset_offset",
+				"hlscroll",
 				"opened",
 				"upd",
-				"reset_offset",
-				"hscroll",
-				"esc",
-				"backward",
-				"forward",
+				"b/f",
 			},
 			SubjectsPageMenu: {
 				"sel",
 				"select",
 				"res",
-				"opened",
 				"search",
+				"opened",
 				"upd",
-				"backward",
-				"forward",
+				"b/f",
 			},
 			VersionsPageMenu: {
 				"sel",
 				"res",
-				"opened",
 				"dsc",
+				"opened",
 				"upd",
-				"backward",
-				"forward",
+				"b/f",
 			},
 			ConnectorsPageMenu: {
 				"sel",
 				"res",
-				"opened",
 				"dsc",
-				"search",
 				"sort_3",
-				"upd",
 				"actions",
 				"delete_conn",
-				"backward",
-				"forward",
-			},
-			ConnectorDetailPageMenu: {
-				"res",
+				"search",
 				"opened",
 				"upd",
-				"hscroll",
-				"esc",
-				"edit",
-				"backward",
-				"forward",
+				"b/f",
 			},
-			ConnectorConfigEditPageMenu: {"submit", "cancel"},
-			ConnectorActionsPageMenu:    {"switch_act", "submit", "close"},
-			DeleteConnectorPageMenu:     {"confirm", "cancel"},
-			FinalPageMenu:               {"res", "opened", "upd", "hscroll", "esc", "backward", "forward"},
+			ConnectorDescriptionPageMenu: {
+				"res",
+				"edit",
+				"hlscroll",
+				"opened",
+				"upd",
+				"opened",
+				"b/f",
+			},
+			ConnectorConfigEditPageMenu: {
+				"submit",
+				"cancel",
+			},
+			ConnectorActionsPageMenu: {
+				"switch_act",
+				"submit",
+				"close",
+			},
+			DeleteConnectorPageMenu: {
+				"confirm",
+				"cancel",
+			},
+			TopicDecriptionPageMenu: {
+				"res",
+				"hlscroll",
+				"opened",
+				"upd",
+				"b/f",
+			},
+			SubjectDecriptionPageMenu: {
+				"res",
+				"hlscroll",
+				"opened",
+				"upd",
+				"b/f",
+			},
+			NodeDecriptionPageMenu: {
+				"res",
+				"hlscroll",
+				"opened",
+				"upd",
+				"b/f",
+			},
 		},
 		Colors: colors,
 	}

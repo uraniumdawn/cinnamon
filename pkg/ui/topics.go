@@ -280,7 +280,7 @@ func (app *App) Topic(name string) {
 					app.AddToPagesRegistry(
 						util.BuildPageKey(app.Selected.Cluster.Name, Topic, name),
 						desc,
-						FinalPageMenu, false,
+						TopicDecriptionPageMenu, false,
 					)
 					ClearStatus()
 				})
