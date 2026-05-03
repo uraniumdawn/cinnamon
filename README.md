@@ -21,29 +21,33 @@ A powerful Terminal UI (TUI) for Apache Kafka that provides an intuitive, keyboa
 ## Core Capabilities
 
 - **Multi-Cluster Management** - Connect and switch between multiple Kafka clusters seamlessly
-- **Topics Management** - Browse, create, edit, and delete Kafka topics with full configuration support
-- **Consumer Groups** - Monitor consumer groups, view lag, partition assignments, and member details
-- **Schema Registry Integration** - Browse subjects, view schema versions, and inspect Avro schemas
+- **Topics Management** - Browse, create, edit configs, increase partitions, and delete Kafka topics
+- **Consumer Groups** - Monitor consumer groups, view lag and partition assignments, reset offsets
+- **Schema Registry Integration** - Browse subjects, view schema versions, and inspect schemas
 - **Kafka Connect Management** - View, manage, and monitor Kafka Connect connectors
-- **Broker & Node Management** - View cluster node information, configurations, and health status
+- **Broker & Node Management** - View cluster node information and configurations
 - **CLI Command Templates** - Execute external tools (kcat, kafka-console-consumer) with auto-filled parameters
-- **Enhanced Navigation** - Forward/backward navigation through opened pages with dynamic menu keybindings
-- **Dynamic Search & Filtering** - Fuzzy search and autocomplete for topics and other resources
+- **Page History Navigation** - Forward/backward navigation through opened pages with dynamic menu keybindings
+- **Inline Search & Filtering** - Fuzzy search across topics, consumer groups, subjects, and connectors
+- **Column Sorting** - Sort table views by any column with ascending/descending toggle
+- **In-Memory Cache** - 5-minute TTL cache per resource; force-refresh any view with `Ctrl+U`
 
 
 ## Available Resources
 
-Access via `:` (colon) key:
+Access via `:` (colon) key. Schema Registry and Connect resources appear only when configured.
 
 | Resource | Description | Operations |
 |----------|-------------|------------|
-| **Clusters** | Kafka cluster management | Select, describe, view brokers |
-| **Schema-registries** | Schema Registry instances | Select, browse subjects |
-| **Connectors** | Kafka Connect connectors | List, describe, pause/resume/restart, delete |
-| **Topics** | Kafka topics | List, create, edit, delete, describe, search |
-| **Consumer groups** | Consumer groups | List, describe, view lag, search |
-| **Nodes** | Kafka brokers | List, view configuration |
+| **Clusters** | Kafka cluster management | Select, describe |
+| **Schema-registries** | Schema Registry instances | Select |
+| **Connect** | Kafka Connect instances | Select |
+| **Nodes** | Kafka brokers | List, describe |
+| **Topics** | Kafka topics | List, describe, create, edit configs, increase partitions, delete, search, sort, CLI templates |
+| **Consumer groups** | Consumer groups | List, describe, view lag, reset offsets, delete (Empty state only), search, sort |
 | **Subjects** | Schema Registry subjects | List, view versions, inspect schemas, search |
+| **Connectors** | Kafka Connect connectors | List, describe, pause/resume/restart, delete, search, sort |
+
 
 ## Installation
 
@@ -98,7 +102,7 @@ cinnamon
 To check the version:
 
 ```bash
-cinnamon --version
+cinnamon -version
 ```
 
 ## Configuration
@@ -159,7 +163,10 @@ cinnamon:
       selected: false
 
   # CLI Templates for external tool integration (optional)
-  # Use placeholders: {{bootstrap}} for broker address, {{topic}} for topic name
+  # Supported placeholders:
+  #   {{bootstrap}} — broker address(es) from the selected cluster
+  #   {{topic}}     — name of the selected topic
+  #   {{srURL}}     — Schema Registry URL from the selected registry
   cli_templates:
     # kcat example - consume from beginning with JSON formatting
     - kcat -b {{bootstrap}} -t {{topic}} -o beginning -f '{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n' -u | jq .
@@ -336,20 +343,12 @@ cd cinnamon
 # Install dependencies
 go mod download
 
-# Build
-go build -o cinnamon
+# Build (CGO_ENABLED=1 required for confluent-kafka-go)
+CGO_ENABLED=1 go build -o cinnamon
 
 # Run
 ./cinnamon
 ```
-
-### Technical Architecture
-
-**Event-Driven Design:**
-- Each resource type has a dedicated event channel
-- Event handlers run in separate goroutines
-- Non-blocking operations for responsive UI
-- Timeout contexts prevent hanging operations
 
 ### Logging
 
