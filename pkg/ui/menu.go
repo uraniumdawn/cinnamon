@@ -381,7 +381,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"hlscroll",
 				"opened",
 				"upd",
-				"opened",
 				"b/f",
 			},
 			ConnectorConfigEditPageMenu: {
