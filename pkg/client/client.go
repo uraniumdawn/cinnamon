@@ -30,6 +30,7 @@ type ClusterResult struct {
 type TopicStrategy struct {
 	Strategy    string
 	TimestampMs int64
+	OffsetValue int64
 }
 
 // ResourceResult contains configuration resource results.
@@ -678,6 +679,14 @@ func (client *Client) BatchResetConsumerGroupOffsets(
 			case "to-timestamp":
 				ts := topicStrategies[*partitions[0].Topic]
 				spec = kafka.NewOffsetSpecForTimestamp(ts.TimestampMs)
+			case "to-offset":
+				ts := topicStrategies[*partitions[0].Topic]
+				for _, tp := range partitions {
+					tpCopy := tp
+					tpCopy.Offset = kafka.Offset(ts.OffsetValue)
+					allOffsets = append(allOffsets, tpCopy)
+				}
+				continue
 			default:
 				errorChan <- fmt.Errorf("unknown reset strategy: %s", strategy)
 				return
