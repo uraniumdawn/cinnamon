@@ -17,6 +17,9 @@ cinnamon:
   keybinding:
     key: "grey"
     value: "grey"
+  search:
+    fgColor: "white"
+    bgColor: "black"
   selection:
     fgColor: "black"
     bgColor: "white"

@@ -53,10 +53,14 @@ func NewSearchModal(colors *config.ColorConfig) *Search {
 func NewInlineSearch(colors *config.ColorConfig) *tview.InputField {
 	search := tview.NewInputField()
 	search.SetTitleAlign(tview.AlignLeft)
-	search.SetLabel(" Search: ")
-	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
-	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	search.SetLabel(" / ")
+	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	search.SetFieldTextColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Search.BgColor))
+	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Search.BgColor))
+	search.SetBorder(true)
+	search.SetBorderColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	search.SetBorderPadding(0, 0, 0, 0)
 	return search
 }
 

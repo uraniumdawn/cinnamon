@@ -50,7 +50,7 @@ type Borders struct {
 const (
 	headerHeight   = 3
 	mainProportion = 15
-	searchHeight   = 1
+	searchHeight   = 3
 )
 
 func NewLayout(registry *PagesRegistry, colors *config.ColorConfig, hasSchemaRegistry, hasConnect bool) *Layout {

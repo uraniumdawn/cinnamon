@@ -31,6 +31,10 @@ type ColorConfig struct {
 			Key   string `yaml:"key"`
 			Value string `yaml:"value"`
 		} `yaml:"keybinding"`
+		Search struct {
+			FgColor string `yaml:"fgColor"`
+			BgColor string `yaml:"bgColor"`
+		} `yaml:"search"`
 		Selection struct {
 			FgColor string `yaml:"fgColor"`
 			BgColor string `yaml:"bgColor"`
