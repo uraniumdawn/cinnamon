@@ -355,6 +355,10 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		Foreground(tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor)).
 		Background(tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor))
 
+	isValueStrategy := func(strategy string) bool {
+		return strategy == "to-timestamp" || strategy == "to-offset"
+	}
+
 	table, valueInputs, valueColumnFlex, container := app.newOffsetBatchTable(allTopics, labelColor, selectedStyle)
 
 	// innerPages hosts the batch table as the base layer and the strategy picker as an overlay.
@@ -365,14 +369,15 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		return time.UnixMilli(ms).Format("2006-01-02T15:04:05.000")
 	}
 
-	// setInputPlaceholder shows/hides the placeholder depending on the active strategy.
+	// ── Precomputed placeholder styling (derived once per modal).
+	placeholderStyle := tcell.StyleDefault.Foreground(
+		tcell.GetColor(app.Colors.Cinnamon.Foreground),
+	).Background(
+		tcell.GetColor(app.Colors.Cinnamon.Background),
+	)
+	placeholderTextColor := tcell.GetColor(app.Colors.Cinnamon.Placeholder)
+
 	setInputPlaceholder := func(input *tview.InputField, strategy string) {
-		placeholderStyle := tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Colors.Cinnamon.Foreground),
-		).Background(
-			tcell.GetColor(app.Colors.Cinnamon.Background),
-		)
-		placeholderTextColor := tcell.GetColor(app.Colors.Cinnamon.Placeholder)
 		switch strategy {
 		case "to-timestamp":
 			input.SetPlaceholder("eg: 2025-02-23T00:00:00.000")
@@ -384,6 +389,23 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			input.SetPlaceholderTextColor(placeholderTextColor)
 		default:
 			input.SetPlaceholder("")
+		}
+	}
+
+	// setInputValueText sets the input text and resets the color for the given strategy & value.
+	// For value strategies with 0 committed value, preserves text but clears invalid red.
+	// For non-value strategies, clears the input entirely.
+	setInputValueText := func(input *tview.InputField, strategy string, value int64) {
+		if strategy == "to-timestamp" && value > 0 {
+			input.SetText(formatTimestampMs(value))
+			input.SetFieldTextColor(foregroundColor)
+		} else if strategy == "to-offset" && value > 0 {
+			input.SetText(fmt.Sprintf("%d", value))
+			input.SetFieldTextColor(foregroundColor)
+		} else if !isValueStrategy(strategy) {
+			input.SetText("")
+		} else {
+			input.SetFieldTextColor(foregroundColor)
 		}
 	}
 
@@ -403,17 +425,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				table.GetCell(row, 1).SetText(strategy)
 				if input, ok := valueInputs[row]; ok {
 					setInputPlaceholder(input, strategy)
-					if strategy == "to-timestamp" && value > 0 {
-						input.SetText(formatTimestampMs(value))
-						input.SetFieldTextColor(foregroundColor)
-					} else if strategy == "to-offset" && value > 0 {
-						input.SetText(fmt.Sprintf("%d", value))
-						input.SetFieldTextColor(foregroundColor)
-					} else if strategy != "to-timestamp" && strategy != "to-offset" {
-						input.SetText("")
-					} else {
-						input.SetFieldTextColor(foregroundColor)
-					}
+					setInputValueText(input, strategy, value)
 				}
 				delete(invalidValues, topic)
 			}
@@ -437,14 +449,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			return
 		}
 
-		var ts client.TopicStrategy
-		if topic == allTopicsRowName {
-			if len(allTopics) > 0 {
-				ts = topicStrategies[allTopics[0]]
-			}
-		} else {
-			ts = topicStrategies[topic]
-		}
+		ts := topicStrategies[topic]
 
 		if ts.Strategy == "" {
 			input.SetText("")
@@ -475,48 +480,17 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			currentValue := int64(0)
 			if len(allTopics) > 0 {
 				currentTs := topicStrategies[allTopics[0]]
-				switch currentTs.Strategy {
-				case "to-timestamp":
+				if currentTs.Strategy == "to-timestamp" {
 					currentValue = currentTs.TimestampMs
-				case "to-offset":
+				} else if currentTs.Strategy == "to-offset" {
 					currentValue = currentTs.OffsetValue
 				}
 			}
 			nextValue := currentValue
-			if strategy == "to-timestamp" || strategy == "to-offset" {
-				// Preserve currentValue if switching between value strategies
-			} else {
+			if !isValueStrategy(strategy) {
 				nextValue = 0
 			}
-
-			for _, t := range allTopics {
-				ts := client.TopicStrategy{Strategy: strategy}
-				if strategy == "to-timestamp" {
-					ts.TimestampMs = nextValue
-				} else if strategy == "to-offset" {
-					ts.OffsetValue = nextValue
-				}
-				topicStrategies[t] = ts
-				delete(invalidValues, t)
-				r := topicToRow(table, t)
-				if r > 0 {
-					table.GetCell(r, 1).SetText(strategy)
-					if input, ok := valueInputs[r]; ok {
-						setInputPlaceholder(input, strategy)
-						if strategy == "to-timestamp" && nextValue > 0 {
-							input.SetText(formatTimestampMs(nextValue))
-							input.SetFieldTextColor(foregroundColor)
-						} else if strategy == "to-offset" && nextValue > 0 {
-							input.SetText(fmt.Sprintf("%d", nextValue))
-							input.SetFieldTextColor(foregroundColor)
-						} else if strategy != "to-timestamp" && strategy != "to-offset" {
-							input.SetText("")
-						} else {
-							input.SetFieldTextColor(foregroundColor)
-						}
-					}
-				}
-			}
+			applyStrategyToAll(strategy, nextValue)
 			return
 		}
 
@@ -526,10 +500,8 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			TimestampMs: ts.TimestampMs,
 			OffsetValue: ts.OffsetValue,
 		}
-		if strategy != "to-timestamp" {
+		if !isValueStrategy(strategy) {
 			newTs.TimestampMs = 0
-		}
-		if strategy != "to-offset" {
 			newTs.OffsetValue = 0
 		}
 		topicStrategies[topic] = newTs
@@ -538,17 +510,13 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		table.GetCell(row, 1).SetText(strategy)
 		if input, ok := valueInputs[row]; ok {
 			setInputPlaceholder(input, strategy)
-			if strategy == "to-timestamp" && ts.TimestampMs > 0 {
-				input.SetText(formatTimestampMs(ts.TimestampMs))
-				input.SetFieldTextColor(foregroundColor)
-			} else if strategy == "to-offset" && ts.OffsetValue > 0 {
-				input.SetText(fmt.Sprintf("%d", ts.OffsetValue))
-				input.SetFieldTextColor(foregroundColor)
-			} else if strategy != "to-timestamp" && strategy != "to-offset" {
-				input.SetText("")
-			} else {
-				input.SetFieldTextColor(foregroundColor)
+			value := int64(0)
+			if strategy == "to-timestamp" {
+				value = ts.TimestampMs
+			} else if strategy == "to-offset" {
+				value = ts.OffsetValue
 			}
+			setInputValueText(input, strategy, value)
 		}
 	}
 
@@ -606,12 +574,7 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				return false
 			}
 			if topic == allTopicsRowName {
-				for _, t := range allTopics {
-					topicStrategies[t] = client.TopicStrategy{
-						Strategy: "to-offset", OffsetValue: offsetVal,
-					}
-					delete(invalidValues, t)
-				}
+				applyStrategyToAll("to-offset", offsetVal)
 				return true
 			}
 			topicStrategies[topic] = client.TopicStrategy{
@@ -857,9 +820,6 @@ func (app *App) ResetConsumerGroupOffsetModal(
 	}
 
 	for row, input := range valueInputs {
-		input := input
-		row := row
-
 		if row == len(allTopics)+2 { // new topic row
 			newTopicInputHandler(input)
 			continue
@@ -929,7 +889,7 @@ func (app *App) newOffsetBatchTable(
 
 	valueInput := tview.NewInputField().
 		SetFieldWidth(30).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
 	valueInputs[row] = valueInput
 	valueColumnFlex.AddItem(valueInput, 1, 0, false)
 
@@ -959,11 +919,10 @@ func (app *App) newOffsetBatchTable(
 				tcell.GetColor(app.Colors.Cinnamon.Background),
 			)).
 		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
 	valueInputs[newTopicRow] = newTopicInput
 	valueColumnFlex.AddItem(newTopicInput, 1, 0, false)
 
-	// Build the combined container.
 	container := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(table, 0, 2, true).
 		AddItem(tview.NewBox(), 1, 0, false).
