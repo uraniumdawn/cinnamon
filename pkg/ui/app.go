@@ -104,18 +104,23 @@ func (app *App) GetCurrentConnectClient() *connect.Client {
 }
 
 func NewApp() *App {
+	// Save real stderr before InitLogger redirects os.Stderr to the log file.
+	stderr := os.Stderr
 	InitLogger()
 
-	cfg, err := config.LoadAppConfig()
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to initialize config")
+	fatal := func(msg string, err error) {
+		fmt.Fprintf(stderr, "cinnamon: %s: %v\n", msg, err)
 		os.Exit(1)
 	}
 
-	colors, err := config.LoadColorConfig()
+	cfg, err := config.LoadAppConfig()
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to load color config")
-		os.Exit(1)
+		fatal("failed to load config", err)
+	}
+
+	colors, err := config.LoadColorConfig(cfg.Cinnamon.Style)
+	if err != nil {
+		fatal("failed to load style", err)
 	}
 
 	app := &App{

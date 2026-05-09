@@ -25,6 +25,7 @@ type Config struct {
 		CliTemplates     []string                `yaml:"cli_templates,omitempty"`
 		Connect          []*ConnectConfig        `yaml:"connect,omitempty"`
 		API              ApiConfig               `yaml:"api,omitempty"`
+		Style            string                  `yaml:"style,omitempty"`
 	} `yaml:"cinnamon"`
 }
 
