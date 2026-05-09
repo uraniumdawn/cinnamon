@@ -254,7 +254,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			EditTopicPageMenu: {
 				"sel",
 				"edit",
-				"submit",
+				"submit_ctrl",
 				"close",
 			},
 			EditTopicInputMenu: {

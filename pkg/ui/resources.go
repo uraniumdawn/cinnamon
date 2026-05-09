@@ -118,7 +118,7 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 // NewResourcesPage creates a new resources page showing available Kafka resources.
 func (app *App) NewResourcesPage() tview.Primitive {
 	table := tview.NewTable()
-	table.SetSelectable(true, false)
+	table.SetSelectable(true, false).SetBorderPadding(0, 0, 1, 0)
 
 	var allResources []string
 	addResource := func(name string) {
@@ -152,7 +152,7 @@ func (app *App) NewResourcesPage() tview.Primitive {
 	)
 
 	searchInput := tview.NewInputField()
-	searchInput.SetLabel("/ ")
+	searchInput.SetLabel(" / ")
 	searchInput.SetLabelColor(tcell.GetColor(app.Colors.Cinnamon.Search.FgColor))
 	searchInput.SetFieldTextColor(tcell.GetColor(app.Colors.Cinnamon.Search.FgColor))
 	searchInput.SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
@@ -207,7 +207,6 @@ func (app *App) NewResourcesPage() tview.Primitive {
 
 	container := tview.NewFlex().SetDirection(tview.FlexRow)
 	container.SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(" Resources ")
 	container.AddItem(table, 0, 1, true)
 	container.AddItem(searchInput, 1, 0, false)

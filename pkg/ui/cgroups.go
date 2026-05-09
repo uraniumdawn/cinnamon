@@ -470,6 +470,11 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		default:
 			input.SetText("")
 		}
+
+		// setInputPlaceholder resets SetFieldStyle to normal colors; re-apply red if still invalid.
+		if invalidValues[topic] {
+			input.SetFieldTextColor(tcell.ColorRed)
+		}
 	}
 
 	// applyStrategy sets the chosen strategy directly on the given topic row.

@@ -45,10 +45,10 @@ func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
 
 	// Display table shown inside the modal; rebuilt from openedPages on each open.
 	filteredPages := tview.NewTable()
-	filteredPages.SetSelectable(true, false)
+	filteredPages.SetSelectable(true, false).SetBorderPadding(0, 0, 1, 0)
 
 	searchInput := tview.NewInputField()
-	searchInput.SetLabel("/ ")
+	searchInput.SetLabel(" / ")
 	searchInput.SetLabelColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
 	searchInput.SetFieldTextColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
 	searchInput.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
@@ -56,7 +56,6 @@ func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
 
 	container := tview.NewFlex().SetDirection(tview.FlexRow)
 	container.SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(" Opened pages ")
 	container.AddItem(filteredPages, 0, 1, true)
 	container.AddItem(searchInput, 1, 0, false)
@@ -106,7 +105,7 @@ func (pr *PagesRegistry) RebuildFilteredPages(filter string) {
 	} else {
 		matches := fuzzy.Find(filter, names)
 		for i, match := range matches {
-			displayTable.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(i+1)))
+			displayTable.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(i)))
 			displayTable.SetCell(i, 1, tview.NewTableCell(match.Str))
 		}
 	}
