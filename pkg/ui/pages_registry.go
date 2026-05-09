@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/sahilm/fuzzy"
 
 	"github.com/uraniumdawn/cinnamon/pkg/config"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
@@ -25,37 +27,92 @@ type PagesRegistry struct {
 
 // UI contains the main UI components including pages and opened pages table.
 type UI struct {
-	Pages       *tview.Pages
-	OpenedPages *tview.Table
-	Main        tview.Primitive
+	Pages         *tview.Pages
+	OpenedPages   *tview.Table      // authoritative data registry, never displayed directly
+	FilteredPages *tview.Table      // display-only table shown in the modal
+	SearchInput   *tview.InputField // search input inside the opened-pages modal
+	Main          tview.Primitive
 }
 
 // Expiration is the default cache expiration time.
 const Expiration = time.Minute * 5
 
 // NewPagesRegistry creates a new pages registry.
-func NewPagesRegistry(_ *config.ColorConfig) *PagesRegistry {
-	table := tview.NewTable()
-	table.SetSelectable(true, false).
-		SetBorder(true).
+func NewPagesRegistry(colors *config.ColorConfig) *PagesRegistry {
+	// Data registry — source of truth for page order; never shown directly in the modal.
+	openedPages := tview.NewTable()
+	openedPages.SetSelectable(true, false)
+
+	// Display table shown inside the modal; rebuilt from openedPages on each open.
+	filteredPages := tview.NewTable()
+	filteredPages.SetSelectable(true, false)
+
+	searchInput := tview.NewInputField()
+	searchInput.SetLabel("/ ")
+	searchInput.SetLabelColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	searchInput.SetFieldTextColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	searchInput.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	searchInput.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+
+	container := tview.NewFlex().SetDirection(tview.FlexRow)
+	container.SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(" Opened pages ")
+	container.AddItem(filteredPages, 0, 1, true)
+	container.AddItem(searchInput, 1, 0, false)
 
 	pages := tview.NewPages()
 
 	registry := &PagesRegistry{
 		UI: &UI{
-			Pages:       pages,
-			OpenedPages: table,
-			Main:        util.NewModal(table),
+			Pages:         pages,
+			OpenedPages:   openedPages,
+			FilteredPages: filteredPages,
+			SearchInput:   searchInput,
+			Main:          util.NewModal(container),
 		},
 		PageMenuMap:     make(map[string]string),
 		SearchablePages: []string{},
 	}
 
+	searchInput.SetChangedFunc(func(text string) {
+		registry.RebuildFilteredPages(text)
+	})
+
 	registry.SetupPageMenus()
 
 	return registry
+}
+
+// RebuildFilteredPages repopulates FilteredPages from OpenedPages applying an optional fuzzy filter.
+func (pr *PagesRegistry) RebuildFilteredPages(filter string) {
+	dataTable := pr.UI.OpenedPages
+	displayTable := pr.UI.FilteredPages
+
+	rowCount := dataTable.GetRowCount()
+	names := make([]string, 0, rowCount)
+	for i := 0; i < rowCount; i++ {
+		if cell := dataTable.GetCell(i, 1); cell != nil {
+			names = append(names, cell.Text)
+		}
+	}
+
+	displayTable.Clear()
+	if filter == "" {
+		for i, name := range names {
+			displayTable.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(i)))
+			displayTable.SetCell(i, 1, tview.NewTableCell(name))
+		}
+	} else {
+		matches := fuzzy.Find(filter, names)
+		for i, match := range matches {
+			displayTable.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(i+1)))
+			displayTable.SetCell(i, 1, tview.NewTableCell(match.Str))
+		}
+	}
+	// Do NOT call Select(0, 0) here: it would trigger SetSelectionChangedFunc which calls
+	// SwitchToPage, overriding the user's selection on modal close.
+	// tview clamps the selectedRow to the valid range automatically on redraw.
 }
 
 func (pr *PagesRegistry) SetupPageMenus() {
@@ -216,10 +273,14 @@ func (app *App) ShowModalPage(pageName string) {
 		registry.UI.Pages.SendToFront(pageName)
 
 		if pageName == OpenedPages {
+			registry.RebuildFilteredPages("")
 			currentPage, _ := registry.UI.Pages.GetFrontPage()
-			tableRow := registry.findPageInTable(currentPage)
-			if tableRow >= 0 {
-				registry.UI.OpenedPages.Select(tableRow, 0)
+			for i := 0; i < registry.UI.FilteredPages.GetRowCount(); i++ {
+				cell := registry.UI.FilteredPages.GetCell(i, 1)
+				if cell != nil && cell.Text == currentPage {
+					registry.UI.FilteredPages.Select(i, 0)
+					break
+				}
 			}
 		}
 	}

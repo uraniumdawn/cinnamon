@@ -231,11 +231,13 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Map: &map[string]*[]string{
 			ResourcesPageMenu: {
 				"sel",
+				"search",
 				"select",
 				"close",
 			},
 			OpenedPagesMenu: {
 				"sel",
+				"search",
 				"remove_page",
 				"esc_confirm_opened",
 			},

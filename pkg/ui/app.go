@@ -218,7 +218,7 @@ func (app *App) Run() {
 	)
 	app.Layout.PagesRegistry.UI.Pages.ShowPage(Clusters)
 	app.Layout.Menu.SetMenu(ClustersPageMenu)
-	app.Layout.PagesRegistry.UI.OpenedPages.SetSelectedStyle(
+	app.Layout.PagesRegistry.UI.FilteredPages.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 		).Background(
@@ -226,7 +226,7 @@ func (app *App) Run() {
 		),
 	)
 
-	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
+	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.FilteredPages)
 	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
