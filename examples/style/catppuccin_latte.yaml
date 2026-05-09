@@ -1,0 +1,29 @@
+# Catppuccin Latte (light) color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — blue (accent) + peach (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#4C4F69"
+    bgColor: "#EFF1F5"
+  status:
+    fgColor: "#8C8FA1"
+    bgColor: "#EFF1F5"
+  label:
+    fgColor: "#FE640B"
+    bgColor: "#EFF1F5"
+  keybinding:
+    key: "#1E66F5"
+    value: "#4C4F69"
+  search:
+    fgColor: "#4C4F69"
+    bgColor: "#EFF1F5"
+  selection:
+    fgColor: "#EFF1F5"
+    bgColor: "#1E66F5"
+  placeholder: "#ACB0BE"
+  title: "#1E66F5"
+  border: "#1E66F5"
+  background: "#EFF1F5"
+  foreground: "#4C4F69"

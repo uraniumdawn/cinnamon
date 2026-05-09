@@ -1,0 +1,29 @@
+# Uranium V2 color configuration for Cinnamon UI
+# Color harmony based on Itten's split-complementary — green (accent) + orange (split-complement)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#EBDBB2"
+    bgColor: "#272727"
+  status:
+    fgColor: "#6E6E6E"
+    bgColor: "#272727"
+  label:
+    fgColor: "#CB6D2A"
+    bgColor: "#272727"
+  keybinding:
+    key: "#78A960"
+    value: "#EBDBB2"
+  search:
+    fgColor: "#EBDBB2"
+    bgColor: "#272727"
+  selection:
+    fgColor: "#272727"
+    bgColor: "#78A960"
+  placeholder: "#505050"
+  title: "#78A960"
+  border: "#78A960"
+  background: "#272727"
+  foreground: "#EBDBB2"

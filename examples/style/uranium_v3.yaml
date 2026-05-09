@@ -1,0 +1,27 @@
+# # Uranium V2 color configuration for Cinnamon UI
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#ebdbb2"
+    bgColor: "#272727"
+  status:
+    fgColor: "grey"
+    bgColor: "#272727"
+  label:
+    fgColor: "orange"
+    bgColor: "#272727"
+  keybinding:
+    key: "green"
+    value: "grey"
+  search:
+    fgColor: "#ebdbb2"
+    bgColor: "#272727"
+  selection:
+    fgColor: "#272727"
+    bgColor: "#ebdbb2"
+  title: "orange"
+  border: "#ebdbb2"
+  background: "#272727"
+  foreground: "#ebdbb2"
