@@ -1,0 +1,29 @@
+# Blue accents color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — blue (accent) + orange (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#D4D4D4"
+    bgColor: "#1E1E1E"
+  status:
+    fgColor: "#8A9BA8"
+    bgColor: "#1E1E1E"
+  label:
+    fgColor: "#FF8C42"
+    bgColor: "#1E1E1E"
+  keybinding:
+    key: "#4A9EFF"
+    value: "#D4D4D4"
+  search:
+    fgColor: "#D4D4D4"
+    bgColor: "#1E1E1E"
+  selection:
+    fgColor: "#1E1E1E"
+    bgColor: "#4A9EFF"
+  placeholder: "#5A7A9A"
+  title: "#4A9EFF"
+  border: "#4A9EFF"
+  background: "#1E1E1E"
+  foreground: "#D4D4D4"
