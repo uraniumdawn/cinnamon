@@ -157,6 +157,7 @@ func (app *App) NewResourcesPage() tview.Primitive {
 	searchInput.SetFieldTextColor(tcell.GetColor(app.Colors.Cinnamon.Search.FgColor))
 	searchInput.SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
 	searchInput.SetBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+	app.ResourcesSearchInput = searchInput
 
 	searchInput.SetChangedFunc(func(text string) {
 		filterResourcesTable(table, allResources, text)

@@ -64,8 +64,9 @@ type App struct {
 	Config                *config.Config
 	Colors                *config.ColorConfig
 	// ModalHideTimer        *time.Timer
-	CurrentFilters map[string]string // pageName -> filter text for search preservation
-	cgroupPrevLag  map[string]map[string]int64
+	CurrentFilters       map[string]string // pageName -> filter text for search preservation
+	cgroupPrevLag        map[string]map[string]int64
+	ResourcesSearchInput *tview.InputField
 }
 
 type Selected struct {

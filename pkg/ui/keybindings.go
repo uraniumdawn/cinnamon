@@ -5,6 +5,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -105,10 +107,18 @@ func (app *App) OpenPagesKeyHandler(filteredTable *tview.Table) {
 }
 
 func (app *App) MainOperationKeyHandler() {
+	var lastColonPress time.Time
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if IsKey(event, ':') {
 			if !app.IsSearchInFocus() && !app.IsInputFieldInFocus() {
+				focusSearch := time.Since(lastColonPress) < 350*time.Millisecond
+				lastColonPress = time.Now()
 				app.ShowModalPage(Resources)
+				if focusSearch && app.ResourcesSearchInput != nil {
+					app.SetFocus(app.ResourcesSearchInput)
+					return nil
+				}
 			}
 		}
 
