@@ -91,7 +91,7 @@ mv cinnamon /usr/local/bin/
 Cinnamon requires at least one configuration file:
 
 - `~/.config/cinnamon/config.yaml` - Application and cluster configuration (required)
-- `~/.config/cinnamon/style.yaml` - UI color customization (optional)
+- Style file - UI color customization, path set via `cinnamon.style` in config.yaml (optional)
 
 ### 2. Run Cinnamon
 
@@ -116,6 +116,9 @@ cinnamon:
   # API Configuration
   api:
     timeout: 10  # API call timeout in seconds (default: 10)
+
+  # Style file path (optional) — see examples/style/ for ready-made themes
+  style: ~/.config/cinnamon/my_style.yaml
 
   # Define your Kafka clusters
   clusters:
@@ -205,125 +208,20 @@ sasl.password: ${KAFKA_PASSWORD}
 - Affects cluster describe, topic operations, consumer group queries
 - Default: 10 seconds if not specified
 
-### style.yaml
+### Style
 
-Create `~/.config/cinnamon/style.yaml` to customize the UI colors (optional):
+Set the path to a style file via `cinnamon.style` in `config.yaml`:
 
 ```yaml
-# Color configuration for Cinnamon UI
-# You can use tcell color names or RGB hex values (e.g., "#ffffff")
-# Available color names: black, white, red, green, blue, yellow, orange, purple,
-# pink, grey, brown, beige, cyan, etc.
-# Use "default" to inherit your terminal's default colors
-
 cinnamon:
-  # Cluster selector component colors
-  cluster:
-    # Text color for cluster names
-    fgColor: "white"
-    # Background color for cluster selector
-    bgColor: "black"
-
-  # Status bar colors (bottom bar showing current context)
-  status:
-    # Status bar text color
-    fgColor: "grey"
-    # Status bar background color
-    bgColor: "black"
-
-  # Label colors (field labels, form labels)
-  label:
-    # Label text color
-    fgColor: "orange"
-    # Label background color
-    bgColor: "black"
-
-  # Keybinding hints display
-  keybinding:
-    # Color for keyboard shortcut keys (e.g., ":", "Enter")
-    key: "grey"
-    # Color for keybinding descriptions
-    value: "grey"
-
-  # Selected/highlighted item colors
-  selection:
-    # Text color for selected items in lists
-    fgColor: "black"
-    # Background color for selected items
-    bgColor: "white"
-
-  # Placeholder text color (empty states, input hints)
-  placeholder: "grey"
-
-  # Title text color (page titles, modal headers)
-  title: "orange"
-
-  # Border color for panels and modals
-  border: "white"
-
-  # Global background color (main application background)
-  background: "black"
-
-  # Global foreground color (main application text)
-  foreground: "white"
+  style: ~/.config/cinnamon/my_style.yaml
+  clusters:
+    ...
 ```
 
-#### Alternative Color Schemes
+The style file is merged on top of `default_style.yaml`, so you only need to override the fields you want to change. Colors can be specified as tcell color names (`"white"`, `"grey"`) or RGB hex values (`"#1E1E1E"`). Use `"default"` to inherit your terminal's background or foreground color.
 
-**Dark Theme with Blue Accents:**
-```yaml
-cinnamon:
-  cluster:
-    fgColor: "#4A9EFF"
-    bgColor: "#1E1E1E"
-  selection:
-    fgColor: "#1E1E1E"
-    bgColor: "#4A9EFF"
-  title: "#4A9EFF"
-  border: "#4A9EFF"
-  background: "#1E1E1E"
-  foreground: "#D4D4D4"
-```
-
-**Solarized Dark:**
-```yaml
-cinnamon:
-  cluster:
-    fgColor: "#93A1A1"
-    bgColor: "#002B36"
-  selection:
-    fgColor: "#002B36"
-    bgColor: "#268BD2"
-  title: "#B58900"
-  border: "#586E75"
-  background: "#002B36"
-  foreground: "#839496"
-```
-
-**Gruvbox Dark:**
-```yaml
-cinnamon:
-  cluster:
-    fgColor: "#EBDBB2"
-    bgColor: "#282828"
-  status:
-    fgColor: "#928374"
-    bgColor: "#282828"
-  label:
-    fgColor: "#FE8019"
-    bgColor: "#282828"
-  keybinding:
-    key: "#928374"
-    value: "#A89984"
-  selection:
-    fgColor: "#282828"
-    bgColor: "#FABD2F"
-  placeholder: "#928374"
-  title: "#FE8019"
-  border: "#EBDBB2"
-  background: "#282828"
-  foreground: "#EBDBB2"
-```
+**Ready-made themes** — see [`examples/style/`](examples/style/):
 
 ## Development
 
