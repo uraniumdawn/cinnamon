@@ -700,7 +700,12 @@ func (app *App) ConnectorActionsModal(connectorName, state string) {
 	actionField := tview.NewInputField().
 		SetFieldWidth(width).
 		SetText(actions[0]).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+		SetFieldStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			))
 	actionField.SetDisabled(true)
 
 	selection := tview.NewTable()

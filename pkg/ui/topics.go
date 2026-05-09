@@ -311,42 +311,35 @@ func (app *App) CreateTopic() {
 
 	topicName := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholderStyle(
+		SetFieldStyle(
 			tcell.StyleDefault.Foreground(
 				tcell.GetColor(app.Colors.Cinnamon.Foreground),
 			).Background(
 				tcell.GetColor(app.Colors.Cinnamon.Background),
 			)).
-		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder))
 
 	replicationFactor := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault)
-	replicationFactor.SetAcceptanceFunc(tview.InputFieldInteger)
-	replicationFactor.SetPlaceholderStyle(
-		tcell.StyleDefault.Foreground(
-			tcell.GetColor(app.Colors.Cinnamon.Foreground),
-		).Background(
-			tcell.GetColor(app.Colors.Cinnamon.Background),
-		)).
-		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
-
-	partitions := tview.NewInputField().
-		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault)
-	partitions.SetAcceptanceFunc(tview.InputFieldInteger)
-	partitions.
-		SetPlaceholderStyle(
+		SetFieldStyle(
 			tcell.StyleDefault.Foreground(
 				tcell.GetColor(app.Colors.Cinnamon.Foreground),
 			).Background(
 				tcell.GetColor(app.Colors.Cinnamon.Background),
 			)).
-		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder))
+	replicationFactor.SetAcceptanceFunc(tview.InputFieldInteger)
+
+	partitions := tview.NewInputField().
+		SetFieldWidth(width).
+		SetFieldStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder))
+	partitions.SetAcceptanceFunc(tview.InputFieldInteger)
 
 	// Text area for optional properties (multi-line)
 	configTextArea := tview.NewTextArea().
@@ -763,30 +756,37 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 
 	topicNameField := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetFieldStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
 		SetText(topicName)
 	topicNameField.SetDisabled(true)
 
 	replicationFactorField := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault).
+		SetFieldStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
 		SetText(fmt.Sprintf("%d", replicationFactor))
 	replicationFactorField.SetDisabled(true)
 
 	partitionsField := tview.NewInputField().
 		SetFieldWidth(width).
-		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetText(fmt.Sprintf("%d", partitionCount))
-	partitionsField.SetAcceptanceFunc(tview.InputFieldInteger)
-	partitionsField.
-		SetPlaceholderStyle(
+		SetFieldStyle(
 			tcell.StyleDefault.Foreground(
 				tcell.GetColor(app.Colors.Cinnamon.Foreground),
 			).Background(
 				tcell.GetColor(app.Colors.Cinnamon.Background),
 			)).
 		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Label.BgColor))
+		SetText(fmt.Sprintf("%d", partitionCount))
+	partitionsField.SetAcceptanceFunc(tview.InputFieldInteger)
 
 	configTextArea := tview.NewTextArea()
 

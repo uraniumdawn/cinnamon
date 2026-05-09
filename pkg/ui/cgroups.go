@@ -369,23 +369,21 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		return time.UnixMilli(ms).Format("2006-01-02T15:04:05.000")
 	}
 
-	// ── Precomputed placeholder styling (derived once per modal).
-	placeholderStyle := tcell.StyleDefault.Foreground(
-		tcell.GetColor(app.Colors.Cinnamon.Foreground),
-	).Background(
-		tcell.GetColor(app.Colors.Cinnamon.Background),
-	)
 	placeholderTextColor := tcell.GetColor(app.Colors.Cinnamon.Placeholder)
 
 	setInputPlaceholder := func(input *tview.InputField, strategy string) {
+		input.SetFieldStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			))
 		switch strategy {
 		case "to-timestamp":
 			input.SetPlaceholder("eg: 2025-02-23T00:00:00.000")
-			input.SetPlaceholderStyle(placeholderStyle)
 			input.SetPlaceholderTextColor(placeholderTextColor)
 		case "to-offset":
 			input.SetPlaceholder("19 digits")
-			input.SetPlaceholderStyle(placeholderStyle)
 			input.SetPlaceholderTextColor(placeholderTextColor)
 		default:
 			input.SetPlaceholder("")
@@ -511,9 +509,10 @@ func (app *App) ResetConsumerGroupOffsetModal(
 		if input, ok := valueInputs[row]; ok {
 			setInputPlaceholder(input, strategy)
 			value := int64(0)
-			if strategy == "to-timestamp" {
+			switch strategy {
+			case "to-timestamp":
 				value = ts.TimestampMs
-			} else if strategy == "to-offset" {
+			case "to-offset":
 				value = ts.OffsetValue
 			}
 			setInputValueText(input, strategy, value)
@@ -800,7 +799,16 @@ func (app *App) ResetConsumerGroupOffsetModal(
 				// Create a value InputField for the new topic row (no placeholder by default).
 				newInput := tview.NewInputField().
 					SetFieldWidth(30).
-					SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+					SetFieldStyle(
+						tcell.StyleDefault.Foreground(
+							tcell.GetColor(app.Colors.Cinnamon.Foreground),
+						).Background(
+							tcell.GetColor(app.Colors.Cinnamon.Background),
+						)).
+					SetPlaceholderStyle(
+						tcell.StyleDefault.Background(
+							tcell.GetColor(app.Colors.Cinnamon.Background),
+						))
 
 				// Slide the "+ new topic" input down in the map and register the new input.
 				valueInputs[insertRow+1] = valueInputs[insertRow]
@@ -889,7 +897,16 @@ func (app *App) newOffsetBatchTable(
 
 	valueInput := tview.NewInputField().
 		SetFieldWidth(30).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+		SetFieldStyle(
+			tcell.StyleDefault.Foreground(
+				tcell.GetColor(app.Colors.Cinnamon.Foreground),
+			).Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			)).
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Background(
+				tcell.GetColor(app.Colors.Cinnamon.Background),
+			))
 	valueInputs[row] = valueInput
 	valueColumnFlex.AddItem(valueInput, 1, 0, false)
 
@@ -900,7 +917,16 @@ func (app *App) newOffsetBatchTable(
 
 		valueInput := tview.NewInputField().
 			SetFieldWidth(30).
-			SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+			SetFieldStyle(
+				tcell.StyleDefault.Foreground(
+					tcell.GetColor(app.Colors.Cinnamon.Foreground),
+				).Background(
+					tcell.GetColor(app.Colors.Cinnamon.Background),
+				)).
+			SetPlaceholderStyle(
+				tcell.StyleDefault.Background(
+					tcell.GetColor(app.Colors.Cinnamon.Background),
+				))
 		valueInputs[row] = valueInput
 		valueColumnFlex.AddItem(valueInput, 1, 0, false)
 	}
@@ -912,14 +938,13 @@ func (app *App) newOffsetBatchTable(
 
 	newTopicInput := tview.NewInputField().
 		SetFieldWidth(30).
-		SetPlaceholderStyle(
+		SetFieldStyle(
 			tcell.StyleDefault.Foreground(
 				tcell.GetColor(app.Colors.Cinnamon.Foreground),
 			).Background(
 				tcell.GetColor(app.Colors.Cinnamon.Background),
 			)).
-		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder)).
-		SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder))
 	valueInputs[newTopicRow] = newTopicInput
 	valueColumnFlex.AddItem(newTopicInput, 1, 0, false)
 
