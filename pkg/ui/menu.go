@@ -153,6 +153,10 @@ var keys = map[string]Pair{
 		Key:   "<Enter>",
 		Value: "Confirm",
 	},
+	"enter_value": {
+		Key:   "<Enter>",
+		Value: "Enter Value",
+	},
 	"esc": {
 		Key:   "<Esc>",
 		Value: "Back",
@@ -189,6 +193,10 @@ var keys = map[string]Pair{
 		Key:   "<1/2/3>",
 		Value: "Sort by column",
 	},
+	"find": {
+		Key:   "<f>",
+		Value: "Find By",
+	},
 }
 
 const (
@@ -220,6 +228,7 @@ const (
 	ConnectorActionsPageMenu      = "ConnectorActionsPageMenu"
 	DeleteConnectorPageMenu       = "DeleteConnectorPageMenu"
 	ConnectPageMenu               = "ConnectPageMenu"
+	FindByPageMenu                = "FindByPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -291,6 +300,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"res_search",
 				"dsc",
+				"find",
 				"opened",
 				"forward",
 			},
@@ -436,6 +446,11 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"opened",
 				"upd",
 				"b/f",
+			},
+			FindByPageMenu: {
+				"sel",
+				"enter_value",
+				"esc",
 			},
 		},
 		Colors: colors,

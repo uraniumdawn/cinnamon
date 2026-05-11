@@ -31,6 +31,8 @@ const (
 	ResetCgroupOffsetEventType EventType = "cgroup:reset-offset"
 	// DeleteCgroupEventType is the event type for deleting a consumer group.
 	DeleteCgroupEventType EventType = "cgroup:delete"
+	// FindCgroupsByTopicEventType is the event type for finding consumer groups by topic.
+	FindCgroupsByTopicEventType EventType = "cgroups:find-by-topic"
 )
 
 // CgroupsChannel is the channel for consumer group events.
@@ -93,6 +95,22 @@ func (app *App) RunCgroupsEventHandler(ctx context.Context, in chan Event) {
 						app.DeleteConsumerGroup(groupName)
 						app.ShowModalPage(DeleteConsumerGroup)
 					})
+
+				case FindCgroupsByTopicEventType:
+					topicName := event.Payload.Data.(string)
+					force := event.Payload.Force
+					pageName := util.BuildPageKey(
+						app.Selected.Cluster.Name,
+						ConsumerGroups,
+						"topic",
+						topicName,
+					)
+					_, found := app.Cache.Get(pageName)
+					if found && !force {
+						app.SwitchToPage(pageName)
+					} else {
+						app.ConsumerGroupsByTopic(topicName)
+					}
 				}
 			}
 		}
@@ -115,112 +133,14 @@ func (app *App) ConsumerGroups() {
 			case groups := <-resultCh:
 				app.QueueUpdateDraw(func() {
 					table := app.NewGroupsTable(groups)
-					title := util.BuildTitle(ConsumerGroups,
-						"["+strconv.Itoa(len(groups.Valid))+"]")
-					table.SetTitle(title)
-					app.AddToPagesRegistry(
-						util.BuildPageKey(
-							app.Selected.Cluster.Name,
-							ConsumerGroups,
-						),
-						table,
-						ConsumerGroupsPageMenu, true,
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, ConsumerGroups)
+					title := util.BuildTitle(
+						ConsumerGroups,
+						"["+strconv.Itoa(len(groups.Valid))+"]",
 					)
-					sortCol := 0
-					sortDesc := false
-					labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
-
-					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
-						}
-
-						if IsKey(event, 'd') {
-							row, _ := table.GetSelection()
-							groupName := table.GetCell(row, 0).Text
-							Publish(
-								CgroupsChannel,
-								GetCgroupEventType,
-								Payload{groupName, false},
-							)
-						}
-
-						if event.Key() == tcell.KeyCtrlD {
-							if app.IsCurrentClusterReadOnly() {
-								SendStatusWithDefaultTTL(
-									"[red]cluster is in read-only mode",
-								)
-								return event
-							}
-							row, _ := table.GetSelection()
-							groupName := table.GetCell(row, 0).Text
-
-							for _, g := range groups.Valid {
-								if g.GroupID == groupName {
-									if g.State != kafka.ConsumerGroupStateEmpty {
-										msg := fmt.Sprintf(
-											"[red]cannot delete: consumer group state is %s, must be Empty",
-											g.State,
-										)
-										SendStatusWithDefaultTTL(msg)
-										return event
-									}
-									break
-								}
-							}
-
-							Publish(
-								CgroupsChannel,
-								DeleteCgroupEventType,
-								Payload{groupName, false},
-							)
-						}
-
-						if IsKey(event, '1') && !app.IsSearchInFocus() {
-							if sortCol == 0 {
-								sortDesc = !sortDesc
-							} else {
-								sortCol = 0
-								sortDesc = false
-							}
-							sortGroupsTable(
-								table,
-								groups.Valid,
-								sortCol,
-								sortDesc,
-								labelColor,
-							)
-							table.ScrollToBeginning()
-							return event
-						}
-
-						if IsKey(event, '2') && !app.IsSearchInFocus() {
-							if sortCol == 1 {
-								sortDesc = !sortDesc
-							} else {
-								sortCol = 1
-								sortDesc = false
-							}
-							sortGroupsTable(
-								table,
-								groups.Valid,
-								sortCol,
-								sortDesc,
-								labelColor,
-							)
-							table.ScrollToBeginning()
-							return event
-						}
-
-						return event
+					app.setupGroupsTable(table, groups, pageKey, title, func() {
+						Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})
 					})
-
-					app.AssignSearch(func(text string) {
-						filterConsumerGroupsTable(table, groups.Valid, text, labelColor)
-						util.SetSearchableTableTitle(table, title, text)
-						table.ScrollToBeginning()
-					})
-
 					ClearStatus()
 				})
 				cancel()
@@ -239,6 +159,223 @@ func (app *App) ConsumerGroups() {
 			}
 		}
 	}()
+}
+
+// setupGroupsTable wires sorting, search, key bindings, and page registration for a consumer groups table.
+func (app *App) setupGroupsTable(
+	table *tview.Table,
+	groups *client.ConsumerGroupsResult,
+	pageKey string,
+	title string,
+	onRefresh func(),
+) {
+	table.SetTitle(title)
+	app.AddToPagesRegistry(pageKey, table, ConsumerGroupsPageMenu, true)
+
+	sortCol := 0
+	sortDesc := false
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyCtrlU {
+			onRefresh()
+		}
+
+		if IsKey(event, 'd') {
+			row, _ := table.GetSelection()
+			groupName := table.GetCell(row, 0).Text
+			Publish(CgroupsChannel, GetCgroupEventType, Payload{groupName, false})
+		}
+
+		if event.Key() == tcell.KeyCtrlD {
+			if app.IsCurrentClusterReadOnly() {
+				SendStatusWithDefaultTTL("[red]cluster is in read-only mode")
+				return event
+			}
+			row, _ := table.GetSelection()
+			groupName := table.GetCell(row, 0).Text
+
+			for _, g := range groups.Valid {
+				if g.GroupID == groupName {
+					if g.State != kafka.ConsumerGroupStateEmpty {
+						SendStatusWithDefaultTTL(fmt.Sprintf(
+							"[red]cannot delete: consumer group state is %s, must be Empty",
+							g.State,
+						))
+						return event
+					}
+					break
+				}
+			}
+
+			Publish(CgroupsChannel, DeleteCgroupEventType, Payload{groupName, false})
+		}
+
+		if IsKey(event, '1') && !app.IsSearchInFocus() {
+			if sortCol == 0 {
+				sortDesc = !sortDesc
+			} else {
+				sortCol = 0
+				sortDesc = false
+			}
+			sortGroupsTable(table, groups.Valid, sortCol, sortDesc, labelColor)
+			table.ScrollToBeginning()
+			return event
+		}
+
+		if IsKey(event, '2') && !app.IsSearchInFocus() {
+			if sortCol == 1 {
+				sortDesc = !sortDesc
+			} else {
+				sortCol = 1
+				sortDesc = false
+			}
+			sortGroupsTable(table, groups.Valid, sortCol, sortDesc, labelColor)
+			table.ScrollToBeginning()
+			return event
+		}
+
+		return event
+	})
+
+	app.AssignSearch(func(text string) {
+		filterConsumerGroupsTable(table, groups.Valid, text, labelColor)
+		util.SetSearchableTableTitle(table, title, text)
+		table.ScrollToBeginning()
+	})
+}
+
+// ConsumerGroupsByTopic fetches and displays consumer groups that have committed offsets for the given topic.
+func (app *App) ConsumerGroupsByTopic(topicName string) {
+	resultCh := make(chan *client.ConsumerGroupsResult)
+	errorCh := make(chan error)
+
+	c := app.GetCurrentKafkaClient()
+	SendStatusInfinite("finding consumer groups by topic")
+	c.ConsumerGroupsByTopic(topicName, resultCh, errorCh)
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+
+	go func() {
+		for {
+			select {
+			case groups := <-resultCh:
+				app.QueueUpdateDraw(func() {
+					table := app.NewGroupsTable(groups)
+					pageKey := util.BuildPageKey(
+						app.Selected.Cluster.Name,
+						ConsumerGroups,
+						"topic",
+						topicName,
+					)
+					title := fmt.Sprintf(
+						" consumer groups [%s][%d] ",
+						topicName,
+						len(groups.Valid),
+					)
+					app.setupGroupsTable(table, groups, pageKey, title, func() {
+						Publish(
+							CgroupsChannel,
+							FindCgroupsByTopicEventType,
+							Payload{topicName, true},
+						)
+					})
+					ClearStatus()
+				})
+				cancel()
+				return
+			case err := <-errorCh:
+				log.Error().Err(err).Msg("failed to find consumer groups by topic")
+				SendStatusWithDefaultTTL(
+					fmt.Sprintf("[red]failed to find consumer groups by topic: %s", err.Error()),
+				)
+				cancel()
+				return
+			case <-ctx.Done():
+				log.Error().Msg("timeout while finding consumer groups by topic")
+				SendStatusWithDefaultTTL("[red]timeout while finding consumer groups by topic")
+				return
+			}
+		}
+	}()
+}
+
+// FindConsumerGroupsByTopicModal creates and registers the "find by topic" modal.
+// Layout mirrors the Reset Offset table: selectable row on the left, input field on the right.
+func (app *App) FindConsumerGroupsByTopicModal() {
+	foregroundColor := tcell.GetColor(app.Colors.Cinnamon.Foreground)
+	backgroundColor := tcell.GetColor(app.Colors.Cinnamon.Background)
+	selectedStyle := tcell.StyleDefault.
+		Foreground(tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor)).
+		Background(tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor))
+
+	table := tview.NewTable()
+	table.SetBorder(false)
+	table.SetBorderPadding(0, 0, 1, 0)
+	table.SetSelectable(true, false)
+	table.SetSelectedStyle(selectedStyle)
+	table.SetCell(0, 0, tview.NewTableCell("find consumer group by topic").SetSelectable(true))
+
+	input := tview.NewInputField().
+		SetFieldWidth(30).
+		SetFieldStyle(
+			tcell.StyleDefault.
+				Foreground(foregroundColor).
+				Background(backgroundColor),
+		).
+		SetPlaceholderStyle(
+			tcell.StyleDefault.Background(backgroundColor),
+		).
+		SetPlaceholder("-").
+		SetPlaceholderTextColor(tcell.GetColor(app.Colors.Cinnamon.Placeholder))
+
+	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEnter:
+			topicName := strings.TrimSpace(input.GetText())
+			if topicName == "" {
+				SendStatusWithDefaultTTL("[red]topic name cannot be empty")
+				return nil
+			}
+			app.HideModalPage(FindBy)
+			Publish(CgroupsChannel, FindCgroupsByTopicEventType, Payload{topicName, false})
+			return nil
+		case tcell.KeyEsc:
+			input.SetText("")
+			app.SetFocus(table)
+			return nil
+		}
+		return event
+	})
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEnter:
+			app.SetFocus(input)
+			return nil
+		case tcell.KeyEsc:
+			app.HideModalPage(FindBy)
+			return nil
+		}
+		return event
+	})
+
+	// Input flex aligns the field to the same row as the table entry.
+	inputFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(input, 1, 0, false)
+
+	row := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(table, 0, 2, true).
+		AddItem(tview.NewBox(), 1, 0, false).
+		AddItem(inputFlex, 0, 1, false)
+
+	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(row, 1, 0, true)
+	mainFlex.SetTitle(" Find ")
+	mainFlex.SetBorder(true)
+
+	// height: 1 border top + 1 content row + 1 border bottom = 3
+	modal := util.NewResourceModal(mainFlex, 3)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(FindBy, modal, true, false)
 }
 
 // ConsumerGroup fetches and displays details for a specific consumer group.

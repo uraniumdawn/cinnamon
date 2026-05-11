@@ -744,6 +744,126 @@ func (client *Client) BatchResetConsumerGroupOffsets(
 	}()
 }
 
+// ConsumerGroupsByTopic returns consumer groups that have committed offsets for the given topic.
+// It fetches topic metadata to discover partitions, then batch-queries all group offsets
+// for those partitions and filters groups with at least one valid committed offset.
+func (client *Client) ConsumerGroupsByTopic(
+	topicName string,
+	resultChan chan<- *ConsumerGroupsResult,
+	errorChan chan<- error,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+		defer cancel()
+
+		metadata, err := client.GetMetadata(&topicName, false, int(client.Timeout.Milliseconds()))
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to get topic metadata: %w", err)
+			return
+		}
+
+		topicMeta, ok := metadata.Topics[topicName]
+		if !ok || topicMeta.Error.Code() != kafka.ErrNoError {
+			errorChan <- fmt.Errorf("topic %q not found", topicName)
+			return
+		}
+
+		groups, err := client.ListConsumerGroups(ctx)
+		if err != nil {
+			errorChan <- fmt.Errorf("failed to list consumer groups: %w", err)
+			return
+		}
+
+		if len(groups.Valid) == 0 {
+			resultChan <- &ConsumerGroupsResult{groups}
+			return
+		}
+
+		partitions := make([]kafka.TopicPartition, 0, len(topicMeta.Partitions))
+		for _, p := range topicMeta.Partitions {
+			pID := p.ID
+			partitions = append(partitions, kafka.TopicPartition{
+				Topic:     &topicName,
+				Partition: pID,
+			})
+		}
+
+		// ListConsumerGroupOffsets only accepts one group per call.
+		// Query all groups concurrently with bounded parallelism.
+		const maxConcurrency = 10
+		sem := make(chan struct{}, maxConcurrency)
+
+		type queryResult struct {
+			groupID  string
+			hasTopic bool
+		}
+
+		resultsCh := make(chan queryResult, len(groups.Valid))
+		var wg sync.WaitGroup
+
+		for _, g := range groups.Valid {
+			groupID := g.GroupID
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				select {
+				case sem <- struct{}{}:
+				case <-ctx.Done():
+					resultsCh <- queryResult{groupID, false}
+					return
+				}
+				defer func() { <-sem }()
+
+				r, err := client.ListConsumerGroupOffsets(
+					ctx,
+					[]kafka.ConsumerGroupTopicPartitions{
+						{Group: groupID, Partitions: partitions},
+					},
+				)
+				if err != nil {
+					resultsCh <- queryResult{groupID, false}
+					return
+				}
+				for _, gtp := range r.ConsumerGroupsTopicPartitions {
+					for _, tp := range gtp.Partitions {
+						if int64(tp.Offset) >= 0 {
+							resultsCh <- queryResult{groupID, true}
+							return
+						}
+					}
+				}
+				resultsCh <- queryResult{groupID, false}
+			}()
+		}
+
+		go func() {
+			wg.Wait()
+			close(resultsCh)
+		}()
+
+		groupsWithTopic := make(map[string]bool)
+		for r := range resultsCh {
+			if r.hasTopic {
+				groupsWithTopic[r.groupID] = true
+			}
+		}
+
+		filteredValid := make([]kafka.ConsumerGroupListing, 0)
+		for _, g := range groups.Valid {
+			if groupsWithTopic[g.GroupID] {
+				filteredValid = append(filteredValid, g)
+			}
+		}
+
+		resultChan <- &ConsumerGroupsResult{
+			kafka.ListConsumerGroupsResult{
+				Valid:  filteredValid,
+				Errors: groups.Errors,
+			},
+		}
+	}()
+}
+
 // IncreasePartitions increases the partition count of a topic to newCount.
 // Kafka only supports increasing partition count, not decreasing.
 func (client *Client) IncreasePartitions(

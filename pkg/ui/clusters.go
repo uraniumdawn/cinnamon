@@ -170,6 +170,15 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 			Publish(ClustersChannel, GetClusterEventType, Payload{Force: true})
 		}
 
+		if IsKey(event, 'f') {
+			if !app.isClusterSelected(app.Selected) {
+				SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
+				return event
+			}
+			app.FindConsumerGroupsByTopicModal()
+			app.ShowModalPage(FindBy)
+		}
+
 		return event
 	})
 }

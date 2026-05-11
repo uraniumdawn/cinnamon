@@ -48,6 +48,7 @@ const (
 	ConnectorActions       = "Connector Actions"
 	DeleteConnector        = "Delete Connector"
 	CliTemplates           = "CLI Templates"
+	FindBy                 = "Find By"
 )
 
 type App struct {
