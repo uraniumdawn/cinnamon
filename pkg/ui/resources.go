@@ -209,8 +209,8 @@ func (app *App) NewResourcesPage() tview.Primitive {
 	container := tview.NewFlex().SetDirection(tview.FlexRow)
 	container.SetBorder(true).
 		SetTitle(" Resources ")
-	container.AddItem(table, 0, 1, true)
 	container.AddItem(searchInput, 1, 0, false)
+	container.AddItem(table, 0, 1, true)
 
 	// +2 for border, +1 for search row
 	height := len(allResources) + 3

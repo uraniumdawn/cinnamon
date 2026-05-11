@@ -112,10 +112,10 @@ func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if IsKey(event, ':') {
 			if !app.IsSearchInFocus() && !app.IsInputFieldInFocus() {
-				focusSearch := time.Since(lastColonPress) < 350*time.Millisecond
+				isDouble := time.Since(lastColonPress) < 350*time.Millisecond
 				lastColonPress = time.Now()
 				app.ShowModalPage(Resources)
-				if focusSearch && app.ResourcesSearchInput != nil {
+				if !isDouble && app.ResourcesSearchInput != nil {
 					app.SetFocus(app.ResourcesSearchInput)
 					return nil
 				}

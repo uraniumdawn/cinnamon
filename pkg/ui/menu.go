@@ -47,11 +47,11 @@ var keys = map[string]Pair{
 	},
 	"res": {
 		Key:   "<:>",
-		Value: "Resources",
+		Value: "Resources + Search",
 	},
 	"res_search": {
 		Key:   "<::>",
-		Value: "Resources + Search",
+		Value: "Resources",
 	},
 	"opened": {
 		Key:   "<Ctrl+p>",
