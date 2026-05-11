@@ -63,7 +63,7 @@ var keys = map[string]Pair{
 	},
 	"dsc": {
 		Key:   "<d>",
-		Value: "Describe",
+		Value: "Details",
 	},
 	"upd": {
 		Key:   "<Ctrl+u>",
