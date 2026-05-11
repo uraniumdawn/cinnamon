@@ -84,12 +84,13 @@ type TopicPartition struct {
 
 // Client wraps the Kafka AdminClient with cluster name context.
 type Client struct {
-	ClusterName string
-	Timeout     time.Duration
+	ClusterName    string
+	Timeout        time.Duration
+	MaxConcurrency int
 	*kafka.AdminClient
 }
 
-func NewClient(config *config.ClusterConfig, timeout time.Duration) (*Client, error) {
+func NewClient(config *config.ClusterConfig, timeout time.Duration, maxConcurrency int) (*Client, error) {
 	conf := &kafka.ConfigMap{}
 	for key, value := range config.Properties {
 		_ = conf.SetKey(key, value)
@@ -113,9 +114,10 @@ func NewClient(config *config.ClusterConfig, timeout time.Duration) (*Client, er
 	}
 
 	return &Client{
-		ClusterName: config.Name,
-		Timeout:     timeout,
-		AdminClient: adminClient,
+		ClusterName:    config.Name,
+		Timeout:        timeout,
+		MaxConcurrency: maxConcurrency,
+		AdminClient:    adminClient,
 	}, nil
 }
 
@@ -790,8 +792,7 @@ func (client *Client) ConsumerGroupsByTopic(
 
 		// ListConsumerGroupOffsets only accepts one group per call.
 		// Query all groups concurrently with bounded parallelism.
-		const maxConcurrency = 10
-		sem := make(chan struct{}, maxConcurrency)
+		sem := make(chan struct{}, client.MaxConcurrency)
 
 		type queryResult struct {
 			groupID  string

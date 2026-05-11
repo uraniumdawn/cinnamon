@@ -1,6 +1,7 @@
 cinnamon:
   api:
     timeout: 30 # API call timeout in seconds
+    max_concurrency: 10 # max parallel Kafka API calls (e.g. ListConsumerGroupOffsets)
   clusters:
     - name: prod
       mode: read-only

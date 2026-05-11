@@ -289,7 +289,7 @@ func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
 	if !exists {
 		var err error
 		timeout := app.Config.GetAPICallTimeout()
-		newClient, err := client.NewClient(cluster, timeout)
+		newClient, err := client.NewClient(cluster, timeout, app.Config.GetMaxConcurrency())
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create admin client")
 			os.Exit(1)

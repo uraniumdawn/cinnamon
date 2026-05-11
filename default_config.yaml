@@ -1,0 +1,4 @@
+cinnamon:
+  api:
+    timeout: 30 # API call timeout in seconds
+    max_concurrency: 5 # max parallel Kafka API calls (e.g. ListConsumerGroupOffsets)
