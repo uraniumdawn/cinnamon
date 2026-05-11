@@ -44,7 +44,7 @@ Access via `:` (colon) key. Schema Registry and Connect resources appear only wh
 | **Connect** | Kafka Connect instances | Select |
 | **Nodes** | Kafka brokers | List, describe |
 | **Topics** | Kafka topics | List, describe, create, edit configs, increase partitions, delete, search, sort, CLI templates |
-| **Consumer groups** | Consumer groups | List, describe, view lag, reset offsets, delete (Empty state only), search, sort |
+| **Consumer groups** | Consumer groups | List, describe, view lag, reset offsets, delete (Empty state only), find by topic, search, sort |
 | **Subjects** | Schema Registry subjects | List, view versions, inspect schemas, search |
 | **Connectors** | Kafka Connect connectors | List, describe, pause/resume/restart, delete, search, sort |
 
@@ -115,7 +115,8 @@ Create `~/.config/cinnamon/config.yaml` with your Kafka cluster and Schema Regis
 cinnamon:
   # API Configuration
   api:
-    timeout: 10  # API call timeout in seconds (default: 10)
+    timeout: 30       # API call timeout in seconds (default: 30)
+    max_concurrency: 10  # Max parallel Kafka API calls, e.g. for consumer group offset queries (default: 10)
 
   # Style file path (optional) — see examples/style/ for ready-made themes
   style: ~/.config/cinnamon/my_style.yaml
@@ -133,6 +134,7 @@ cinnamon:
         # sasl.username: your-username
         # sasl.password: your-password
       selected: true  # Auto-select this cluster on startup
+      # mode: read-only  # Uncomment to prevent create/edit/delete operations on this cluster
 
     - name: dev
       properties:
@@ -158,11 +160,12 @@ cinnamon:
   connect:
     - name: prod
       # Required: Kafka Connect REST API URL
-      connect.url: http://kafka-connect-prod:8083
+      url: http://kafka-connect-prod:8083
       selected: true  # Auto-select this connect cluster on startup
+      # mode: read-only  # Uncomment to prevent edit/delete/action operations on this instance
 
     - name: dev
-      connect.url: http://kafka-connect-dev:8083
+      url: http://kafka-connect-dev:8083
       selected: false
 
   # CLI Templates for external tool integration (optional)
@@ -203,10 +206,18 @@ sasl.password: ${KAFKA_PASSWORD}
 - Only one cluster, one schema registry, and one Kafka Connect instance should have `selected: true`
 - Selection is persisted when changed via UI
 
-**API Timeout:**
-- Controls timeout for all Kafka Admin API calls
-- Affects cluster describe, topic operations, consumer group queries
-- Default: 10 seconds if not specified
+**Default configuration (`default_config.yaml`):**
+- Cinnamon ships a `default_config.yaml` in its working directory that provides baseline values for the `api` section
+- Your `config.yaml` is merged on top — only the values you specify override the defaults
+- Mirrors the same pattern as `default_style.yaml`
+
+**API settings (`api:`):**
+- `timeout` — timeout in seconds for all Kafka Admin API calls (cluster describe, topic operations, consumer group queries). Default: 30
+- `max_concurrency` — maximum number of parallel Kafka API calls, used when querying consumer group offsets across many groups. Default: 10
+
+**Read-only mode:**
+- Set `mode: read-only` on a cluster or Kafka Connect instance to prevent any write operations (create, edit, delete, actions) via the UI
+- Useful for protecting production environments
 
 ### Style
 
