@@ -187,6 +187,11 @@ func (app *App) setupGroupsTable(
 			Publish(CgroupsChannel, GetCgroupEventType, Payload{groupName, false})
 		}
 
+		if IsKey(event, 'f') {
+			app.FindConsumerGroupsByTopicModal()
+			app.ShowModalPage(FindBy)
+		}
+
 		if event.Key() == tcell.KeyCtrlD {
 			if app.IsCurrentClusterReadOnly() {
 				SendStatusWithDefaultTTL("[red]cluster is in read-only mode")
@@ -620,9 +625,10 @@ func (app *App) ResetConsumerGroupOffsetModal(
 			currentValue := int64(0)
 			if len(allTopics) > 0 {
 				currentTs := topicStrategies[allTopics[0]]
-				if currentTs.Strategy == "to-timestamp" {
+				switch currentTs.Strategy {
+				case "to-timestamp":
 					currentValue = currentTs.TimestampMs
-				} else if currentTs.Strategy == "to-offset" {
+				case "to-offset":
 					currentValue = currentTs.OffsetValue
 				}
 			}
