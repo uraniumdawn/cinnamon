@@ -130,6 +130,7 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[FindBy] = FindByPageMenu
 	pr.PageMenuMap[ConsumeOutput] = ConsumeOutputPageMenu
 	pr.PageMenuMap[ConsumeParams] = ConsumeParamsPageMenu
+	pr.PageMenuMap[ConsumeHelp] = ConsumeHelpPageMenu
 }
 
 func (app *App) CheckInCache(name string, onAbsent func()) {

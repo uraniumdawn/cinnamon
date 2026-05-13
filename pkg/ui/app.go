@@ -51,6 +51,7 @@ const (
 	FindBy                 = "Find By"
 	ConsumeOutput          = "Consume Output"
 	ConsumeParams          = "Consume Params"
+	ConsumeHelp            = "Consume Help"
 )
 
 type App struct {

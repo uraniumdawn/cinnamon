@@ -140,13 +140,6 @@ func (app *App) ConsumeModal(topicName string) {
 	foregroundColor := tcell.GetColor(app.Colors.Cinnamon.Foreground)
 	bgColor := tcell.GetColor(app.Colors.Cinnamon.Background)
 	placeholderTextColor := tcell.GetColor(app.Colors.Cinnamon.Placeholder)
-	dimColor := tcell.ColorGray
-
-	hint := tview.NewTextView().
-		SetText("-o beginning|end|stored|-<n>|s@<ms>|e@<ms>  -p <n>  -c <n>  -s key|value=avro|<pack>  -r <sr>  -f <fmt>  -e").
-		SetTextColor(dimColor).
-		SetDynamicColors(false)
-	hint.SetBorder(false).SetBorderPadding(0, 0, 1, 0)
 
 	input := tview.NewInputField().
 		SetText("-o beginning").
@@ -233,18 +226,74 @@ func (app *App) ConsumeModal(topicName string) {
 		case tcell.KeyEsc:
 			app.HideModalPage(ConsumeParams)
 			return nil
+
+		case tcell.KeyF1:
+			app.ConsumeHelpModal()
+			app.ShowModalPage(ConsumeHelp)
 		}
 		return event
 	})
 
 	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(hint, 2, 0, false).
 		AddItem(input, 1, 0, true)
-	mainFlex.SetTitle(fmt.Sprintf(" Consume: %s ", topicName))
+	mainFlex.SetTitle(" Parameters ")
 	mainFlex.SetBorder(true)
 
 	modal := util.NewResourceModal(mainFlex, 7)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeParams, modal, true, false)
+}
+
+// ConsumeHelpModal shows a read-only reference of all supported consume flags and format specifiers.
+func (app *App) ConsumeHelpModal() {
+	labelColor := app.Colors.Cinnamon.Label.FgColor
+	dimColor := "gray"
+
+	content := fmt.Sprintf(
+		"[%s]Flags[-]\n"+
+			"  [%s]-o[-]  beginning | earliest | end | latest | stored | <n> | -<n> | s@<ts> | e@<ts>\n"+
+			"  [%s]-p[-]  <n>          restrict to partition (repeatable)\n"+
+			"  [%s]-c[-]  <n>          stop after n messages\n"+
+			"  [%s]-s[-]  avro | key=<serdes> | value=<serdes>   (serdes: avro, string, hex, pack)\n"+
+			"  [%s]-r[-]  <sr-name>    schema registry name (required for avro)\n"+
+			"  [%s]-f[-]  <format>     output format string (must be last flag)\n"+
+			"  [%s]-e[-]               exit when end of each partition is reached\n"+
+			"\n"+
+			"[%s]Format specifiers for -f[-]\n"+
+			"  [%s]%%k[-] key      [%s]%%s[-] value     [%s]%%p[-] partition\n"+
+			"  [%s]%%o[-] offset   [%s]%%T[-] timestamp  [%s]%%t[-] topic\n"+
+			"  [%s]%%h[-] headers  [%s]%%S[-] size (bytes)\n"+
+			"\n"+
+			"[%s]Timestamp formats[-]  unix-ms | RFC3339 | 2006-01-02T15:04:05.000",
+		labelColor,
+		labelColor, labelColor, labelColor, labelColor, labelColor, labelColor, labelColor,
+		labelColor,
+		labelColor, labelColor, labelColor,
+		labelColor, labelColor, labelColor,
+		labelColor, labelColor,
+		dimColor,
+	)
+
+	view := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(content).
+		SetScrollable(false)
+	view.SetBorder(false).SetBorderPadding(0, 0, 1, 1)
+
+	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || IsKey(event, '?') {
+			app.HideModalPage(ConsumeHelp)
+			return nil
+		}
+		return event
+	})
+
+	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(view, 0, 1, true)
+	mainFlex.SetTitle(" Consume Reference ")
+	mainFlex.SetBorder(true)
+
+	modal := util.NewResourceModal(mainFlex, 20)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeHelp, modal, true, false)
 }
 
 // formatConsumeRecord renders a record as a single JSON line matching:

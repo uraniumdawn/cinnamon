@@ -133,6 +133,10 @@ var keys = map[string]Pair{
 		Key:   "<r>",
 		Value: "Consume",
 	},
+	"consume_help": {
+		Key:   "<F1>",
+		Value: "Consume help",
+	},
 	"execute_cli": {
 		Key:   "<e>",
 		Value: "Execute CLI command (Beta)",
@@ -243,6 +247,7 @@ const (
 	FindByPageMenu                = "FindByPageMenu"
 	ConsumeOutputPageMenu         = "ConsumeOutputPageMenu"
 	ConsumeParamsPageMenu         = "ConsumeParamsPageMenu"
+	ConsumeHelpPageMenu           = "ConsumeHelpPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -349,7 +354,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"sort_2",
 				"create",
-				"consume_kcat",
+				"consume",
 				"delete_t",
 				"edit_topic",
 				"cli_commands",
@@ -361,6 +366,10 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			ConsumeParamsPageMenu: {
 				"enter",
 				"cancel",
+				"consume_help",
+			},
+			ConsumeHelpPageMenu: {
+				"close",
 			},
 			ConsumeOutputPageMenu: {
 				"stop_consume",
