@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestParseKcatArgs(t *testing.T) {
+func TestParseArgs(t *testing.T) {
 	// reference timestamp: 2024-01-01T00:00:00Z = 1704067200000 ms
 	ref := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	refMs := ref.UnixMilli()
@@ -276,12 +276,12 @@ func TestParseKcatArgs(t *testing.T) {
 			got, err := ParseConsumeArgs(tc.input)
 			if tc.wantError {
 				if err == nil {
-					t.Fatalf("ParseKcatArgs(%q): expected error, got nil", tc.input)
+					t.Fatalf("ParseArgs(%q): expected error, got nil", tc.input)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("ParseKcatArgs(%q): unexpected error: %v", tc.input, err)
+				t.Fatalf("ParseArgs(%q): unexpected error: %v", tc.input, err)
 			}
 			if got.From != tc.wantFrom {
 				t.Errorf("From: got %+v, want %+v", got.From, tc.wantFrom)
@@ -314,7 +314,7 @@ func TestParseKcatArgs(t *testing.T) {
 	}
 }
 
-func TestApplyKcatFormat(t *testing.T) {
+func TestApplyFormat(t *testing.T) {
 	ts := time.Date(2024, 6, 15, 12, 30, 0, 0, time.UTC)
 	rec := Record{
 		Partition: 2,
@@ -398,7 +398,7 @@ func TestApplyKcatFormat(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := ApplyFormat(rec, tc.format, topic)
 			if got != tc.want {
-				t.Errorf("ApplyKcatFormat(%q): got %q, want %q", tc.format, got, tc.want)
+				t.Errorf("ApplyFormat(%q): got %q, want %q", tc.format, got, tc.want)
 			}
 		})
 	}
