@@ -186,6 +186,20 @@ func (app *App) Topics() {
 							app.CliTemplates(topicName)
 						}
 
+						if IsKey(event, 'C') {
+							row, _ := table.GetSelection()
+							topicName := table.GetCell(row, 0).Text
+							app.ConsumeParamsModal(topicName)
+							app.ShowModalPage(ConsumeParams)
+						}
+
+						if IsKey(event, 'r') {
+							row, _ := table.GetSelection()
+							topicName := table.GetCell(row, 0).Text
+							app.ConsumeKcatModal(topicName)
+							app.ShowModalPage(ConsumeKcatParams)
+						}
+
 						if IsKey(event, '1') && !app.IsSearchInFocus() {
 							if sortCol == 0 {
 								sortDesc = !sortDesc
