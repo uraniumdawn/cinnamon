@@ -49,9 +49,8 @@ const (
 	DeleteConnector        = "Delete Connector"
 	CliTemplates           = "CLI Templates"
 	FindBy                 = "Find By"
-	ConsumeParams          = "Consume Params"
 	ConsumeOutput          = "Consume Output"
-	ConsumeKcatParams      = "Consume Kcat Params"
+	ConsumeParams          = "Consume Params"
 )
 
 type App struct {

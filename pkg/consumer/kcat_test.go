@@ -273,7 +273,7 @@ func TestParseKcatArgs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseKcatArgs(tc.input)
+			got, err := ParseConsumeArgs(tc.input)
 			if tc.wantError {
 				if err == nil {
 					t.Fatalf("ParseKcatArgs(%q): expected error, got nil", tc.input)
@@ -396,7 +396,7 @@ func TestApplyKcatFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ApplyKcatFormat(rec, tc.format, topic)
+			got := ApplyFormat(rec, tc.format, topic)
 			if got != tc.want {
 				t.Errorf("ApplyKcatFormat(%q): got %q, want %q", tc.format, got, tc.want)
 			}

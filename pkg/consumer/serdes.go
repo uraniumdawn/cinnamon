@@ -32,7 +32,7 @@ type Serdes struct {
 	PackStr string // only meaningful when Kind == SerdesPack
 }
 
-// ParseSerdes parses a kcat -s value string into a Serdes.
+// ParseSerdes parses a -s value string into a Serdes.
 // "avro" → SerdesAvro.
 // An optional endianness prefix ('<' or '>') followed by one or more type
 // codes (b B h H i I q Q c s) → SerdesPack. 's' must be the last type code.
@@ -94,7 +94,7 @@ func decodeWithSerdes(data []byte, s Serdes, topic string, deser *avro.GenericDe
 	}
 }
 
-// decodePack decodes binary data according to a kcat pack-string format.
+// decodePack decodes binary data according to a pack-string format.
 // Output values are joined with a single space (matching kcat behaviour).
 func decodePack(data []byte, packStr string) (string, error) {
 	order := binary.ByteOrder(binary.BigEndian)

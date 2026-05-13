@@ -128,9 +128,8 @@ func (pr *PagesRegistry) SetupPageMenus() {
 	pr.PageMenuMap[DeleteConnector] = DeleteConnectorPageMenu
 	pr.PageMenuMap[CliTemplates] = CliTemplatesPageMenu
 	pr.PageMenuMap[FindBy] = FindByPageMenu
-	pr.PageMenuMap[ConsumeParams] = ConsumeParamsPageMenu
 	pr.PageMenuMap[ConsumeOutput] = ConsumeOutputPageMenu
-	pr.PageMenuMap[ConsumeKcatParams] = ConsumeKcatParamsPageMenu
+	pr.PageMenuMap[ConsumeParams] = ConsumeParamsPageMenu
 }
 
 func (app *App) CheckInCache(name string, onAbsent func()) {

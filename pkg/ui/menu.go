@@ -130,12 +130,8 @@ var keys = map[string]Pair{
 		Value: "CLI commands",
 	},
 	"consume": {
-		Key:   "<C>",
-		Value: "Consume",
-	},
-	"consume_kcat": {
 		Key:   "<r>",
-		Value: "Consume (kcat)",
+		Value: "Consume",
 	},
 	"execute_cli": {
 		Key:   "<e>",
@@ -245,9 +241,8 @@ const (
 	DeleteConnectorPageMenu       = "DeleteConnectorPageMenu"
 	ConnectPageMenu               = "ConnectPageMenu"
 	FindByPageMenu                = "FindByPageMenu"
-	ConsumeParamsPageMenu         = "ConsumeParamsPageMenu"
 	ConsumeOutputPageMenu         = "ConsumeOutputPageMenu"
-	ConsumeKcatParamsPageMenu     = "ConsumeKcatParamsPageMenu"
+	ConsumeParamsPageMenu         = "ConsumeParamsPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -354,7 +349,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"sort_2",
 				"create",
-				"consume",
 				"consume_kcat",
 				"delete_t",
 				"edit_topic",
@@ -365,12 +359,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"b/f",
 			},
 			ConsumeParamsPageMenu: {
-				"sel",
-				"enter_value",
-				"submit_ctrl",
-				"close",
-			},
-			ConsumeKcatParamsPageMenu: {
 				"enter",
 				"cancel",
 			},

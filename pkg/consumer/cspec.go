@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// KcatSpec holds consume parameters parsed from a kcat-style argument string.
-type KcatSpec struct {
+// ConsumeSpec holds consume parameters parsed from a kcat-style argument string.
+type ConsumeSpec struct {
 	From        FromSpec
 	To          ToSpec
 	FormatStr   string  // empty means use the default JSON formatter
@@ -24,7 +24,7 @@ type KcatSpec struct {
 	SRName      string  // -r <sr-name>: schema registry name for avro serdes
 }
 
-// ParseKcatArgs parses a kcat-style flag string into a KcatSpec.
+// ParseConsumeArgs parses a kcat-style flag string into a ConsumeSpec.
 // Supported flags:
 //   - -o beginning|earliest|end|latest|stored|<n>|-<n>|s@<ts>|e@<ts>
 //   - -p <n>                  (restrict to partition n; may repeat)
@@ -37,20 +37,20 @@ type KcatSpec struct {
 //   - -e                      (exit when last message on each partition is received)
 //
 // -o may appear twice: once with s@ (sets From) and once with e@ (sets To).
-// An empty string is valid and returns a zero KcatSpec.
-func ParseKcatArgs(args string) (KcatSpec, error) {
+// An empty string is valid and returns a zero ConsumeSpec.
+func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 	tokens := tokenize(args)
-	var spec KcatSpec
+	var spec ConsumeSpec
 	for i := 0; i < len(tokens); i++ {
 		switch tokens[i] {
 		case "-o":
 			i++
 			if i >= len(tokens) {
-				return KcatSpec{}, fmt.Errorf("-o requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-o requires a value")
 			}
 			from, to, err := parseOffsetSpec(tokens[i])
 			if err != nil {
-				return KcatSpec{}, err
+				return ConsumeSpec{}, err
 			}
 			if from.Type != "" {
 				spec.From = from
@@ -63,11 +63,11 @@ func ParseKcatArgs(args string) (KcatSpec, error) {
 		case "-c":
 			i++
 			if i >= len(tokens) {
-				return KcatSpec{}, fmt.Errorf("-c requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-c requires a value")
 			}
 			n, err := strconv.ParseInt(tokens[i], 10, 64)
 			if err != nil || n <= 0 {
-				return KcatSpec{}, fmt.Errorf(
+				return ConsumeSpec{}, fmt.Errorf(
 					"invalid count: %q (must be a positive integer)", tokens[i],
 				)
 			}
@@ -75,11 +75,11 @@ func ParseKcatArgs(args string) (KcatSpec, error) {
 		case "-p":
 			i++
 			if i >= len(tokens) {
-				return KcatSpec{}, fmt.Errorf("-p requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-p requires a value")
 			}
 			n, err := strconv.ParseInt(tokens[i], 10, 32)
 			if err != nil || n < 0 {
-				return KcatSpec{}, fmt.Errorf(
+				return ConsumeSpec{}, fmt.Errorf(
 					"invalid partition: %q (must be a non-negative integer)", tokens[i],
 				)
 			}
@@ -87,25 +87,25 @@ func ParseKcatArgs(args string) (KcatSpec, error) {
 		case "-s":
 			i++
 			if i >= len(tokens) {
-				return KcatSpec{}, fmt.Errorf("-s requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-s requires a value")
 			}
 			val := tokens[i]
 			if after, ok := strings.CutPrefix(val, "key="); ok {
 				s, err := ParseSerdes(after)
 				if err != nil {
-					return KcatSpec{}, fmt.Errorf("-s key: %w", err)
+					return ConsumeSpec{}, fmt.Errorf("-s key: %w", err)
 				}
 				spec.KeySerdes = s
 			} else if after, ok := strings.CutPrefix(val, "value="); ok {
 				s, err := ParseSerdes(after)
 				if err != nil {
-					return KcatSpec{}, fmt.Errorf("-s value: %w", err)
+					return ConsumeSpec{}, fmt.Errorf("-s value: %w", err)
 				}
 				spec.ValueSerdes = s
 			} else {
 				s, err := ParseSerdes(val)
 				if err != nil {
-					return KcatSpec{}, fmt.Errorf("-s: %w", err)
+					return ConsumeSpec{}, fmt.Errorf("-s: %w", err)
 				}
 				spec.KeySerdes = s
 				spec.ValueSerdes = s
@@ -113,30 +113,30 @@ func ParseKcatArgs(args string) (KcatSpec, error) {
 		case "-r":
 			i++
 			if i >= len(tokens) {
-				return KcatSpec{}, fmt.Errorf("-r requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-r requires a value")
 			}
 			spec.SRName = tokens[i]
 		case "-f":
 			if i+1 >= len(tokens) {
-				return KcatSpec{}, fmt.Errorf("-f requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-f requires a value")
 			}
 			// Consume all remaining tokens as the format string so that
 			// space-separated specifiers (-f %k %s) don't require quoting.
 			spec.FormatStr = unescape(strings.Join(tokens[i+1:], " "))
 			return spec, nil
 		default:
-			return KcatSpec{}, fmt.Errorf("unknown flag: %s", tokens[i])
+			return ConsumeSpec{}, fmt.Errorf("unknown flag: %s", tokens[i])
 		}
 	}
 	return spec, nil
 }
 
-// ApplyKcatFormat renders r using a kcat-style format string.
+// ApplyFormat renders r using a kcat-style format string.
 // Supported specifiers: %k (key), %s (value), %p (partition), %o (offset),
 // %T (timestamp RFC3339), %t (topic name), %h (headers, comma-separated),
 // %S (payload size in bytes).
 // Literal \n and \t in format are treated as newline and tab.
-func ApplyKcatFormat(r Record, format, topic string) string {
+func ApplyFormat(r Record, format, topic string) string {
 	return strings.NewReplacer(
 		"%k", r.Key,
 		"%s", r.Value,
@@ -194,14 +194,14 @@ func parseOffsetSpec(val string) (FromSpec, ToSpec, error) {
 		return FromSpec{Type: "stored"}, ToSpec{}, nil
 	}
 	if strings.HasPrefix(val, "s@") {
-		ts, err := parseKcatTimestamp(val[2:])
+		ts, err := parseTimestamp(val[2:])
 		if err != nil {
 			return FromSpec{}, ToSpec{}, fmt.Errorf("invalid s@ timestamp: %w", err)
 		}
 		return FromSpec{Type: "timestamp", Timestamp: ts.UnixMilli()}, ToSpec{}, nil
 	}
 	if strings.HasPrefix(val, "e@") {
-		ts, err := parseKcatTimestamp(val[2:])
+		ts, err := parseTimestamp(val[2:])
 		if err != nil {
 			return FromSpec{}, ToSpec{}, fmt.Errorf("invalid e@ timestamp: %w", err)
 		}
@@ -219,9 +219,9 @@ func parseOffsetSpec(val string) (FromSpec, ToSpec, error) {
 	return FromSpec{Type: "offset", Offset: n}, ToSpec{}, nil
 }
 
-// parseKcatTimestamp parses a timestamp string, trying unix-millisecond integers
+// parseTimestamp parses a timestamp string, trying unix-millisecond integers
 // first, then RFC3339, then common ISO 8601 layouts.
-func parseKcatTimestamp(s string) (time.Time, error) {
+func parseTimestamp(s string) (time.Time, error) {
 	if ms, err := strconv.ParseInt(s, 10, 64); err == nil {
 		return time.UnixMilli(ms).UTC(), nil
 	}
