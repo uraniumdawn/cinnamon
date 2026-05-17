@@ -18,61 +18,89 @@ type ConsumeSpec struct {
 	FormatStr   string  // empty means use the default JSON formatter
 	ExitOnEnd   bool    // -e: stop when the last available message is received
 	Partitions  []int32 // -p: empty means consume all partitions
-	Count       int64   // -c: stop after this many messages (0 = unlimited)
-	KeySerdes   Serdes  // -s key=<serdes> or -s <serdes>
-	ValueSerdes Serdes  // -s value=<serdes> or -s <serdes>
+	Count       int64   // -o <n>: per-partition message limit (0 = unlimited)
+	KeySerdes   Serdes  // -d key=<serdes> or -d <serdes>
+	ValueSerdes Serdes  // -d value=<serdes> or -d <serdes>
 	SRName      string  // -r <sr-name>: schema registry name for avro serdes
 }
 
 // ParseConsumeArgs parses a kcat-style flag string into a ConsumeSpec.
 // Supported flags:
-//   - -o beginning|earliest|end|latest|<n>|-<n>|s@<ts>|e@<ts>
-//   - -p <n>                  (restrict to partition n; may repeat)
-//   - -c <n>                  (stop after n messages; must be >= 1)
-//   - -s avro                 (Avro for both key and value)
-//   - -s key=<serdes>         (serdes for key only)
-//   - -s value=<serdes>       (serdes for value only)
-//   - -r <sr-name>            (schema registry name, required for avro serdes)
-//   - -f <format>             (consumes rest of input; must be last flag)
-//   - -e                      (exit when last message on each partition is received)
+//   - -o beginning|earliest|end|latest|<n>  start: from beginning, end (live), or tail last n per partition
+//   - -s:<offset>                            start from absolute partition offset (non-negative integer)
+//   - -s@<ts>                                start from timestamp
+//   - -e:<offset>                            stop at offset, exclusive (requires -s:; overrides -o <n>)
+//   - -e@<ts>                                stop at timestamp, exclusive (requires -s@; overrides -o <n>)
+//   - -e                                     exit when all partitions reach high-water mark
+//   - -p <n>                                 restrict to partition n (may repeat)
+//   - -d <serdes>                            decode: avro | key=<serdes> | value=<serdes>
+//   - -r <sr-name>                           schema registry name (required for avro)
+//   - -f <format>                            format string (must be last flag)
 //
-// -o may appear twice: once with s@ (sets From) and once with e@ (sets To).
-// If -o is omitted, From defaults to "beginning".
+// If -o is omitted entirely, defaults to tail last 100 messages per partition.
+// -e:<offset> requires -s:; -e@<ts> requires -s@.
+// When a ToSpec (-e:/-e@) is present, the -o <n> per-partition count is ignored.
 func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 	tokens := tokenize(args)
 	var spec ConsumeSpec
 	for i := 0; i < len(tokens); i++ {
-		switch tokens[i] {
-		case "-o":
+		tok := tokens[i]
+		switch {
+		case tok == "-o":
 			i++
 			if i >= len(tokens) {
 				return ConsumeSpec{}, fmt.Errorf("-o requires a value")
 			}
-			from, to, err := parseOffsetSpec(tokens[i])
+			from, err := parseOffsetSpec(tokens[i])
 			if err != nil {
 				return ConsumeSpec{}, err
 			}
-			if from.Type != "" {
+			if from.Type == "tail" {
+				// -o <n>: record the count; tail start is deferred to the post-loop default
+				// so that -s: can override the start position independently.
+				spec.Count = from.Offset
+			} else {
 				spec.From = from
 			}
-			if to.Type != "" {
-				spec.To = to
-			}
-		case "-e":
+
+		case tok == "-e":
 			spec.ExitOnEnd = true
-		case "-c":
-			i++
-			if i >= len(tokens) {
-				return ConsumeSpec{}, fmt.Errorf("-c requires a value")
-			}
-			n, err := strconv.ParseInt(tokens[i], 10, 64)
-			if err != nil || n <= 0 {
+
+		case strings.HasPrefix(tok, "-s:"):
+			n, err := strconv.ParseInt(tok[3:], 10, 64)
+			if err != nil || n < 0 {
 				return ConsumeSpec{}, fmt.Errorf(
-					"invalid count: %q (must be a positive integer)", tokens[i],
+					"invalid -s: value: %q (must be a non-negative integer)",
+					tok[3:],
 				)
 			}
-			spec.Count = n
-		case "-p":
+			spec.From = FromSpec{Type: "offset", Offset: n}
+
+		case strings.HasPrefix(tok, "-s@"):
+			ts, err := parseTimestamp(tok[3:])
+			if err != nil {
+				return ConsumeSpec{}, fmt.Errorf("invalid -s@ timestamp: %w", err)
+			}
+			spec.From = FromSpec{Type: "timestamp", Timestamp: ts.UnixMilli()}
+
+		case strings.HasPrefix(tok, "-e:"):
+			n, err := strconv.ParseInt(tok[3:], 10, 64)
+			if err != nil || n < 0 {
+				return ConsumeSpec{}, fmt.Errorf(
+					"invalid -e: value: %q (must be a non-negative integer)",
+					tok[3:],
+				)
+			}
+			spec.To = ToSpec{Type: "offset", Offset: n}
+
+		case strings.HasPrefix(tok, "-e@"):
+			ts, err := parseTimestamp(tok[3:])
+			if err != nil {
+				return ConsumeSpec{}, fmt.Errorf("invalid -e@ timestamp: %w", err)
+			}
+			spec.To = ToSpec{Type: "timestamp", Timestamp: ts.UnixMilli()}
+
+		case tok == "-p":
 			i++
 			if i >= len(tokens) {
 				return ConsumeSpec{}, fmt.Errorf("-p requires a value")
@@ -84,53 +112,81 @@ func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 				)
 			}
 			spec.Partitions = append(spec.Partitions, int32(n))
-		case "-s":
+
+		case tok == "-d":
 			i++
 			if i >= len(tokens) {
-				return ConsumeSpec{}, fmt.Errorf("-s requires a value")
+				return ConsumeSpec{}, fmt.Errorf("-d requires a value")
 			}
 			val := tokens[i]
 			if after, ok := strings.CutPrefix(val, "key="); ok {
 				s, err := ParseSerdes(after)
 				if err != nil {
-					return ConsumeSpec{}, fmt.Errorf("-s key: %w", err)
+					return ConsumeSpec{}, fmt.Errorf("-d key: %w", err)
 				}
 				spec.KeySerdes = s
 			} else if after, ok := strings.CutPrefix(val, "value="); ok {
 				s, err := ParseSerdes(after)
 				if err != nil {
-					return ConsumeSpec{}, fmt.Errorf("-s value: %w", err)
+					return ConsumeSpec{}, fmt.Errorf("-d value: %w", err)
 				}
 				spec.ValueSerdes = s
 			} else {
 				s, err := ParseSerdes(val)
 				if err != nil {
-					return ConsumeSpec{}, fmt.Errorf("-s: %w", err)
+					return ConsumeSpec{}, fmt.Errorf("-d: %w", err)
 				}
 				spec.KeySerdes = s
 				spec.ValueSerdes = s
 			}
-		case "-r":
+
+		case tok == "-r":
 			i++
 			if i >= len(tokens) {
 				return ConsumeSpec{}, fmt.Errorf("-r requires a value")
 			}
 			spec.SRName = tokens[i]
-		case "-f":
+
+		case tok == "-f":
 			if i+1 >= len(tokens) {
 				return ConsumeSpec{}, fmt.Errorf("-f requires a value")
 			}
 			// Consume all remaining tokens as the format string so that
 			// space-separated specifiers (-f %k %s) don't require quoting.
 			spec.FormatStr = unescape(strings.Join(tokens[i+1:], " "))
-			return spec, nil
+			return finalizeSpec(spec)
+
 		default:
-			return ConsumeSpec{}, fmt.Errorf("unknown flag: %s", tokens[i])
+			return ConsumeSpec{}, fmt.Errorf("unknown flag: %s", tok)
 		}
 	}
-	if spec.From.Type == "" {
-		spec.From = FromSpec{Type: "tail", Offset: 100}
+
+	return finalizeSpec(spec)
+}
+
+// finalizeSpec validates ToSpec combinations, applies the tail default when no
+// explicit start was given, and clears the per-partition count when a ToSpec is set.
+func finalizeSpec(spec ConsumeSpec) (ConsumeSpec, error) {
+	if spec.To.Type == "offset" && spec.From.Type != "offset" {
+		return ConsumeSpec{}, fmt.Errorf("-e: requires -s: to be set")
 	}
+	if spec.To.Type == "timestamp" && spec.From.Type != "timestamp" {
+		return ConsumeSpec{}, fmt.Errorf("-e@ requires -s@ to be set")
+	}
+
+	if spec.From.Type == "" {
+		count := spec.Count
+		if count == 0 {
+			count = 100
+			spec.Count = 100
+		}
+		spec.From = FromSpec{Type: "tail", Offset: count}
+	}
+
+	if spec.To.Type != "" {
+		spec.Count = 0
+	}
+
 	return spec, nil
 }
 
@@ -185,39 +241,22 @@ func tokenize(s string) []string {
 	return tokens
 }
 
-// parseOffsetSpec interprets a single -o value.
-// Returns a non-zero FromSpec for beginning/end/offset/s@, or a non-zero ToSpec for e@.
-func parseOffsetSpec(val string) (FromSpec, ToSpec, error) {
+// parseOffsetSpec interprets a single -o value: beginning/earliest, end/latest,
+// or a positive integer (tail last n messages per partition).
+func parseOffsetSpec(val string) (FromSpec, error) {
 	switch val {
 	case "beginning", "earliest":
-		return FromSpec{Type: "beginning"}, ToSpec{}, nil
+		return FromSpec{Type: "beginning"}, nil
 	case "end", "latest":
-		return FromSpec{Type: "end"}, ToSpec{}, nil
-	}
-	if strings.HasPrefix(val, "s@") {
-		ts, err := parseTimestamp(val[2:])
-		if err != nil {
-			return FromSpec{}, ToSpec{}, fmt.Errorf("invalid s@ timestamp: %w", err)
-		}
-		return FromSpec{Type: "timestamp", Timestamp: ts.UnixMilli()}, ToSpec{}, nil
-	}
-	if strings.HasPrefix(val, "e@") {
-		ts, err := parseTimestamp(val[2:])
-		if err != nil {
-			return FromSpec{}, ToSpec{}, fmt.Errorf("invalid e@ timestamp: %w", err)
-		}
-		return FromSpec{}, ToSpec{Type: "timestamp", Timestamp: ts.UnixMilli()}, nil
+		return FromSpec{Type: "end"}, nil
 	}
 	n, err := strconv.ParseInt(val, 10, 64)
-	if err != nil {
-		return FromSpec{}, ToSpec{}, fmt.Errorf(
-			"invalid -o value: %q (use beginning, end, <n>, -<n>, s@<ts>, or e@<ts>)", val,
+	if err != nil || n <= 0 {
+		return FromSpec{}, fmt.Errorf(
+			"invalid -o value: %q (use beginning, end, or a positive integer)", val,
 		)
 	}
-	if n < 0 {
-		return FromSpec{Type: "tail", Offset: -n}, ToSpec{}, nil
-	}
-	return FromSpec{Type: "offset", Offset: n}, ToSpec{}, nil
+	return FromSpec{Type: "tail", Offset: n}, nil
 }
 
 // parseTimestamp parses a timestamp string, trying unix-millisecond integers

@@ -102,9 +102,9 @@ func (app *App) IsInputFieldInFocus() bool {
 	if focused == nil {
 		return false
 	}
-	// Check if the focused component is an InputField
 	_, isInputField := focused.(*tview.InputField)
-	return isInputField
+	_, isTextArea := focused.(*tview.TextArea)
+	return isInputField || isTextArea
 }
 
 func (l *Layout) ShowInlineSearch(currentPage string) {

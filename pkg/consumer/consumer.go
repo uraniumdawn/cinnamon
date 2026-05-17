@@ -31,8 +31,9 @@ const (
 // FromSpec describes where consumption starts.
 type FromSpec struct {
 	// Type is one of "beginning", "end", "offset", "tail", "timestamp".
+	// "tail" means start Offset messages before the current high-water mark.
 	Type      string
-	Offset    int64 // used when Type == "offset"
+	Offset    int64 // used when Type == "offset" or "tail"
 	Timestamp int64 // unix ms, used when Type == "timestamp"
 }
 
@@ -61,7 +62,7 @@ type Params struct {
 	// Partitions restricts consumption to the given partition IDs.
 	// An empty slice means consume all partitions.
 	Partitions []int32
-	// MaxCount stops consumption after this many messages have been delivered.
+	// MaxCount stops consumption after this many messages per partition have been delivered.
 	// Zero means unlimited.
 	MaxCount int64
 	// KeySerdes and ValueSerdes override Format-based decoding when non-zero.
@@ -155,7 +156,7 @@ func Consume(ctx context.Context, params Params, records chan<- Record, errs cha
 
 	numPartitions := len(partitions)
 	stoppedPartitions := make(map[int32]bool, numPartitions)
-	var delivered int64
+	partitionDelivered := make(map[int32]int64, numPartitions)
 
 	for {
 		select {
@@ -223,9 +224,14 @@ func Consume(ctx context.Context, params Params, records chan<- Record, errs cha
 				Headers:   headers,
 				Size:      size,
 			}
-			delivered++
-			if params.MaxCount > 0 && delivered >= params.MaxCount {
-				return
+			if params.MaxCount > 0 {
+				partitionDelivered[partition]++
+				if partitionDelivered[partition] >= params.MaxCount {
+					stoppedPartitions[partition] = true
+					if len(stoppedPartitions) >= numPartitions {
+						return
+					}
+				}
 			}
 
 		case kafka.Error:

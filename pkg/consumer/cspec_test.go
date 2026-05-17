@@ -19,6 +19,8 @@ func TestParseArgs(t *testing.T) {
 	refEnd := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 	refEndMs := refEnd.UnixMilli()
 
+	tail100 := FromSpec{Type: "tail", Offset: 100}
+
 	tests := []struct {
 		name            string
 		input           string
@@ -33,10 +35,14 @@ func TestParseArgs(t *testing.T) {
 		wantSRName      string
 		wantError       bool
 	}{
+		// defaults
 		{
-			name:  "empty input returns zero spec",
-			input: "",
+			name:      "empty input defaults to tail 100",
+			input:     "",
+			wantFrom:  tail100,
+			wantCount: 100,
 		},
+		// -o flag
 		{
 			name:     "-o beginning",
 			input:    "-o beginning",
@@ -58,62 +64,141 @@ func TestParseArgs(t *testing.T) {
 			wantFrom: FromSpec{Type: "end"},
 		},
 		{
-			name:     "-o numeric offset",
-			input:    "-o 1000",
+			name:      "-o 50 sets tail and count",
+			input:     "-o 50",
+			wantFrom:  FromSpec{Type: "tail", Offset: 50},
+			wantCount: 50,
+		},
+		{
+			name:      "-o 1 sets tail and count",
+			input:     "-o 1",
+			wantFrom:  FromSpec{Type: "tail", Offset: 1},
+			wantCount: 1,
+		},
+		{
+			name:          "no -o with other flags defaults to tail 100",
+			input:         "-e",
+			wantFrom:      tail100,
+			wantCount:     100,
+			wantExitOnEnd: true,
+		},
+		// -o zero and negative are errors
+		{
+			name:      "-o 0 is an error (must be positive)",
+			input:     "-o 0",
+			wantError: true,
+		},
+		{
+			name:      "-o -1 is an error (negative not allowed)",
+			input:     "-o -1",
+			wantError: true,
+		},
+		{
+			name:      "-o notavalue is an error",
+			input:     "-o notavalue",
+			wantError: true,
+		},
+		// -s: absolute offset start
+		{
+			name:     "-s:1000 sets absolute offset start",
+			input:    "-s:1000",
 			wantFrom: FromSpec{Type: "offset", Offset: 1000},
 		},
 		{
-			name:     "-o zero offset",
-			input:    "-o 0",
+			name:     "-s:0 is valid (offset zero)",
+			input:    "-s:0",
 			wantFrom: FromSpec{Type: "offset", Offset: 0},
 		},
 		{
-			name:     "-o s@ timestamp",
-			input:    "-o s@2024-01-01T00:00:00Z",
+			name:      "-s:1000 -o 50 sets absolute start with per-partition count",
+			input:     "-s:1000 -o 50",
+			wantFrom:  FromSpec{Type: "offset", Offset: 1000},
+			wantCount: 50,
+		},
+		{
+			name:      "-o 50 -s:1000 order independent",
+			input:     "-o 50 -s:1000",
+			wantFrom:  FromSpec{Type: "offset", Offset: 1000},
+			wantCount: 50,
+		},
+		{
+			name:      "-s: with non-integer value is an error",
+			input:     "-s:abc",
+			wantError: true,
+		},
+		{
+			name:      "-s: with negative value is an error",
+			input:     "-s:-1",
+			wantError: true,
+		},
+		// -s@ timestamp start
+		{
+			name:     "-s@<ts> sets timestamp start",
+			input:    "-s@2024-01-01T00:00:00Z",
 			wantFrom: FromSpec{Type: "timestamp", Timestamp: refMs},
 		},
 		{
-			name:   "-o e@ timestamp sets ToSpec",
-			input:  "-o e@2024-01-01T00:00:00Z",
-			wantTo: ToSpec{Type: "timestamp", Timestamp: refMs},
+			name:      "-s@ with invalid timestamp is an error",
+			input:     "-s@notadate",
+			wantError: true,
+		},
+		// -e: end offset (requires -s:)
+		{
+			name:     "-s:1000 -e:2000 sets offset range",
+			input:    "-s:1000 -e:2000",
+			wantFrom: FromSpec{Type: "offset", Offset: 1000},
+			wantTo:   ToSpec{Type: "offset", Offset: 2000},
 		},
 		{
-			name:     "s@ and e@ as two separate -o flags",
-			input:    "-o s@2024-01-01T00:00:00Z -o e@2024-01-02T00:00:00Z",
+			name:      "-e: without -s: is an error",
+			input:     "-e:2000",
+			wantError: true,
+		},
+		{
+			name:      "-e: with -o beginning is an error",
+			input:     "-o beginning -e:2000",
+			wantError: true,
+		},
+		{
+			name:      "-s:1000 -e:2000 -o 50: count ignored when ToSpec present",
+			input:     "-s:1000 -e:2000 -o 50",
+			wantFrom:  FromSpec{Type: "offset", Offset: 1000},
+			wantTo:    ToSpec{Type: "offset", Offset: 2000},
+			wantCount: 0,
+		},
+		{
+			name:      "-e: with non-integer value is an error",
+			input:     "-s:0 -e:abc",
+			wantError: true,
+		},
+		// -e@ end timestamp (requires -s@)
+		{
+			name:     "-s@<ts> -e@<ts> sets timestamp range",
+			input:    "-s@2024-01-01T00:00:00Z -e@2024-01-02T00:00:00Z",
 			wantFrom: FromSpec{Type: "timestamp", Timestamp: refMs},
 			wantTo:   ToSpec{Type: "timestamp", Timestamp: refEndMs},
 		},
 		{
-			name:    "-f with escaped sequences",
-			input:   `-f %k\t%s\n`,
-			wantFmt: "%k\t%s\n",
+			name:      "-e@ without -s@ is an error",
+			input:     "-e@2024-01-02T00:00:00Z",
+			wantError: true,
 		},
 		{
-			name:    "-f format with spaces is consumed to end of input",
-			input:   `-f %T %p %o %s`,
-			wantFmt: "%T %p %o %s",
+			name:      "-e@ with -s: is an error",
+			input:     "-s:1000 -e@2024-01-02T00:00:00Z",
+			wantError: true,
 		},
 		{
-			name:     "-o with -f combined",
-			input:    `-o beginning -f %T %p %o %s\n`,
-			wantFrom: FromSpec{Type: "beginning"},
-			wantFmt:  "%T %p %o %s\n",
+			name:      "-e@ with invalid timestamp is an error",
+			input:     "-s@2024-01-01T00:00:00Z -e@notadate",
+			wantError: true,
 		},
-		// tail (relative from end)
-		{
-			name:     "-o -1 is a tail offset of 1",
-			input:    "-o -1",
-			wantFrom: FromSpec{Type: "tail", Offset: 1},
-		},
-		{
-			name:     "-o -10 is a tail offset of 10",
-			input:    "-o -10",
-			wantFrom: FromSpec{Type: "tail", Offset: 10},
-		},
-		// -e exit on end
+		// -e exit on EOF
 		{
 			name:          "-e sets ExitOnEnd",
 			input:         "-e",
+			wantFrom:      tail100,
+			wantCount:     100,
 			wantExitOnEnd: true,
 		},
 		{
@@ -122,15 +207,40 @@ func TestParseArgs(t *testing.T) {
 			wantFrom:      FromSpec{Type: "beginning"},
 			wantExitOnEnd: true,
 		},
+		// -f format string
+		{
+			name:      "-f with escaped sequences",
+			input:     `-f %k\t%s\n`,
+			wantFrom:  tail100,
+			wantCount: 100,
+			wantFmt:   "%k\t%s\n",
+		},
+		{
+			name:      "-f format with spaces is consumed to end of input",
+			input:     `-f %T %p %o %s`,
+			wantFrom:  tail100,
+			wantCount: 100,
+			wantFmt:   "%T %p %o %s",
+		},
+		{
+			name:     "-o beginning with -f combined",
+			input:    `-o beginning -f %T %p %o %s\n`,
+			wantFrom: FromSpec{Type: "beginning"},
+			wantFmt:  "%T %p %o %s\n",
+		},
 		// partition filtering
 		{
 			name:           "-p single partition",
 			input:          "-p 1",
+			wantFrom:       tail100,
+			wantCount:      100,
 			wantPartitions: []int32{1},
 		},
 		{
 			name:           "-p multiple partitions",
 			input:          "-p 0 -p 1",
+			wantFrom:       tail100,
+			wantCount:      100,
 			wantPartitions: []int32{0, 1},
 		},
 		{
@@ -155,89 +265,58 @@ func TestParseArgs(t *testing.T) {
 			input:     "-p abc",
 			wantError: true,
 		},
-		// message count limit
+		// -d serdes (renamed from -s)
 		{
-			name:      "-c 100",
-			input:     "-c 100",
-			wantCount: 100,
-		},
-		{
-			name:      "-c 1",
-			input:     "-c 1",
-			wantCount: 1,
-		},
-		{
-			name:          "-o beginning -c 50 -e combined",
-			input:         "-o beginning -c 50 -e",
-			wantFrom:      FromSpec{Type: "beginning"},
-			wantCount:     50,
-			wantExitOnEnd: true,
-		},
-		{
-			name:      "-c with no value returns error",
-			input:     "-c",
-			wantError: true,
-		},
-		{
-			name:      "-c 0 returns error",
-			input:     "-c 0",
-			wantError: true,
-		},
-		{
-			name:      "-c negative returns error",
-			input:     "-c -1",
-			wantError: true,
-		},
-		{
-			name:      "-c non-integer returns error",
-			input:     "-c abc",
-			wantError: true,
-		},
-		// serdes / schema registry
-		{
-			name:            "-s avro sets both key and value",
-			input:           "-s avro",
+			name:            "-d avro sets both key and value",
+			input:           "-d avro",
+			wantFrom:        tail100,
+			wantCount:       100,
 			wantKeySerdes:   Serdes{Kind: SerdesAvro},
 			wantValueSerdes: Serdes{Kind: SerdesAvro},
 		},
 		{
-			name:          "-s key=i sets only key serdes",
-			input:         "-s key=i",
+			name:          "-d key=i sets only key serdes",
+			input:         "-d key=i",
+			wantFrom:      tail100,
+			wantCount:     100,
 			wantKeySerdes: Serdes{Kind: SerdesPack, PackStr: "i"},
 		},
 		{
-			name:            "-s value=avro sets only value serdes",
-			input:           "-s value=avro",
+			name:            "-d value=avro sets only value serdes",
+			input:           "-d value=avro",
+			wantFrom:        tail100,
+			wantCount:       100,
 			wantValueSerdes: Serdes{Kind: SerdesAvro},
 		},
 		{
-			name:            "-s key=avro -s value=>q both set independently",
-			input:           "-s key=avro -s value=>q",
+			name:            "-d key=avro -d value=>q both set independently",
+			input:           "-d key=avro -d value=>q",
+			wantFrom:        tail100,
+			wantCount:       100,
 			wantKeySerdes:   Serdes{Kind: SerdesAvro},
 			wantValueSerdes: Serdes{Kind: SerdesPack, PackStr: ">q"},
 		},
 		{
 			name:       "-r sets SRName",
 			input:      "-r my-sr",
+			wantFrom:   tail100,
+			wantCount:  100,
 			wantSRName: "my-sr",
 		},
 		{
-			name:            "-s avro -r my-sr combined",
-			input:           "-s avro -r my-sr",
+			name:            "-d avro -r my-sr combined",
+			input:           "-d avro -r my-sr",
+			wantFrom:        tail100,
+			wantCount:       100,
 			wantKeySerdes:   Serdes{Kind: SerdesAvro},
 			wantValueSerdes: Serdes{Kind: SerdesAvro},
 			wantSRName:      "my-sr",
 		},
-		{name: "-s with no value returns error", input: "-s", wantError: true},
-		{name: "-s with empty key= returns error", input: "-s key=", wantError: true},
-		{name: "-s value=x unknown pack char returns error", input: "-s value=x", wantError: true},
+		{name: "-d with no value returns error", input: "-d", wantError: true},
+		{name: "-d with empty key= returns error", input: "-d key=", wantError: true},
+		{name: "-d value=x unknown pack char returns error", input: "-d value=x", wantError: true},
 		{name: "-r with no value returns error", input: "-r", wantError: true},
-		// errors
-		{
-			name:      "unknown word offset is an error",
-			input:     "-o notavalue",
-			wantError: true,
-		},
+		// flag errors
 		{
 			name:      "unknown flag returns error",
 			input:     "--unknown",
@@ -254,13 +333,13 @@ func TestParseArgs(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name:      "s@ with invalid timestamp returns error",
-			input:     "-o s@notadate",
+			name:      "old -s flag is unknown",
+			input:     "-s avro",
 			wantError: true,
 		},
 		{
-			name:      "e@ with invalid timestamp returns error",
-			input:     "-o e@notadate",
+			name:      "old -c flag is unknown",
+			input:     "-c 10",
 			wantError: true,
 		},
 	}

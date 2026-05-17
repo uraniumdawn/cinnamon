@@ -175,9 +175,9 @@ func (app *App) ConsumeModal(topicName string) {
 	placeholderTextColor := tcell.GetColor(app.Colors.Cinnamon.Placeholder)
 
 	const fmtFlag = `'{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n'`
-	defaultText := "-o -100 -f " + fmtFlag
+	defaultText := "-o 100 -f " + fmtFlag
 	if app.Selected.SchemaRegistry != nil {
-		defaultText = "-o -100 -r " + app.Selected.SchemaRegistry.Name + " -f " + fmtFlag
+		defaultText = "-o 100 -r " + app.Selected.SchemaRegistry.Name + " -f " + fmtFlag
 	}
 
 	input := tview.NewTextArea().
@@ -215,7 +215,7 @@ func (app *App) ConsumeModal(topicName string) {
 		// Resolve schema registry by name if avro serdes is requested.
 		if spec.KeySerdes.Kind == consumer.SerdesAvro || spec.ValueSerdes.Kind == consumer.SerdesAvro {
 			if spec.SRName == "" {
-				SendStatusWithDefaultTTL("[red]-r <sr-name> is required when using avro serdes")
+				SendStatusWithDefaultTTL("[red]-d avro requires -r <sr-name>")
 				return
 			}
 			srConfig, ok := app.SchemaRegistries[spec.SRName]
@@ -287,19 +287,22 @@ func (app *App) ConsumeHelpModal() {
 
 	content := fmt.Sprintf(
 		"[%s]Flags[-]\n"+
-			"  [%s]-o[-]  beginning | earliest | end | latest | <n> | -<n> | s@<ts> | e@<ts>\n"+
-			"  [%s]-p[-]  <n>          restrict to partition (repeatable)\n"+
-			"  [%s]-c[-]  <n>          stop after n messages\n"+
-			"  [%s]-s[-]  <serdes> | key=<serdes> | value=<serdes>\n"+
+			"  [%s]-o[-]    beginning | earliest | end | latest | <n>\n"+
+			"               tail last n messages per partition (default: 100)\n"+
+			"  [%s]-s:[-]<offset>  start from absolute partition offset\n"+
+			"  [%s]-s@[-]<ts>      start from timestamp\n"+
+			"  [%s]-e:[-]<offset>  stop at offset, exclusive (requires -s:; overrides -o <n>)\n"+
+			"  [%s]-e@[-]<ts>      stop at timestamp, exclusive (requires -s@; overrides -o <n>)\n"+
+			"  [%s]-e[-]           exit when all partitions reach high-water mark\n"+
+			"  [%s]-p[-]  <n>      restrict to partition (repeatable)\n"+
+			"  [%s]-d[-]  <serdes> | key=<serdes> | value=<serdes>\n"+
 			"             serdes:  avro  |  pack: [>|<][bBhHiIqQcs]+\n"+
 			"             > big-endian (recommended)  < little-endian\n"+
 			"             b/B int8/uint8   h/H int16/uint16   i/I int32/uint32\n"+
 			"             q/Q int64/uint64  c char  s remaining bytes as string (must be last)\n"+
-			"             trailing bytes are ignored (no end-of-input assertion)\n"+
-			"             examples:    -s avro   -s key=>i   -s value=>qs\n"+
-			"  [%s]-r[-]  <sr-name>    schema registry name (required for avro)\n"+
-			"  [%s]-f[-]  <format>     output format string (must be last flag)\n"+
-			"  [%s]-e[-]               exit when end of each partition is reached\n"+
+			"             examples:    -d avro   -d key=>i   -d value=>qs\n"+
+			"  [%s]-r[-]  <sr-name>  schema registry name (required for avro)\n"+
+			"  [%s]-f[-]  <format>   output format string (must be last flag)\n"+
 			"\n"+
 			"[%s]Format specifiers for -f[-]\n"+
 			"  [%s]%%k[-] key      [%s]%%s[-] value     [%s]%%p[-] partition\n"+
@@ -308,11 +311,25 @@ func (app *App) ConsumeHelpModal() {
 			"\n"+
 			"[%s]Timestamp formats[-]  unix-ms | RFC3339 | 2006-01-02T15:04:05.000",
 		labelColor,
-		labelColor, labelColor, labelColor, labelColor, labelColor, labelColor, labelColor,
 		labelColor,
-		labelColor, labelColor, labelColor,
-		labelColor, labelColor, labelColor,
-		labelColor, labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
+		labelColor,
 		dimColor,
 	)
 
