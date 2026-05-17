@@ -907,7 +907,7 @@ func (app *App) NewUpdateTopicModal(topicName string, topicResult *client.TopicR
 			}
 		}
 
-		if event.Key() == tcell.KeyCtrlS {
+		if IsCtrlEnter(event) {
 			propertiesText := configTextArea.GetText()
 			editedConfig = parseConfig(propertiesText)
 

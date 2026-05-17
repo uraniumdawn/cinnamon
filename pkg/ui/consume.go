@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -88,6 +89,9 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 
 	// Drain records; when the channel closes, finalize.
 	go func() {
+		partitionCounts := make(map[int32]int64)
+		partitionFirstOffset := make(map[int32]int64)
+		partitionLastOffset := make(map[int32]int64)
 		defer func() {
 			cancelFunc()
 			atomic.StoreInt32(&isActive, 0)
@@ -95,14 +99,40 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 			app.QueueUpdateDraw(func() {
 				view.SetTitle(fmt.Sprintf(" Consume: %s [%d records] ", topicName, cnt))
 			})
-			SendStatus(
-				fmt.Sprintf("consuming stopped: %d records from %q", cnt, topicName),
-				3*time.Second,
-				false,
-			)
+
+			parts := make([]int32, 0, len(partitionCounts))
+			for p := range partitionCounts {
+				parts = append(parts, p)
+			}
+			sort.Slice(parts, func(i, j int) bool { return parts[i] < parts[j] })
+			var sb strings.Builder
+			for i, p := range parts {
+				if i > 0 {
+					sb.WriteByte(' ')
+				}
+				fmt.Fprintf(
+					&sb,
+					"%d:%d(%d-%d)",
+					p,
+					partitionCounts[p],
+					partitionFirstOffset[p],
+					partitionLastOffset[p],
+				)
+			}
+
+			msg := fmt.Sprintf("consuming stopped: %d records from %q [%s]", cnt, topicName, sb.String())
+			if params.ExitOnEnd {
+				msg = fmt.Sprintf("consumed %d records from all partitions [%s]", cnt, sb.String())
+			}
+			SendStatusInfiniteWithouSpinner(msg)
 		}()
 		for rec := range records {
 			atomic.AddInt64(&recordCount, 1)
+			partitionCounts[rec.Partition]++
+			if _, seen := partitionFirstOffset[rec.Partition]; !seen {
+				partitionFirstOffset[rec.Partition] = rec.Offset
+			}
+			partitionLastOffset[rec.Partition] = rec.Offset
 			line := formatFn(rec)
 			app.QueueUpdateDraw(func() {
 				_, _ = fmt.Fprintf(view, "%s\n", line)
@@ -134,32 +164,34 @@ func toJSONValue(s string) string {
 	return string(quoted)
 }
 
-// ConsumeModal opens a single-line kcat-style consume params input for topicName.
+// ConsumeModal opens a multiline kcat-style consume params input for topicName.
 // Supported flags: -o beginning|end|<n>|s@<ts>|e@<ts>  -f <format>.
 func (app *App) ConsumeModal(topicName string) {
-	foregroundColor := tcell.GetColor(app.Colors.Cinnamon.Foreground)
 	bgColor := tcell.GetColor(app.Colors.Cinnamon.Background)
 	placeholderTextColor := tcell.GetColor(app.Colors.Cinnamon.Placeholder)
 
-	input := tview.NewInputField().
-		SetText("-o beginning").
-		SetFieldWidth(0).
-		SetFieldStyle(
-			tcell.StyleDefault.
-				Foreground(foregroundColor).
-				Background(bgColor),
-		).
-		SetPlaceholderStyle(tcell.StyleDefault.Background(bgColor)).
-		SetPlaceholderTextColor(placeholderTextColor)
+	const fmtFlag = `'{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n'`
+	defaultText := "-o -100 -f " + fmtFlag
+	if app.Selected.SchemaRegistry != nil {
+		defaultText = "-o -100 -r " + app.Selected.SchemaRegistry.Name + " -f " + fmtFlag
+	}
+
+	input := tview.NewTextArea().
+		SetText(defaultText, false).
+		SetTextStyle(tcell.StyleDefault.Background(bgColor)).
+		SetPlaceholderStyle(tcell.StyleDefault.Foreground(placeholderTextColor).Background(bgColor))
 
 	submit := func() {
-		raw := input.GetText()
+		text := strings.TrimSpace(input.GetText())
+		if text == "" {
+			text = defaultText
+		}
+		raw := strings.ReplaceAll(text, "\n", " ")
 		spec, err := consumer.ParseConsumeArgs(raw)
 		if err != nil {
 			SendStatusWithDefaultTTL(fmt.Sprintf("[red]%s", err.Error()))
 			return
 		}
-
 		kafkaConf := make(kafka.ConfigMap)
 		for k, v := range app.Selected.Cluster.Properties {
 			_ = kafkaConf.SetKey(k, v)
@@ -219,27 +251,28 @@ func (app *App) ConsumeModal(topicName string) {
 	}
 
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEnter:
+		if IsCtrlEnter(event) {
 			submit()
 			return nil
+		}
+		switch event.Key() {
 		case tcell.KeyEsc:
 			app.HideModalPage(ConsumeParams)
 			return nil
-
 		case tcell.KeyF1:
 			app.ConsumeHelpModal()
 			app.ShowModalPage(ConsumeHelp)
+			return nil
 		}
 		return event
 	})
 
 	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(input, 1, 0, true)
+		AddItem(input, 0, 1, true)
 	mainFlex.SetTitle(" Parameters ")
 	mainFlex.SetBorder(true)
 
-	modal := util.NewResourceModal(mainFlex, 7)
+	modal := util.NewResourceModal(mainFlex, 12)
 	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeParams, modal, true, false)
 }
 
@@ -253,7 +286,13 @@ func (app *App) ConsumeHelpModal() {
 			"  [%s]-o[-]  beginning | earliest | end | latest | stored | <n> | -<n> | s@<ts> | e@<ts>\n"+
 			"  [%s]-p[-]  <n>          restrict to partition (repeatable)\n"+
 			"  [%s]-c[-]  <n>          stop after n messages\n"+
-			"  [%s]-s[-]  avro | key=<serdes> | value=<serdes>   (serdes: avro, string, hex, pack)\n"+
+			"  [%s]-s[-]  <serdes> | key=<serdes> | value=<serdes>\n"+
+			"             serdes:  avro  |  pack: [>|<][bBhHiIqQcs]+\n"+
+			"             > big-endian (recommended)  < little-endian\n"+
+			"             b/B int8/uint8   h/H int16/uint16   i/I int32/uint32\n"+
+			"             q/Q int64/uint64  c char  s remaining bytes as string (must be last)\n"+
+			"             trailing bytes are ignored (no end-of-input assertion)\n"+
+			"             examples:    -s avro   -s key=>i   -s value=>qs\n"+
 			"  [%s]-r[-]  <sr-name>    schema registry name (required for avro)\n"+
 			"  [%s]-f[-]  <format>     output format string (must be last flag)\n"+
 			"  [%s]-e[-]               exit when end of each partition is reached\n"+
@@ -280,8 +319,13 @@ func (app *App) ConsumeHelpModal() {
 	view.SetBorder(false).SetBorderPadding(0, 0, 1, 1)
 
 	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc || IsKey(event, '?') {
+		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyF1 {
 			app.HideModalPage(ConsumeHelp)
+			return nil
+		}
+
+		if IsKey(event, ':') {
+			// denied call resource modal on this page
 			return nil
 		}
 		return event
@@ -292,8 +336,7 @@ func (app *App) ConsumeHelpModal() {
 	mainFlex.SetTitle(" Consume Reference ")
 	mainFlex.SetBorder(true)
 
-	modal := util.NewResourceModal(mainFlex, 20)
-	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeHelp, modal, true, false)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeHelp, mainFlex, true, false)
 }
 
 // formatConsumeRecord renders a record as a single JSON line matching:

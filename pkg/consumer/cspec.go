@@ -37,7 +37,7 @@ type ConsumeSpec struct {
 //   - -e                      (exit when last message on each partition is received)
 //
 // -o may appear twice: once with s@ (sets From) and once with e@ (sets To).
-// An empty string is valid and returns a zero ConsumeSpec.
+// If -o is omitted, From defaults to "beginning".
 func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 	tokens := tokenize(args)
 	var spec ConsumeSpec
@@ -127,6 +127,9 @@ func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 		default:
 			return ConsumeSpec{}, fmt.Errorf("unknown flag: %s", tokens[i])
 		}
+	}
+	if spec.From.Type == "" {
+		spec.From = FromSpec{Type: "tail", Offset: 100}
 	}
 	return spec, nil
 }

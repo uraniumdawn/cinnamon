@@ -100,6 +100,32 @@ func Consume(ctx context.Context, params Params, records chan<- Record, errs cha
 		return
 	}
 
+	// For absolute offsets, validate each partition's watermarks upfront so that
+	// out-of-range partitions are skipped with a single error rather than
+	// flooding the output on every poll cycle.
+	// if params.From.Type == "offset" {
+	// 	valid := partitions[:0:0]
+	// 	for _, p := range partitions {
+	// 		low, high, wErr := c.QueryWatermarkOffsets(*p.Topic, p.Partition, 10_000)
+	// 		if wErr != nil {
+	// 			errs <- fmt.Errorf("partition %d: query watermarks: %w", p.Partition, wErr)
+	// 			continue
+	// 		}
+	// 		if params.From.Offset < low || params.From.Offset >= high {
+	// 			errs <- fmt.Errorf(
+	// 				"partition %d: offset %d out of range [%d, %d), skipping",
+	// 				p.Partition, params.From.Offset, low, high,
+	// 			)
+	// 			continue
+	// 		}
+	// 		valid = append(valid, p)
+	// 	}
+	// 	partitions = valid
+	// 	if len(partitions) == 0 {
+	// 		return
+	// 	}
+	// }
+
 	if err := c.Assign(partitions); err != nil {
 		errs <- fmt.Errorf("assign partitions: %w", err)
 		return
@@ -239,6 +265,10 @@ func newConsumer(params Params) (*kafka.Consumer, func(), error) {
 	_ = conf.SetKey("enable.auto.commit", false)
 	// explicit assignment via Assign(), reject out-of-range offsets
 	_ = conf.SetKey("auto.offset.reset", "error")
+	if params.ExitOnEnd {
+		// Required for librdkafka to emit PartitionEOF events via Poll().
+		_ = conf.SetKey("enable.partition.eof", true)
+	}
 
 	logChan := make(chan kafka.LogEvent, 32)
 	_ = conf.SetKey("go.logs.channel.enable", true)

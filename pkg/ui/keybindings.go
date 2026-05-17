@@ -16,6 +16,11 @@ func IsKey(event *tcell.EventKey, r rune) bool {
 	return event.Key() == tcell.KeyRune && event.Rune() == r
 }
 
+// IsCtrlEnter reports whether the event is Enter with the Ctrl modifier held.
+func IsCtrlEnter(event *tcell.EventKey) bool {
+	return event.Key() == tcell.KeyEnter && event.Modifiers()&tcell.ModCtrl != 0
+}
+
 func (app *App) OpenPagesKeyHandler(filteredTable *tview.Table) {
 	registry := app.Layout.PagesRegistry
 	searchInput := registry.UI.SearchInput

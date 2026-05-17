@@ -40,6 +40,11 @@ func SendStatusInfinite(message string) {
 	StatusLineCh <- Status{Message: message, TTL: 0, Spinner: true}
 }
 
+// SendStatusInfinite sends a status message that never auto-clears without spinner
+func SendStatusInfiniteWithouSpinner(message string) {
+	StatusLineCh <- Status{Message: message, TTL: 0, Spinner: false}
+}
+
 // ClearStatus clears the status line immediately
 func ClearStatus() {
 	StatusLineCh <- Status{Message: "", TTL: 0, Spinner: false}

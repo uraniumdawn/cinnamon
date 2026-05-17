@@ -102,7 +102,7 @@ var keys = map[string]Pair{
 		Value: "Submit",
 	},
 	"submit_ctrl": {
-		Key:   "<Ctrl+s>",
+		Key:   "<Ctrl+Enter>",
 		Value: "Submit",
 	},
 	"reset_offset": {
@@ -364,7 +364,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"b/f",
 			},
 			ConsumeParamsPageMenu: {
-				"enter",
+				"submit_ctrl",
 				"cancel",
 				"consume_help",
 			},
