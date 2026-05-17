@@ -99,12 +99,6 @@ func TestParseArgs(t *testing.T) {
 			wantFrom: FromSpec{Type: "beginning"},
 			wantFmt:  "%T %p %o %s\n",
 		},
-		// stored
-		{
-			name:     "-o stored",
-			input:    "-o stored",
-			wantFrom: FromSpec{Type: "stored"},
-		},
 		// tail (relative from end)
 		{
 			name:     "-o -1 is a tail offset of 1",

@@ -287,7 +287,7 @@ func (app *App) ConsumeHelpModal() {
 
 	content := fmt.Sprintf(
 		"[%s]Flags[-]\n"+
-			"  [%s]-o[-]  beginning | earliest | end | latest | stored | <n> | -<n> | s@<ts> | e@<ts>\n"+
+			"  [%s]-o[-]  beginning | earliest | end | latest | <n> | -<n> | s@<ts> | e@<ts>\n"+
 			"  [%s]-p[-]  <n>          restrict to partition (repeatable)\n"+
 			"  [%s]-c[-]  <n>          stop after n messages\n"+
 			"  [%s]-s[-]  <serdes> | key=<serdes> | value=<serdes>\n"+

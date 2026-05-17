@@ -26,7 +26,7 @@ type ConsumeSpec struct {
 
 // ParseConsumeArgs parses a kcat-style flag string into a ConsumeSpec.
 // Supported flags:
-//   - -o beginning|earliest|end|latest|stored|<n>|-<n>|s@<ts>|e@<ts>
+//   - -o beginning|earliest|end|latest|<n>|-<n>|s@<ts>|e@<ts>
 //   - -p <n>                  (restrict to partition n; may repeat)
 //   - -c <n>                  (stop after n messages; must be >= 1)
 //   - -s avro                 (Avro for both key and value)
@@ -193,8 +193,6 @@ func parseOffsetSpec(val string) (FromSpec, ToSpec, error) {
 		return FromSpec{Type: "beginning"}, ToSpec{}, nil
 	case "end", "latest":
 		return FromSpec{Type: "end"}, ToSpec{}, nil
-	case "stored":
-		return FromSpec{Type: "stored"}, ToSpec{}, nil
 	}
 	if strings.HasPrefix(val, "s@") {
 		ts, err := parseTimestamp(val[2:])
@@ -213,7 +211,7 @@ func parseOffsetSpec(val string) (FromSpec, ToSpec, error) {
 	n, err := strconv.ParseInt(val, 10, 64)
 	if err != nil {
 		return FromSpec{}, ToSpec{}, fmt.Errorf(
-			"invalid -o value: %q (use beginning, end, stored, <n>, -<n>, s@<ts>, or e@<ts>)", val,
+			"invalid -o value: %q (use beginning, end, <n>, -<n>, s@<ts>, or e@<ts>)", val,
 		)
 	}
 	if n < 0 {

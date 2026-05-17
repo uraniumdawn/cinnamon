@@ -30,7 +30,7 @@ const (
 
 // FromSpec describes where consumption starts.
 type FromSpec struct {
-	// Type is one of "beginning", "end", "offset", "timestamp".
+	// Type is one of "beginning", "end", "offset", "tail", "timestamp".
 	Type      string
 	Offset    int64 // used when Type == "offset"
 	Timestamp int64 // unix ms, used when Type == "timestamp"
@@ -351,11 +351,6 @@ func resolvePartitions(c *kafka.Consumer, params Params) ([]kafka.TopicPartition
 	case "end":
 		for i := range partitions {
 			partitions[i].Offset = kafka.OffsetEnd
-		}
-
-	case "stored":
-		for i := range partitions {
-			partitions[i].Offset = kafka.OffsetStored
 		}
 
 	case "tail":
