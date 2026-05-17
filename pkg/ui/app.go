@@ -114,7 +114,7 @@ func NewApp() *App {
 	InitLogger()
 
 	fatal := func(msg string, err error) {
-		fmt.Fprintf(stderr, "cinnamon: %s: %v\n", msg, err)
+		_, _ = fmt.Fprintf(stderr, "cinnamon: %s: %v\n", msg, err)
 		os.Exit(1)
 	}
 

@@ -28,7 +28,7 @@ func (r *ClusterResult) String() string {
 	_ = w.Flush()
 
 	sb.WriteString("\nNodes:\n")
-	for _, node := range r.DescribeClusterResult.Nodes {
+	for _, node := range r.Nodes {
 		_, _ = fmt.Fprintf(&sb, "%s\n", node.String())
 	}
 	return sb.String()
