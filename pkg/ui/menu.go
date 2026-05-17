@@ -117,6 +117,14 @@ var keys = map[string]Pair{
 		Key:   "<Esc>",
 		Value: "Close",
 	},
+	"close_f1": {
+		Key:   "<Esc>/F1",
+		Value: "Close",
+	},
+	"close_f2": {
+		Key:   "<Esc>/F2",
+		Value: "Close",
+	},
 	"actions": {
 		Key:   "<a>",
 		Value: "Actions",
@@ -160,6 +168,10 @@ var keys = map[string]Pair{
 	"stop_consume": {
 		Key:   "<t>",
 		Value: "Stop consuming",
+	},
+	"consume_stats": {
+		Key:   "<F2>",
+		Value: "Consume stats",
 	},
 	"delete_cli": {
 		Key:   "<Ctrl+d>",
@@ -248,6 +260,7 @@ const (
 	ConsumeOutputPageMenu         = "ConsumeOutputPageMenu"
 	ConsumeParamsPageMenu         = "ConsumeParamsPageMenu"
 	ConsumeHelpPageMenu           = "ConsumeHelpPageMenu"
+	ConsumeStatsPageMenu          = "ConsumeStatsPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -369,12 +382,16 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"consume_help",
 			},
 			ConsumeHelpPageMenu: {
-				"close",
+				"close_f1",
 			},
 			ConsumeOutputPageMenu: {
 				"stop_consume",
+				"consume_stats",
 				"delete_cli",
 				"b/f",
+			},
+			ConsumeStatsPageMenu: {
+				"close_f2",
 			},
 			CliExecutePageMenu: {
 				"terminate_cli",

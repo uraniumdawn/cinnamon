@@ -52,6 +52,7 @@ const (
 	ConsumeOutput          = "Consume Output"
 	ConsumeParams          = "Consume Params"
 	ConsumeHelp            = "Consume Help"
+	ConsumeStats           = "Consume Stats"
 )
 
 type App struct {

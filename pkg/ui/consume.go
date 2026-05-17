@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
+	"text/tabwriter"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -47,6 +49,12 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 	var isActive int32 = 1
 	spinnerIdx := 0
 
+	partitionCounts := make(map[int32]int64)
+	partitionFirstOffset := make(map[int32]int64)
+	partitionLastOffset := make(map[int32]int64)
+	var consumeErrors []string
+	var errorsMu sync.Mutex
+
 	// Spinner goroutine — updates title while consuming.
 	go func() {
 		ticker := time.NewTicker(80 * time.Millisecond)
@@ -64,6 +72,8 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 		}
 	}()
 
+	app.Layout.PagesRegistry.PageMenuMap[ConsumeStats] = ConsumeStatsPageMenu
+
 	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if IsKey(event, 't') {
 			if atomic.LoadInt32(&isActive) == 0 {
@@ -72,6 +82,24 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 			}
 			cancelFunc()
 			SendStatusInfinite("stopping consumer…")
+			return nil
+		}
+		if event.Key() == tcell.KeyF2 {
+			if atomic.LoadInt32(&isActive) == 1 {
+				SendStatus("consumer still active — press t to stop first", 2*time.Second, false)
+				return nil
+			}
+			errorsMu.Lock()
+			errcopy := append([]string(nil), consumeErrors...)
+			errorsMu.Unlock()
+			app.ConsumeStatsModal(
+				topicName,
+				partitionCounts,
+				partitionFirstOffset,
+				partitionLastOffset,
+				errcopy,
+			)
+			app.ShowModalPage(ConsumeStats)
 			return nil
 		}
 		if event.Key() == tcell.KeyCtrlD {
@@ -89,9 +117,6 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 
 	// Drain records; when the channel closes, finalize.
 	go func() {
-		partitionCounts := make(map[int32]int64)
-		partitionFirstOffset := make(map[int32]int64)
-		partitionLastOffset := make(map[int32]int64)
 		defer func() {
 			cancelFunc()
 			atomic.StoreInt32(&isActive, 0)
@@ -99,32 +124,7 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 			app.QueueUpdateDraw(func() {
 				view.SetTitle(fmt.Sprintf(" Consume: %s [%d records] ", topicName, cnt))
 			})
-
-			parts := make([]int32, 0, len(partitionCounts))
-			for p := range partitionCounts {
-				parts = append(parts, p)
-			}
-			sort.Slice(parts, func(i, j int) bool { return parts[i] < parts[j] })
-			var sb strings.Builder
-			for i, p := range parts {
-				if i > 0 {
-					sb.WriteByte(' ')
-				}
-				fmt.Fprintf(
-					&sb,
-					"%d:%d(%d-%d)",
-					p,
-					partitionCounts[p],
-					partitionFirstOffset[p],
-					partitionLastOffset[p],
-				)
-			}
-
-			msg := fmt.Sprintf("consuming stopped: %d records from %q [%s]", cnt, topicName, sb.String())
-			if params.ExitOnEnd {
-				msg = fmt.Sprintf("consumed %d records from all partitions [%s]", cnt, sb.String())
-			}
-			SendStatusInfiniteWithouSpinner(msg)
+			SendStatusInfiniteWithouSpinner(fmt.Sprintf("consumed %d records", cnt))
 		}()
 		for rec := range records {
 			atomic.AddInt64(&recordCount, 1)
@@ -144,8 +144,12 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 	// Drain error channel independently so errors don't block the consumer.
 	go func() {
 		for err := range errs {
+			msg := err.Error()
+			errorsMu.Lock()
+			consumeErrors = append(consumeErrors, msg)
+			errorsMu.Unlock()
 			app.QueueUpdateDraw(func() {
-				_, _ = fmt.Fprintf(view, "[red]error: %s[-]\n", err.Error())
+				_, _ = fmt.Fprintf(view, "[red]error: %s[-]\n", msg)
 			})
 		}
 	}()
@@ -337,6 +341,70 @@ func (app *App) ConsumeHelpModal() {
 	mainFlex.SetBorder(true)
 
 	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeHelp, mainFlex, true, false)
+}
+
+// ConsumeStatsModal builds and registers the consume-stats modal page.
+// It shows per-partition offset ranges and record counts, plus any errors.
+// The modal is shown by the F2 handler in StartConsuming.
+func (app *App) ConsumeStatsModal(
+	topicName string,
+	counts, first, last map[int32]int64,
+	errors []string,
+) {
+	labelColor := app.Colors.Cinnamon.Label.FgColor
+
+	parts := make([]int32, 0, len(counts))
+	for p := range counts {
+		parts = append(parts, p)
+	}
+	sort.Slice(parts, func(i, j int) bool { return parts[i] < parts[j] })
+
+	// Render table through tabwriter first (no color tags — they would skew column widths).
+	// Then colorize the header line by post-processing the flushed output.
+	var tw strings.Builder
+	w := tabwriter.NewWriter(&tw, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(w, "Partition\tOffsets\tRecords")
+	for _, p := range parts {
+		_, _ = fmt.Fprintf(w, "%d\t[%d:%d]\t%d\n", p, first[p], last[p], counts[p])
+	}
+	_ = w.Flush()
+
+	var sb strings.Builder
+	lines := strings.SplitN(tw.String(), "\n", 2)
+	fmt.Fprintf(&sb, "[%s]%s[-]\n", labelColor, lines[0])
+	if len(lines) > 1 {
+		sb.WriteString(lines[1])
+	}
+
+	if len(errors) > 0 {
+		sb.WriteString("\n[red]Errors[-]\n")
+		for _, e := range errors {
+			fmt.Fprintf(&sb, "  %s\n", e)
+		}
+	}
+
+	view := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(sb.String()).
+		SetScrollable(true)
+	view.SetBorder(false).SetBorderPadding(0, 0, 1, 1)
+
+	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc, tcell.KeyF2:
+			app.HideModalPage(ConsumeStats)
+			return nil
+		}
+		return event
+	})
+
+	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(view, 0, 1, true)
+	mainFlex.SetTitle(fmt.Sprintf(" Consume Stats: %s ", topicName))
+	mainFlex.SetBorder(true)
+
+	modal := util.NewModal(mainFlex)
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ConsumeStats, modal, true, false)
 }
 
 // formatConsumeRecord renders a record as a single JSON line matching:
