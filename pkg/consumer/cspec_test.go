@@ -33,6 +33,8 @@ func TestParseArgs(t *testing.T) {
 		wantKeySerdes   Serdes
 		wantValueSerdes Serdes
 		wantSRName      string
+		wantGroup       string
+		wantFilter      string
 		wantError       bool
 	}{
 		// defaults
@@ -312,6 +314,50 @@ func TestParseArgs(t *testing.T) {
 			wantValueSerdes: Serdes{Kind: SerdesAvro},
 			wantSRName:      "my-sr",
 		},
+		// -g consumer group
+		{
+			name:      "-g sets consumer group",
+			input:     "-g my-group",
+			wantFrom:  tail100,
+			wantCount: 100,
+			wantGroup: "my-group",
+		},
+		{name: "-g with no value returns error", input: "-g", wantError: true},
+		// | filter
+		{
+			name:       "| pattern sets filter",
+			input:      "| hello",
+			wantFrom:   tail100,
+			wantCount:  100,
+			wantFilter: "hello",
+		},
+		{
+			name:       "-o beginning | error sets filter",
+			input:      "-o beginning | error",
+			wantFrom:   FromSpec{Type: "beginning"},
+			wantFilter: "error",
+		},
+		{
+			name:       "-s:0 -e:100 | foo sets filter with range",
+			input:      "-s:0 -e:100 | foo",
+			wantFrom:   FromSpec{Type: "offset", Offset: 0},
+			wantTo:     ToSpec{Type: "offset", Offset: 100},
+			wantFilter: "foo",
+		},
+		{
+			name:       "-o 50 -f with filter after format",
+			input:      "-o 50 -f '%s' | bar",
+			wantFrom:   FromSpec{Type: "tail", Offset: 50},
+			wantCount:  50,
+			wantFmt:    "%s",
+			wantFilter: "bar",
+		},
+		{
+			name:      "| with empty pattern is treated as no filter",
+			input:     "-o 100 | ",
+			wantFrom:  FromSpec{Type: "tail", Offset: 100},
+			wantCount: 100,
+		},
 		{name: "-d with no value returns error", input: "-d", wantError: true},
 		{name: "-d with empty key= returns error", input: "-d key=", wantError: true},
 		{name: "-d value=x unknown pack char returns error", input: "-d value=x", wantError: true},
@@ -382,6 +428,12 @@ func TestParseArgs(t *testing.T) {
 			}
 			if got.SRName != tc.wantSRName {
 				t.Errorf("SRName: got %q, want %q", got.SRName, tc.wantSRName)
+			}
+			if got.Group != tc.wantGroup {
+				t.Errorf("Group: got %q, want %q", got.Group, tc.wantGroup)
+			}
+			if got.Filter != tc.wantFilter {
+				t.Errorf("Filter: got %q, want %q", got.Filter, tc.wantFilter)
 			}
 		})
 	}

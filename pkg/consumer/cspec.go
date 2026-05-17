@@ -19,6 +19,8 @@ type ConsumeSpec struct {
 	ExitOnEnd   bool    // -e: stop when the last available message is received
 	Partitions  []int32 // -p: empty means consume all partitions
 	Count       int64   // -o <n>: per-partition message limit (0 = unlimited)
+	Group       string  // -g <group>: consumer group ID (empty = ephemeral)
+	Filter      string  // | <pattern>: show only records whose formatted line contains pattern
 	KeySerdes   Serdes  // -d key=<serdes> or -d <serdes>
 	ValueSerdes Serdes  // -d value=<serdes> or -d <serdes>
 	SRName      string  // -r <sr-name>: schema registry name for avro serdes
@@ -33,14 +35,25 @@ type ConsumeSpec struct {
 //   - -e@<ts>                                stop at timestamp, exclusive (requires -s@; overrides -o <n>)
 //   - -e                                     exit when all partitions reach high-water mark
 //   - -p <n>                                 restrict to partition n (may repeat)
+//   - -g <group>                             consumer group ID (default: ephemeral cinnamon-<ts>)
 //   - -d <serdes>                            decode: avro | key=<serdes> | value=<serdes>
 //   - -r <sr-name>                           schema registry name (required for avro)
 //   - -f <format>                            format string (must be last flag)
+//   - | <pattern>                            show only records whose formatted output contains pattern
 //
 // If -o is omitted entirely, defaults to tail last 100 messages per partition.
 // -e:<offset> requires -s:; -e@<ts> requires -s@.
 // When a ToSpec (-e:/-e@) is present, the -o <n> per-partition count is ignored.
+// | <pattern> is extracted before tokenizing so it may appear anywhere, including after -f.
 func ParseConsumeArgs(args string) (ConsumeSpec, error) {
+	var filter string
+	if strings.HasPrefix(args, "| ") {
+		filter = strings.TrimSpace(args[2:])
+		args = ""
+	} else if idx := strings.Index(args, " | "); idx != -1 {
+		filter = strings.TrimSpace(args[idx+3:])
+		args = args[:idx]
+	}
 	tokens := tokenize(args)
 	var spec ConsumeSpec
 	for i := 0; i < len(tokens); i++ {
@@ -113,6 +126,13 @@ func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 			}
 			spec.Partitions = append(spec.Partitions, int32(n))
 
+		case tok == "-g":
+			i++
+			if i >= len(tokens) {
+				return ConsumeSpec{}, fmt.Errorf("-g requires a value")
+			}
+			spec.Group = tokens[i]
+
 		case tok == "-d":
 			i++
 			if i >= len(tokens) {
@@ -154,6 +174,7 @@ func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 			// Consume all remaining tokens as the format string so that
 			// space-separated specifiers (-f %k %s) don't require quoting.
 			spec.FormatStr = unescape(strings.Join(tokens[i+1:], " "))
+			spec.Filter = filter
 			return finalizeSpec(spec)
 
 		default:
@@ -161,6 +182,7 @@ func ParseConsumeArgs(args string) (ConsumeSpec, error) {
 		}
 	}
 
+	spec.Filter = filter
 	return finalizeSpec(spec)
 }
 

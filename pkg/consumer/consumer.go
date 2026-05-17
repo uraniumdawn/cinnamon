@@ -65,6 +65,8 @@ type Params struct {
 	// MaxCount stops consumption after this many messages per partition have been delivered.
 	// Zero means unlimited.
 	MaxCount int64
+	// Group sets the consumer group.id. When empty a unique ephemeral ID is generated.
+	Group string
 	// KeySerdes and ValueSerdes override Format-based decoding when non-zero.
 	KeySerdes   Serdes
 	ValueSerdes Serdes
@@ -267,7 +269,11 @@ func newConsumer(params Params) (*kafka.Consumer, func(), error) {
 	}
 
 	// Override/add consumer-specific settings.
-	_ = conf.SetKey("group.id", fmt.Sprintf("cinnamon-%d", time.Now().UnixNano()))
+	groupID := params.Group
+	if groupID == "" {
+		groupID = fmt.Sprintf("cinnamon-%d", time.Now().UnixNano())
+	}
+	_ = conf.SetKey("group.id", groupID)
 	_ = conf.SetKey("enable.auto.commit", false)
 	// explicit assignment via Assign(), reject out-of-range offsets
 	_ = conf.SetKey("auto.offset.reset", "error")

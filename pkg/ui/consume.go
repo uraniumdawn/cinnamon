@@ -26,7 +26,13 @@ import (
 
 // StartConsuming opens a streaming output page and starts the native consumer.
 // formatFn controls how each record is rendered; pass formatConsumeRecord for JSON output.
-func (app *App) StartConsuming(topicName string, params consumer.Params, formatFn func(consumer.Record) string) {
+// filter, when non-empty, hides records whose formatted line does not contain the substring.
+func (app *App) StartConsuming(
+	topicName string,
+	params consumer.Params,
+	formatFn func(consumer.Record) string,
+	filter string,
+) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	records := make(chan consumer.Record, 200)
@@ -127,13 +133,16 @@ func (app *App) StartConsuming(topicName string, params consumer.Params, formatF
 			SendStatusInfiniteWithouSpinner(fmt.Sprintf("consumed %d records", cnt))
 		}()
 		for rec := range records {
+			line := formatFn(rec)
+			if filter != "" && !strings.Contains(line, filter) {
+				continue
+			}
 			atomic.AddInt64(&recordCount, 1)
 			partitionCounts[rec.Partition]++
 			if _, seen := partitionFirstOffset[rec.Partition]; !seen {
 				partitionFirstOffset[rec.Partition] = rec.Offset
 			}
 			partitionLastOffset[rec.Partition] = rec.Offset
-			line := formatFn(rec)
 			app.QueueUpdateDraw(func() {
 				_, _ = fmt.Fprintf(view, "%s\n", line)
 				view.ScrollToEnd()
@@ -208,6 +217,7 @@ func (app *App) ConsumeModal(topicName string) {
 			ExitOnEnd:   spec.ExitOnEnd,
 			Partitions:  spec.Partitions,
 			MaxCount:    spec.Count,
+			Group:       spec.Group,
 			KeySerdes:   spec.KeySerdes,
 			ValueSerdes: spec.ValueSerdes,
 		}
@@ -251,7 +261,7 @@ func (app *App) ConsumeModal(topicName string) {
 		}
 
 		app.HideModalPage(ConsumeParams)
-		app.StartConsuming(topicName, params, formatFn)
+		app.StartConsuming(topicName, params, formatFn, spec.Filter)
 	}
 
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -295,6 +305,7 @@ func (app *App) ConsumeHelpModal() {
 			"  [%s]-e@[-]<ts>      stop at timestamp, exclusive (requires -s@; overrides -o <n>)\n"+
 			"  [%s]-e[-]           exit when all partitions reach high-water mark\n"+
 			"  [%s]-p[-]  <n>      restrict to partition (repeatable)\n"+
+			"  [%s]-g[-]  <group>  consumer group ID (default: ephemeral)\n"+
 			"  [%s]-d[-]  <serdes> | key=<serdes> | value=<serdes>\n"+
 			"             serdes:  avro  |  pack: [>|<][bBhHiIqQcs]+\n"+
 			"             > big-endian (recommended)  < little-endian\n"+
@@ -303,6 +314,7 @@ func (app *App) ConsumeHelpModal() {
 			"             examples:    -d avro   -d key=>i   -d value=>qs\n"+
 			"  [%s]-r[-]  <sr-name>  schema registry name (required for avro)\n"+
 			"  [%s]-f[-]  <format>   output format string (must be last flag)\n"+
+			"  [%s]|[-]   <pattern>  show only records whose output contains pattern\n"+
 			"\n"+
 			"[%s]Format specifiers for -f[-]\n"+
 			"  [%s]%%k[-] key      [%s]%%s[-] value     [%s]%%p[-] partition\n"+
@@ -310,6 +322,8 @@ func (app *App) ConsumeHelpModal() {
 			"  [%s]%%h[-] headers  [%s]%%S[-] size (bytes)\n"+
 			"\n"+
 			"[%s]Timestamp formats[-]  unix-ms | RFC3339 | 2006-01-02T15:04:05.000",
+		labelColor,
+		labelColor,
 		labelColor,
 		labelColor,
 		labelColor,
