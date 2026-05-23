@@ -53,6 +53,7 @@ const (
 	ConsumeParams          = "Consume Params"
 	ConsumeHelp            = "Consume Help"
 	ConsumeStats           = "Consume Stats"
+	ClusterConfig          = "Cluster Config"
 )
 
 type App struct {

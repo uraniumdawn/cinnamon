@@ -7,12 +7,14 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
 
 	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
@@ -170,6 +172,52 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 			Publish(ClustersChannel, GetClusterEventType, Payload{Force: true})
 		}
 
+		if event.Key() == tcell.KeyF12 {
+			app.ClusterConfigModal()
+			app.ShowModalPage(ClusterConfig)
+			return nil
+		}
+
 		return event
 	})
+}
+
+// ClusterConfigModal shows the raw contents of the user's config.yaml file.
+func (app *App) ClusterConfigModal() {
+	configPath, err := config.GetConfigPath()
+	var content string
+	if err != nil {
+		content = fmt.Sprintf("[red]error resolving config path: %s", err.Error())
+	} else {
+		data, readErr := os.ReadFile(configPath)
+		if readErr != nil {
+			content = fmt.Sprintf("[red]error reading config: %s", readErr.Error())
+		} else {
+			content = string(data)
+		}
+	}
+
+	view := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(content).
+		SetScrollable(true)
+	view.SetBorder(false).SetBorderPadding(0, 0, 1, 1)
+
+	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyF12 {
+			app.HideModalPage(ClusterConfig)
+			return nil
+		}
+		if IsKey(event, ':') {
+			return nil
+		}
+		return event
+	})
+
+	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(view, 0, 1, true)
+	mainFlex.SetTitle(" Cluster Config ")
+	mainFlex.SetBorder(true)
+
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ClusterConfig, mainFlex, true, false)
 }

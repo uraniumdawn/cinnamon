@@ -121,6 +121,14 @@ var keys = map[string]Pair{
 		Key:   "<Esc>/F2",
 		Value: "Close",
 	},
+	"close_f12": {
+		Key:   "<Esc>/F12",
+		Value: "Close",
+	},
+	"config_help": {
+		Key:   "<F12>",
+		Value: "Config",
+	},
 	"actions": {
 		Key:   "<a>",
 		Value: "Actions",
@@ -257,6 +265,7 @@ const (
 	ConsumeParamsPageMenu         = "ConsumeParamsPageMenu"
 	ConsumeHelpPageMenu           = "ConsumeHelpPageMenu"
 	ConsumeStatsPageMenu          = "ConsumeStatsPageMenu"
+	ClusterConfigPageMenu         = "ClusterConfigPageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -326,6 +335,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"select",
 				"res",
 				"dsc",
+				"config_help",
 				"opened",
 				"forward",
 			},
@@ -382,6 +392,9 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			ConsumeStatsPageMenu: {
 				"close_f2",
+			},
+			ClusterConfigPageMenu: {
+				"close_f12",
 			},
 			CliExecutePageMenu: {
 				"terminate_cli",
