@@ -69,6 +69,18 @@ var keys = map[string]Pair{
 		Key:   "<Ctrl+u>",
 		Value: "Update",
 	},
+	"auto_upd": {
+		Key:   "<Ctrl+g>",
+		Value: "Auto-update mode",
+	},
+	"auto_upd_tab": {
+		Key:   "<Tab>",
+		Value: "Set interval",
+	},
+	"auto_upd_esc": {
+		Key:   "<Esc>",
+		Value: "Exit mode",
+	},
 	"term": {
 		Key:   "<e>",
 		Value: "Terminating",
@@ -266,6 +278,7 @@ const (
 	ConsumeHelpPageMenu           = "ConsumeHelpPageMenu"
 	ConsumeStatsPageMenu          = "ConsumeStatsPageMenu"
 	ClusterConfigPageMenu         = "ClusterConfigPageMenu"
+	AutoUpdateModePageMenu        = "AutoUpdateModePageMenu"
 )
 
 func NewMenu(colors *config.ColorConfig) *Menu {
@@ -336,6 +349,8 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"dsc",
 				"config_help",
+				"upd",
+				"auto_upd",
 				"opened",
 				"forward",
 			},
@@ -358,6 +373,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"res",
 				"dsc",
 				"upd",
+				"auto_upd",
 				"opened",
 				"b/f",
 			},
@@ -373,6 +389,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"cli_commands",
 				"search",
 				"upd",
+				"auto_upd",
 				"opened",
 				"b/f",
 			},
@@ -396,6 +413,10 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			ClusterConfigPageMenu: {
 				"close_f12",
 			},
+			AutoUpdateModePageMenu: {
+				"auto_upd_tab",
+				"auto_upd_esc",
+			},
 			CliExecutePageMenu: {
 				"terminate_cli",
 				"kill_cli",
@@ -410,6 +431,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"find",
 				"search",
 				"upd",
+				"auto_upd",
 				"opened",
 				"b/f",
 			},
@@ -419,6 +441,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"hlscroll",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			SubjectsPageMenu: {
@@ -428,6 +451,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"search",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			VersionsPageMenu: {
@@ -436,6 +460,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			ConnectorsPageMenu: {
@@ -448,6 +473,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"search",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			ConnectorDescriptionPageMenu: {
@@ -456,6 +482,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"hlscroll",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			ConnectorConfigEditPageMenu: {
@@ -476,6 +503,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"hlscroll",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			SubjectDecriptionPageMenu: {
@@ -483,6 +511,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"hlscroll",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			NodeDecriptionPageMenu: {
@@ -490,6 +519,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"hlscroll",
 				"opened",
 				"upd",
+				"auto_upd",
 				"b/f",
 			},
 			FindByPageMenu: {

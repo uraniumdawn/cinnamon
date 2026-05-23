@@ -169,7 +169,11 @@ func (app *App) setupGroupsTable(
 	title string,
 	onRefresh func(),
 ) {
-	table.SetTitle(title)
+	displayTitle := title
+	if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+		displayTitle = title + "[" + label + "]"
+	}
+	table.SetTitle(displayTitle)
 	app.AddToPagesRegistry(pageKey, table, ConsumerGroupsPageMenu, true)
 
 	sortCol := 0
@@ -179,6 +183,11 @@ func (app *App) setupGroupsTable(
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyCtrlU {
 			onRefresh()
+		}
+
+		if event.Key() == tcell.KeyCtrlG {
+			app.EnterAutoUpdateMode(pageKey, onRefresh)
+			return nil
 		}
 
 		if IsKey(event, 'd') {
@@ -400,9 +409,12 @@ func (app *App) ConsumerGroup(name string) {
 				app.QueueUpdateDraw(func() {
 					description.SetPrevLagByTopic(app.cgroupPrevLag[name])
 					app.cgroupPrevLag[name] = description.GetLagByTopic()
-					desc := app.NewDescription(
-						util.BuildTitle(ConsumerGroup, name),
-					)
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, ConsumerGroup, name)
+					title := util.BuildTitle(ConsumerGroup, name)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(description.String())
 					desc.SetInputCapture(
 						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
@@ -412,6 +424,16 @@ func (app *App) ConsumerGroup(name string) {
 									GetCgroupEventType,
 									Payload{name, true},
 								)
+							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										CgroupsChannel,
+										GetCgroupEventType,
+										Payload{name, true},
+									)
+								})
+								return nil
 							}
 							if IsKey(event, 'o') {
 								if app.IsCurrentClusterReadOnly() {
@@ -444,15 +466,7 @@ func (app *App) ConsumerGroup(name string) {
 							return event
 						}),
 					)
-					app.AddToPagesRegistry(
-						util.BuildPageKey(
-							app.Selected.Cluster.Name,
-							ConsumerGroup,
-							name,
-						),
-						desc,
-						ConsumerGroupDescribePageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, ConsumerGroupDescribePageMenu, false)
 					ClearStatus()
 				})
 				cancel()

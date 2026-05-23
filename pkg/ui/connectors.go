@@ -100,11 +100,15 @@ func (app *App) Connectors() {
 			select {
 			case connectorNames := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(app.Selected.Connect.Name, Connectors)
 					statuses := app.fetchConnectorStatuses(c, connectorNames)
 
 					table := app.NewConnectorsTable(connectorNames, statuses)
 					title := util.BuildTitle(Connectors,
 						"["+strconv.Itoa(len(connectorNames))+"]")
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
 					table.SetTitle(title)
 					sortCol := 0
 					sortDesc := false
@@ -117,6 +121,16 @@ func (app *App) Connectors() {
 								GetConnectorsEventType,
 								Payload{nil, true},
 							)
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									ConnectorsChannel,
+									GetConnectorsEventType,
+									Payload{nil, true},
+								)
+							})
+							return nil
 						}
 
 						if IsKey(event, 'd') {
@@ -219,11 +233,7 @@ func (app *App) Connectors() {
 						return event
 					})
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Connect.Name, Connectors),
-						table,
-						ConnectorsPageMenu, true,
-					)
+					app.AddToPagesRegistry(pageKey, table, ConnectorsPageMenu, true)
 
 					app.AssignSearch(func(text string) {
 						filterConnectorsTable(table, connectorNames, statuses, text, labelColor)
@@ -282,7 +292,12 @@ func (app *App) ConnectorDetail(name string) {
 			select {
 			case detail := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(util.BuildTitle(Connectors, name))
+					pageKey := util.BuildPageKey(app.Selected.Connect.Name, Connectors, name)
+					title := util.BuildTitle(Connectors, name)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(detail.String())
 					desc.SetInputCapture(
 						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
@@ -293,6 +308,16 @@ func (app *App) ConnectorDetail(name string) {
 									Payload{name, true},
 								)
 							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										ConnectorsChannel,
+										GetConnectorEventType,
+										Payload{name, true},
+									)
+								})
+								return nil
+							}
 							// if IsKey(event, 'e') {
 							// 	app.EditConnectorConfig(name)
 							// }
@@ -300,11 +325,7 @@ func (app *App) ConnectorDetail(name string) {
 						}),
 					)
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Connect.Name, Connectors, name),
-						desc,
-						ConnectorDescriptionPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, ConnectorDescriptionPageMenu, false)
 					ClearStatus()
 				})
 				cancel()

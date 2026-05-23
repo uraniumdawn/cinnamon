@@ -68,9 +68,12 @@ func (app *App) Cluster() {
 			select {
 			case description := <-rCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(
-						util.BuildTitle(app.Selected.Cluster.Name, "info"),
-					)
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, "info")
+					title := util.BuildTitle(app.Selected.Cluster.Name, "info")
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(description.String())
 					desc.SetInputCapture(
 						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
@@ -81,15 +84,21 @@ func (app *App) Cluster() {
 									Payload{nil, true},
 								)
 							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										ClustersChannel,
+										GetClusterEventType,
+										Payload{nil, true},
+									)
+								})
+								return nil
+							}
 							return event
 						}),
 					)
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, "info"),
-						desc,
-						ClustersPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, ClustersPageMenu, false)
 					ClearStatus()
 				})
 				cancel()

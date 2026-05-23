@@ -111,6 +111,16 @@ func (app *App) OpenPagesKeyHandler(filteredTable *tview.Table) {
 
 func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if app.autoUpdateMode {
+			switch event.Key() {
+			case tcell.KeyTab:
+				app.CycleIntervalForCurrentPage()
+			case tcell.KeyEsc:
+				app.ExitAutoUpdateMode()
+			}
+			return nil
+		}
+
 		if IsKey(event, ':') {
 			if !app.IsSearchInFocus() && !app.IsInputFieldInFocus() {
 				currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()

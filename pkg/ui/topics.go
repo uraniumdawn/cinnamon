@@ -114,15 +114,15 @@ func (app *App) Topics() {
 			select {
 			case topics := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, Topics)
 					table := app.NewTopicsTable(topics)
 					title := util.BuildTitle(Topics,
 						"["+strconv.Itoa(len(topics.Result))+"]")
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
 					table.SetTitle(title)
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, Topics),
-						table,
-						TopicsPageMenu, true,
-					)
+					app.AddToPagesRegistry(pageKey, table, TopicsPageMenu, true)
 
 					// app.InitConsumingParams()
 
@@ -133,6 +133,16 @@ func (app *App) Topics() {
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									TopicsChannel,
+									GetTopicsEventType,
+									Payload{nil, true},
+								)
+							})
+							return nil
 						}
 						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
@@ -270,7 +280,12 @@ func (app *App) Topic(name string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(util.BuildTitle(Topic, name))
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, Topic, name)
+					title := util.BuildTitle(Topic, name)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(description.String())
 					desc.SetInputCapture(
 						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
@@ -281,14 +296,20 @@ func (app *App) Topic(name string) {
 									Payload{name, true},
 								)
 							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										TopicsChannel,
+										GetTopicEventType,
+										Payload{name, true},
+									)
+								})
+								return nil
+							}
 							return event
 						}),
 					)
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, Topic, name),
-						desc,
-						TopicDecriptionPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, TopicDecriptionPageMenu, false)
 					ClearStatus()
 				})
 				cancel()

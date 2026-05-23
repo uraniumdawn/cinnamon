@@ -112,10 +112,15 @@ func (app *App) Subjects() {
 			select {
 			case subjects := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects)
 					table := app.NewSubjectsTable(subjects)
 					title := util.BuildTitle(Subjects,
 						"["+strconv.Itoa(len(subjects))+"]")
-					table.SetTitle(title)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						table.SetTitle(title + "[" + label + "]")
+					} else {
+						table.SetTitle(title)
+					}
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(
@@ -123,6 +128,16 @@ func (app *App) Subjects() {
 								GetSubjectsEventType,
 								Payload{nil, true},
 							)
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									SubjectsChannel,
+									GetSubjectsEventType,
+									Payload{nil, true},
+								)
+							})
+							return nil
 						}
 
 						if event.Key() == tcell.KeyEnter {
@@ -138,11 +153,7 @@ func (app *App) Subjects() {
 						return event
 					})
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects),
-						table,
-						SubjectsPageMenu, true,
-					)
+					app.AddToPagesRegistry(pageKey, table, SubjectsPageMenu, true)
 
 					app.AssignSearch(func(text string) {
 						filterSubjectsTable(table, subjects, text)
@@ -183,30 +194,36 @@ func (app *App) Versions(subject string) {
 			select {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"versions",
+					)
 					table := app.NewVersionsTable(versions)
-					table.SetTitle(
-						util.BuildTitle(
-							subject,
-							"["+strconv.Itoa(len(versions))+"]",
-						),
-					)
+					title := util.BuildTitle(subject, "["+strconv.Itoa(len(versions))+"]")
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					table.SetTitle(title)
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(
-							app.Selected.SchemaRegistry.Name,
-							subject,
-							"versions",
-						),
-						table,
-						VersionsPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, table, VersionsPageMenu, false)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(
 								SubjectsChannel,
 								GetVersionsEventType,
-								Payload{nil, true},
+								Payload{subject, true},
 							)
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									SubjectsChannel,
+									GetVersionsEventType,
+									Payload{subject, true},
+								)
+							})
+							return nil
 						}
 
 						if IsKey(event, 'd') {
@@ -266,15 +283,36 @@ func (app *App) Schema(subject string, version int) {
 
 				app.QueueUpdateDraw(func() {
 					v := strconv.Itoa(version)
-					desc := app.NewDescription(
-						util.BuildTitle(subject, v),
+					pageKey := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"version",
+						v,
 					)
+					title := util.BuildTitle(subject, v)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 
 					desc.SetInputCapture(
 						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
 							if event.Key() == tcell.KeyCtrlU {
 								Publish(SubjectsChannel, GetSchemaEventType,
 									Payload{SubjectVersionPair{subject, v}, true})
+							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										SubjectsChannel,
+										GetSchemaEventType,
+										Payload{
+											SubjectVersionPair{subject, v},
+											true,
+										},
+									)
+								})
+								return nil
 							}
 							return event
 						}),
@@ -286,16 +324,7 @@ func (app *App) Schema(subject string, version int) {
 						log.Error().Err(err).Msg("failed to write formatted schema")
 						SendStatusWithDefaultTTL("[red]failed to write formatted schema")
 					}
-					app.AddToPagesRegistry(
-						util.BuildPageKey(
-							app.Selected.SchemaRegistry.Name,
-							subject,
-							"version",
-							v,
-						),
-						desc,
-						SubjectDecriptionPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, SubjectDecriptionPageMenu, false)
 					ClearStatus()
 				})
 				cancel()

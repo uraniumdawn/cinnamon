@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -73,6 +74,10 @@ type App struct {
 	CurrentFilters       map[string]string // pageName -> filter text for search preservation
 	cgroupPrevLag        map[string]map[string]int64
 	ResourcesSearchInput *tview.InputField
+	autoUpdate           map[string]*autoUpdateEntry
+	autoUpdateMu         sync.Mutex
+	autoUpdateMode       bool
+	autoUpdatePageKey    string
 }
 
 type Selected struct {
@@ -142,6 +147,7 @@ func NewApp() *App {
 		Colors:                colors,
 		CurrentFilters:        make(map[string]string),
 		cgroupPrevLag:         make(map[string]map[string]int64),
+		autoUpdate:            make(map[string]*autoUpdateEntry),
 	}
 
 	return app
@@ -278,6 +284,7 @@ func (app *App) isConnectSelected(selected Selected) bool {
 }
 
 func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
+	app.StopAllAutoUpdates()
 	if save {
 		for _, c := range app.Config.Cinnamon.Clusters {
 			c.Selected = c.Name == cluster.Name

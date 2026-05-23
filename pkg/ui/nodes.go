@@ -88,10 +88,24 @@ func (app *App) Nodes() {
 			case description := <-resultCh:
 				nodes := description.Nodes
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, Nodes)
 					table := app.NewNodesTable(nodes)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						table.SetTitle(table.GetTitle() + "[" + label + "]")
+					}
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							Publish(SubjectsChannel, GetNodesEventType, Payload{nil, true})
+							Publish(NodesChannel, GetNodesEventType, Payload{nil, true})
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									NodesChannel,
+									GetNodesEventType,
+									Payload{nil, true},
+								)
+							})
+							return nil
 						}
 
 						if IsKey(event, 'd') {
@@ -105,11 +119,7 @@ func (app *App) Nodes() {
 						return event
 					})
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, Nodes),
-						table,
-						NodesPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, table, NodesPageMenu, false)
 					ClearStatus()
 				})
 				cancel()
@@ -145,7 +155,12 @@ func (app *App) Node(id, url string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(util.BuildTitle(Node, url, id))
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, Node, id)
+					title := util.BuildTitle(Node, url, id)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(description.String())
 					desc.SetInputCapture(
 						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
@@ -156,14 +171,20 @@ func (app *App) Node(id, url string) {
 									Payload{NodeIDURLPair{id, url}, true},
 								)
 							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										NodesChannel,
+										GetNodeEventType,
+										Payload{NodeIDURLPair{id, url}, true},
+									)
+								})
+								return nil
+							}
 							return event
 						}),
 					)
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, Node, id),
-						desc,
-						NodeDecriptionPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, NodeDecriptionPageMenu, false)
 					ClearStatus()
 				})
 				cancel()

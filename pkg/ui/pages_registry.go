@@ -197,7 +197,11 @@ func (app *App) AddToPagesRegistry(
 		t.SetTitle(strings.TrimRight(t.GetTitle(), " ") + " [" + ts + "] ")
 	}
 
-	app.Layout.Menu.SetMenu(menu)
+	menuToSet := menu
+	if app.autoUpdateMode && name == app.autoUpdatePageKey {
+		menuToSet = AutoUpdateModePageMenu
+	}
+	app.Layout.Menu.SetMenu(menuToSet)
 	registry.UI.Pages.AddAndSwitchToPage(name, component, true)
 }
 
