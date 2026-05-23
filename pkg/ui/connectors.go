@@ -617,7 +617,7 @@ func (app *App) ConnectorConfigConfirm(name string, newConfig map[string]interfa
 		SetBorderPadding(0, 0, 1, 1)
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if IsKey(event, 's') {
+		if IsCtrlEnter(event) {
 			if app.IsCurrentConnectReadOnly() {
 				SendStatusWithDefaultTTL("[red]cluster is in read-only mode")
 				return nil
@@ -737,7 +737,7 @@ func (app *App) ConnectorActionsModal(connectorName, state string) {
 			actionField.SetText(actions[actionIdx])
 		}
 
-		if IsKey(event, 's') {
+		if IsCtrlEnter(event) {
 			app.ExecuteConnectorAction(connectorName, actions[actionIdx])
 			app.HideModalPage(ConnectorActions)
 		}
@@ -761,6 +761,8 @@ func (app *App) ConnectorActionsModal(connectorName, state string) {
 
 // ExecuteConnectorAction executes a connector action (pause, resume, restart).
 func (app *App) ExecuteConnectorAction(name, action string) {
+	action = strings.ToLower(action)
+
 	resultCh := make(chan bool)
 	errorCh := make(chan error)
 
@@ -776,7 +778,10 @@ func (app *App) ExecuteConnectorAction(name, action string) {
 		c.RestartConnector(name, resultCh, errorCh)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout())
+	// UI timeout is slightly longer than the HTTP client timeout so that an
+	// HTTP-level error always arrives on errorCh before ctx.Done() fires,
+	// preventing the race where both become ready simultaneously.
+	ctx, cancel := context.WithTimeout(context.Background(), app.Config.GetAPICallTimeout()+5*time.Second)
 
 	go func() {
 		for {
@@ -820,7 +825,7 @@ func (app *App) DeleteConnector(connectorName string) {
 		SetBorderPadding(0, 0, 1, 1)
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if IsKey(event, 's') {
+		if IsCtrlEnter(event) {
 			app.DeleteConnectorResultHandler(connectorName)
 			app.HideModalPage(DeleteConnector)
 			Publish(ConnectorsChannel, GetConnectorsEventType, Payload{nil, true})

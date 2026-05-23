@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -201,15 +202,12 @@ func (c *Client) DescribeConnector(name string, resultChan chan<- *ConnectorDeta
 // is needed (e.g. delete).
 func (c *Client) doConnectorAction(name, method, actionPath string, resultChan chan<- bool, errorChan chan<- error) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), c.HTTPClient.Timeout)
-		defer cancel()
-
 		url := c.BaseURL + "/connectors/" + name
 		if actionPath != "" {
 			url += "/" + actionPath
 		}
 
-		req, err := http.NewRequestWithContext(ctx, method, url, nil)
+		req, err := http.NewRequestWithContext(context.Background(), method, url, nil)
 		if err != nil {
 			errorChan <- fmt.Errorf("creating request: %w", err)
 			return
@@ -222,13 +220,13 @@ func (c *Client) doConnectorAction(name, method, actionPath string, resultChan c
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		switch resp.StatusCode {
+		case http.StatusOK, http.StatusNoContent, http.StatusAccepted:
+			resultChan <- true
+		default:
 			body, _ := io.ReadAll(resp.Body)
 			errorChan <- fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
-			return
 		}
-
-		resultChan <- true
 	}()
 }
 
@@ -242,9 +240,9 @@ func (c *Client) ResumeConnector(name string, resultChan chan<- bool, errorChan 
 	c.doConnectorAction(name, http.MethodPut, "resume", resultChan, errorChan)
 }
 
-// RestartConnector restarts a connector.
+// RestartConnector restarts a connector and all its tasks.
 func (c *Client) RestartConnector(name string, resultChan chan<- bool, errorChan chan<- error) {
-	c.doConnectorAction(name, http.MethodPost, "restart", resultChan, errorChan)
+	c.doConnectorAction(name, http.MethodPost, "restart?includeTasks=true", resultChan, errorChan)
 }
 
 // DeleteConnector deletes a connector from the Kafka Connect cluster.

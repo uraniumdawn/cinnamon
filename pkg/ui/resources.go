@@ -198,7 +198,7 @@ func (app *App) NewResourcesPage() tview.Primitive {
 			return nil
 		}
 
-		if IsKey(event, '/') {
+		if IsKey(event, ':') {
 			app.SetFocus(searchInput)
 			return nil
 		}

@@ -463,7 +463,7 @@ retention.ms=604800000`).
 			}
 		}
 
-		if IsKey(event, 's') {
+		if IsCtrlEnter(event) {
 			params.TopicName = topicName.GetText()
 			params.ReplicationFactor, _ = strconv.Atoi(replicationFactor.GetText())
 			params.Partitions, _ = strconv.Atoi(partitions.GetText())
@@ -668,7 +668,7 @@ func (app *App) DeleteTopic(topicName string) {
 		SetBorderPadding(0, 0, 1, 1)
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if IsKey(event, 's') {
+		if IsCtrlEnter(event) {
 			app.DeleteTopicResultHandler(topicName)
 			app.HideModalPage(DeleteTopic)
 			Publish(TopicsChannel, GetTopicsEventType, Payload{nil, true})

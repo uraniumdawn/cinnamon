@@ -47,10 +47,6 @@ var keys = map[string]Pair{
 	},
 	"res": {
 		Key:   "<:>",
-		Value: "Resources + Search",
-	},
-	"res_search": {
-		Key:   "<::>",
 		Value: "Resources",
 	},
 	"opened": {
@@ -59,6 +55,10 @@ var keys = map[string]Pair{
 	},
 	"search": {
 		Key:   "</>",
+		Value: "Search",
+	},
+	"resource_search": {
+		Key:   "<:>",
 		Value: "Search",
 	},
 	"dsc": {
@@ -97,10 +97,6 @@ var keys = map[string]Pair{
 		Key:   "<e>",
 		Value: "Edit Topic",
 	},
-	"submit": {
-		Key:   "<s>",
-		Value: "Submit",
-	},
 	"submit_ctrl": {
 		Key:   "<Ctrl+Enter>",
 		Value: "Submit",
@@ -110,7 +106,7 @@ var keys = map[string]Pair{
 		Value: "Reset Offsets",
 	},
 	"confirm": {
-		Key:   "<s>",
+		Key:   "<Ctrl+Enter>",
 		Value: "Confirm",
 	},
 	"close": {
@@ -276,8 +272,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 		Map: &map[string]*[]string{
 			ResourcesPageMenu: {
 				"sel",
-				"search",
-				"res_search",
+				"resource_search",
 				"select",
 				"close",
 			},
@@ -290,7 +285,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			CreateTopicPageMenu: {
 				"sel",
 				"edit",
-				"submit",
+				"submit_ctrl",
 				"default",
 				"close",
 			},
@@ -330,7 +325,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"sel",
 				"select",
 				"res",
-				"res_search",
 				"dsc",
 				"opened",
 				"forward",
@@ -339,7 +333,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"sel",
 				"select",
 				"res",
-				"res_search",
 				"opened",
 				"b/f",
 			},
@@ -347,14 +340,12 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"sel",
 				"select",
 				"res",
-				"res_search",
 				"opened",
 				"b/f",
 			},
 			NodesPageMenu: {
 				"sel",
 				"res",
-				"res_search",
 				"dsc",
 				"upd",
 				"opened",
@@ -363,7 +354,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			TopicsPageMenu: {
 				"sel",
 				"res",
-				"res_search",
 				"dsc",
 				"sort_2",
 				"create",
@@ -401,7 +391,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			ConsumerGroupsPageMenu: {
 				"sel",
 				"res",
-				"res_search",
 				"dsc",
 				"sort_2",
 				"delete_cg",
@@ -413,7 +402,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			ConsumerGroupDescribePageMenu: {
 				"res",
-				"res_search",
 				"reset_offset",
 				"hlscroll",
 				"opened",
@@ -432,7 +420,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			VersionsPageMenu: {
 				"sel",
 				"res",
-				"res_search",
 				"dsc",
 				"opened",
 				"upd",
@@ -441,7 +428,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			ConnectorsPageMenu: {
 				"sel",
 				"res",
-				"res_search",
 				"dsc",
 				"sort_3",
 				"actions",
@@ -453,7 +439,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			ConnectorDescriptionPageMenu: {
 				"res",
-				"res_search",
 				"edit",
 				"hlscroll",
 				"opened",
@@ -461,12 +446,12 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"b/f",
 			},
 			ConnectorConfigEditPageMenu: {
-				"submit",
+				"submit_ctrl",
 				"cancel",
 			},
 			ConnectorActionsPageMenu: {
 				"switch_act",
-				"submit",
+				"submit_ctrl",
 				"close",
 			},
 			DeleteConnectorPageMenu: {
@@ -475,7 +460,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			TopicDecriptionPageMenu: {
 				"res",
-				"res_search",
 				"hlscroll",
 				"opened",
 				"upd",
@@ -483,7 +467,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			SubjectDecriptionPageMenu: {
 				"res",
-				"res_search",
 				"hlscroll",
 				"opened",
 				"upd",
@@ -491,7 +474,6 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 			},
 			NodeDecriptionPageMenu: {
 				"res",
-				"res_search",
 				"hlscroll",
 				"opened",
 				"upd",

@@ -1309,7 +1309,7 @@ func (app *App) DeleteConsumerGroup(groupName string) {
 		SetBorderPadding(0, 0, 1, 1)
 
 	messageText.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if IsKey(event, 's') {
+		if IsCtrlEnter(event) {
 			app.DeleteConsumerGroupResultHandler(groupName)
 			app.HideModalPage(DeleteConsumerGroup)
 			Publish(CgroupsChannel, GetCgroupsEventType, Payload{nil, true})

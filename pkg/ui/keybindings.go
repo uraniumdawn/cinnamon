@@ -5,8 +5,6 @@
 package ui
 
 import (
-	"time"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -112,18 +110,16 @@ func (app *App) OpenPagesKeyHandler(filteredTable *tview.Table) {
 }
 
 func (app *App) MainOperationKeyHandler() {
-	var lastColonPress time.Time
-
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if IsKey(event, ':') {
 			if !app.IsSearchInFocus() && !app.IsInputFieldInFocus() {
-				isDouble := time.Since(lastColonPress) < 350*time.Millisecond
-				lastColonPress = time.Now()
-				app.ShowModalPage(Resources)
-				if !isDouble && app.ResourcesSearchInput != nil {
-					app.SetFocus(app.ResourcesSearchInput)
+				currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+				if currentPage != Resources {
+					app.ShowModalPage(Resources)
 					return nil
 				}
+				// modal already open: fall through so table's SetInputCapture receives ':' and focuses
+				// search
 			}
 		}
 

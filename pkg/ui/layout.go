@@ -151,7 +151,7 @@ func NewLayout(registry *PagesRegistry, colors *config.ColorConfig, hasSchemaReg
 func InitBorders() {
 	tview.Borders = Borders{
 		Horizontal:  tview.BoxDrawingsLightHorizontal,
-		Vertical:    tview.BoxDrawingsLightVertical,
+		Vertical:    tview.DitheringNone,
 		TopLeft:     tview.BoxDrawingsLightDownAndRight,
 		TopRight:    tview.BoxDrawingsLightDownAndLeft,
 		BottomLeft:  tview.BoxDrawingsLightUpAndRight,
@@ -164,7 +164,7 @@ func InitBorders() {
 		Cross:   tview.BoxDrawingsLightVerticalAndHorizontal,
 
 		HorizontalFocus:  tview.BoxDrawingsLightHorizontal,
-		VerticalFocus:    tview.BoxDrawingsLightVertical,
+		VerticalFocus:    tview.DitheringNone,
 		TopLeftFocus:     tview.BoxDrawingsLightDownAndRight,
 		TopRightFocus:    tview.BoxDrawingsLightDownAndLeft,
 		BottomLeftFocus:  tview.BoxDrawingsLightUpAndRight,
