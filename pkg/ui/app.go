@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -20,26 +21,40 @@ import (
 
 	"github.com/uraniumdawn/cinnamon/pkg/client"
 	"github.com/uraniumdawn/cinnamon/pkg/config"
+	"github.com/uraniumdawn/cinnamon/pkg/connect"
 	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
 const (
-	Resources        = "Resources"
-	Clusters         = "Clusters"
-	SchemaRegistries = "Schema-registries"
-	Topics           = "Topics"
-	Topic            = "Topic"
-	Nodes            = "Nodes"
-	Node             = "Node"
-	ConsumerGroups   = "Consumer groups"
-	ConsumerGroup    = "Consumer group"
-	Subjects         = "Subjects"
-	OpenedPages      = "Opened pages"
-	CreateTopic      = "Create Topic"
-	DeleteTopic      = "Delete Topic"
-	EditTopic        = "Edit Topic"
-	CliTemplates     = "CLI Templates"
+	Resources              = "Resources"
+	Clusters               = "Clusters"
+	SchemaRegistries       = "Schema-registries"
+	Topics                 = "Topics"
+	Topic                  = "Topic"
+	Nodes                  = "Nodes"
+	Node                   = "Node"
+	ConsumerGroups         = "Consumer groups"
+	ConsumerGroup          = "Consumer group"
+	Subjects               = "Subjects"
+	Connectors             = "Connectors"
+	Connect                = "Connect"
+	OpenedPages            = "Opened pages"
+	CreateTopic            = "Create Topic"
+	DeleteTopic            = "Delete Topic"
+	DeleteConsumerGroup    = "Delete Consumer Group"
+	EditTopic              = "Edit Topic"
+	ResetOffset            = "Reset Offset"
+	ConnectorConfigConfirm = "Connector Config Confirm"
+	ConnectorActions       = "Connector Actions"
+	DeleteConnector        = "Delete Connector"
+	CliTemplates           = "CLI Templates"
+	FindBy                 = "Find By"
+	ConsumeOutput          = "Consume Output"
+	ConsumeParams          = "Consume Params"
+	ConsumeHelp            = "Consume Help"
+	ConsumeStats           = "Consume Stats"
+	ClusterConfig          = "Cluster Config"
 )
 
 type App struct {
@@ -48,21 +63,41 @@ type App struct {
 	Cache                 *cache.Cache
 	Clusters              map[string]*config.ClusterConfig
 	SchemaRegistries      map[string]*config.SchemaRegistryConfig
+	Connects              map[string]*config.ConnectConfig
 	KafkaClients          map[string]*client.Client
 	SchemaRegistryClients map[string]*schemaregistry.Client
+	ConnectClients        map[string]*connect.Client
 	Selected              Selected
 	Config                *config.Config
 	Colors                *config.ColorConfig
-	ModalHideTimer        *time.Timer
+	// ModalHideTimer        *time.Timer
+	CurrentFilters       map[string]string // pageName -> filter text for search preservation
+	cgroupPrevLag        map[string]map[string]int64
+	ResourcesSearchInput *tview.InputField
+	autoUpdate           map[string]*autoUpdateEntry
+	autoUpdateMu         sync.Mutex
+	autoUpdateMode       bool
+	autoUpdatePageKey    string
 }
 
 type Selected struct {
 	Cluster        *config.ClusterConfig
 	SchemaRegistry *config.SchemaRegistryConfig
+	Connect        *config.ConnectConfig
 }
 
 func (app *App) GetCurrentKafkaClient() *client.Client {
 	return app.KafkaClients[app.Selected.Cluster.Name]
+}
+
+// IsCurrentClusterReadOnly reports whether the selected cluster is in read-only mode.
+func (app *App) IsCurrentClusterReadOnly() bool {
+	return app.Selected.Cluster != nil && app.Selected.Cluster.IsReadOnly()
+}
+
+// IsCurrentConnectReadOnly reports whether the selected Connect cluster is in read-only mode.
+func (app *App) IsCurrentConnectReadOnly() bool {
+	return app.Selected.Connect != nil && app.Selected.Connect.IsReadOnly()
 }
 
 func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
@@ -72,19 +107,31 @@ func (app *App) GetCurrentSchemaRegistryClient() *schemaregistry.Client {
 	return app.SchemaRegistryClients[app.Selected.SchemaRegistry.Name]
 }
 
+func (app *App) GetCurrentConnectClient() *connect.Client {
+	if app.Selected.Connect == nil {
+		return nil
+	}
+	return app.ConnectClients[app.Selected.Connect.Name]
+}
+
 func NewApp() *App {
+	// Save real stderr before InitLogger redirects os.Stderr to the log file.
+	stderr := os.Stderr
 	InitLogger()
 
-	cfg, err := config.LoadAppConfig()
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to initialize config")
+	fatal := func(msg string, err error) {
+		_, _ = fmt.Fprintf(stderr, "cinnamon: %s: %v\n", msg, err)
 		os.Exit(1)
 	}
 
-	colors, err := config.LoadColorConfig()
+	cfg, err := config.LoadAppConfig()
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to load color config")
-		os.Exit(1)
+		fatal("failed to load config", err)
+	}
+
+	colors, err := config.LoadColorConfig(cfg.Cinnamon.Style)
+	if err != nil {
+		fatal("failed to load style", err)
 	}
 
 	app := &App{
@@ -92,10 +139,15 @@ func NewApp() *App {
 		Cache:                 cache.New(5*time.Minute, 10*time.Minute),
 		Clusters:              util.ToClustersMap(cfg),
 		SchemaRegistries:      util.ToSchemaRegistryMap(cfg),
+		Connects:              util.ToConnectMap(cfg),
 		KafkaClients:          make(map[string]*client.Client),
 		SchemaRegistryClients: make(map[string]*schemaregistry.Client),
+		ConnectClients:        make(map[string]*connect.Client),
 		Config:                cfg,
 		Colors:                colors,
+		CurrentFilters:        make(map[string]string),
+		cgroupPrevLag:         make(map[string]map[string]int64),
+		autoUpdate:            make(map[string]*autoUpdateEntry),
 	}
 
 	return app
@@ -138,13 +190,17 @@ func (app *App) Run() {
 	app.RunStatusLineHandler(ctx, StatusLineCh)
 	app.RunClusterEventHandler(ctx, ClustersChannel)
 	app.RunSchemaRegistriesEventHandler(ctx, SchemaRegistriesChannel)
+	app.RunConnectEventHandler(ctx, ConnectChannel)
 	app.RunNodesEventHandler(ctx, NodesChannel)
 	app.RunTopicsEventHandler(ctx, TopicsChannel)
 	app.RunCgroupsEventHandler(ctx, CgroupsChannel)
 	app.RunSubjectsEventHandler(ctx, SubjectsChannel)
+	app.RunConnectorsEventHandler(ctx, ConnectorsChannel)
 
 	registry := NewPagesRegistry(app.Colors)
-	app.Layout = NewLayout(registry, app.Colors)
+	hasSR := len(app.Config.Cinnamon.SchemaRegistries) > 0
+	hasConnect := len(app.Config.Cinnamon.Connect) > 0
+	app.Layout = NewLayout(registry, app.Colors, hasSR, hasConnect)
 
 	for _, c := range app.Config.Cinnamon.Clusters {
 		if c.Selected {
@@ -160,8 +216,15 @@ func (app *App) Run() {
 		}
 	}
 
+	for _, cn := range app.Config.Cinnamon.Connect {
+		if cn.Selected {
+			app.SelectConnect(cn, false)
+			break
+		}
+	}
+
 	Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
-	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
 
 	resourcesPage := app.NewResourcesPage()
 	app.Layout.PagesRegistry.UI.Pages.AddPage(Resources, resourcesPage, true, false)
@@ -173,7 +236,7 @@ func (app *App) Run() {
 	)
 	app.Layout.PagesRegistry.UI.Pages.ShowPage(Clusters)
 	app.Layout.Menu.SetMenu(ClustersPageMenu)
-	app.Layout.PagesRegistry.UI.OpenedPages.SetSelectedStyle(
+	app.Layout.PagesRegistry.UI.FilteredPages.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
 			tcell.GetColor(app.Colors.Cinnamon.Selection.FgColor),
 		).Background(
@@ -181,7 +244,7 @@ func (app *App) Run() {
 		),
 	)
 
-	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.OpenedPages)
+	app.OpenPagesKeyHandler(app.Layout.PagesRegistry.UI.FilteredPages)
 	app.MainOperationKeyHandler()
 
 	err := app.SetRoot(app.Layout.Content, true).Run()
@@ -216,7 +279,12 @@ func (app *App) isSchemaRegistrySelected(selected Selected) bool {
 	return selected.SchemaRegistry != nil
 }
 
+func (app *App) isConnectSelected(selected Selected) bool {
+	return selected.Connect != nil
+}
+
 func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
+	app.StopAllAutoUpdates()
 	if save {
 		for _, c := range app.Config.Cinnamon.Clusters {
 			c.Selected = c.Name == cluster.Name
@@ -227,13 +295,13 @@ func (app *App) SelectCluster(cluster *config.ClusterConfig, save bool) {
 	}
 
 	app.Selected.Cluster = cluster
-	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
 
 	_, exists := app.KafkaClients[cluster.Name]
 	if !exists {
 		var err error
 		timeout := app.Config.GetAPICallTimeout()
-		newClient, err := client.NewClient(cluster, timeout)
+		newClient, err := client.NewClient(cluster, timeout, app.Config.GetMaxConcurrency())
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create admin client")
 			os.Exit(1)
@@ -253,7 +321,7 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool)
 	}
 
 	app.Selected.SchemaRegistry = sr
-	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry)
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
 
 	_, exists := app.SchemaRegistryClients[sr.Name]
 	if !exists {
@@ -267,16 +335,76 @@ func (app *App) SelectSchemaRegistry(sr *config.SchemaRegistryConfig, save bool)
 	}
 }
 
+func (app *App) SelectConnect(cfg *config.ConnectConfig, save bool) {
+	if save {
+		for _, c := range app.Config.Cinnamon.Connect {
+			c.Selected = c.Name == cfg.Name
+		}
+		if err := app.Config.Save(); err != nil {
+			log.Error().Err(err).Msg("failed to save config after connect selection")
+		}
+	}
+
+	app.Selected.Connect = cfg
+	app.Layout.SetSelected(app.Selected.Cluster, app.Selected.SchemaRegistry, app.Selected.Connect)
+
+	_, exists := app.ConnectClients[cfg.Name]
+	if !exists {
+		newClient, err := connect.NewClient(cfg, app.Config.GetAPICallTimeout())
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create connect client")
+			return
+		}
+		app.ConnectClients[cfg.Name] = newClient
+	}
+}
+
 func (app *App) NewDescription(title string) *tview.TextView {
 	desc := tview.NewTextView().
 		SetTextAlign(tview.AlignLeft).
 		SetDynamicColors(true).
-		SetWrap(true).
-		SetWordWrap(false)
+		SetWrap(false)
 	desc.
 		SetBorder(true).
 		SetBorderPadding(0, 0, 1, 0).
 		SetTitle(title)
 	desc.SetTextColor(tcell.GetColor(app.Colors.Cinnamon.Foreground))
 	return desc
+}
+
+// WithHScroll wraps an input capture handler to add H/L horizontal scrolling to a TextView.
+func (app *App) WithHScroll(
+	desc *tview.TextView,
+	handler func(*tcell.EventKey) *tcell.EventKey,
+) func(*tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		row, col := desc.GetScrollOffset()
+		if IsKey(event, 'H') {
+			if col > 0 {
+				desc.ScrollTo(row, col-5)
+			}
+			return nil
+		}
+		if IsKey(event, 'L') {
+			desc.ScrollTo(row, col+5)
+			return nil
+		}
+		return handler(event)
+	}
+}
+
+// ClearCurrentFilter clears the saved filter for the current page.
+func (app *App) ClearCurrentFilter() {
+	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+	delete(app.CurrentFilters, currentPage)
+
+	// Also clear the search input if it exists
+	if search, exists := app.Layout.Search[currentPage]; exists {
+		search.SetText("")
+	}
+}
+
+// ClearFilterForPage clears the saved filter for a specific page.
+func (app *App) ClearFilterForPage(pageName string) {
+	delete(app.CurrentFilters, pageName)
 }

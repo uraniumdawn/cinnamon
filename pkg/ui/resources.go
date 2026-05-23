@@ -10,6 +10,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+	"github.com/sahilm/fuzzy"
 
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
@@ -27,6 +28,10 @@ const (
 	NodesResourceEventType EventType = "resources:nodes"
 	// SubjectsResourceEventType is the event type for subject resources.
 	SubjectsResourceEventType EventType = "resources:subjects"
+	// ConnectorsResourceEventType is the event type for connector resources.
+	ConnectorsResourceEventType EventType = "resources:connectors"
+	// ConnectResourceEventType is the event type for connect cluster resources.
+	ConnectResourceEventType EventType = "resources:connect"
 )
 
 var m = map[string]EventType{
@@ -36,6 +41,8 @@ var m = map[string]EventType{
 	Topics:           TopicsResourceEventType,
 	ConsumerGroups:   CgroupsResourceEventType,
 	Subjects:         SubjectsResourceEventType,
+	Connectors:       ConnectorsResourceEventType,
+	Connect:          ConnectResourceEventType,
 }
 
 // ResourcesChannel is the channel for resource events.
@@ -51,12 +58,19 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 				return
 			case event := <-in:
 				switch event.Type {
-				case ClustersResourceEventType:
+				case "cl", ClustersResourceEventType:
 					Publish(ClustersChannel, GetClustersEventType, Payload{nil, false})
-				case SchemaRegistriesResourceEventType:
+				case "sr", SchemaRegistriesResourceEventType:
 					Publish(
 						SchemaRegistriesChannel,
 						GetSchemaRegistriesEventType,
+						Payload{nil, false},
+					)
+
+				case "cnt", ConnectResourceEventType:
+					Publish(
+						ConnectChannel,
+						GetConnectEventType,
 						Payload{nil, false},
 					)
 				case "tps", TopicsResourceEventType:
@@ -85,6 +99,12 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 						continue
 					}
 					Publish(SubjectsChannel, GetSubjectsEventType, Payload{nil, false})
+				case "cnts", ConnectorsResourceEventType:
+					if !app.isConnectSelected(app.Selected) {
+						SendStatusWithDefaultTTL("[red]to perform operation, select Connect")
+						continue
+					}
+					Publish(ConnectorsChannel, GetConnectorsEventType, Payload{nil, false})
 				case "q!":
 					app.Stop()
 				default:
@@ -98,17 +118,30 @@ func (app *App) RunResourcesEventHandler(ctx context.Context, in chan Event) {
 // NewResourcesPage creates a new resources page showing available Kafka resources.
 func (app *App) NewResourcesPage() tview.Primitive {
 	table := tview.NewTable()
-	table.SetSelectable(true, false).
-		SetBorder(true).
-		SetBorderPadding(0, 0, 1, 0).
-		SetTitle(" Resources ")
+	table.SetSelectable(true, false).SetBorderPadding(0, 0, 1, 0)
 
-	table.SetCell(0, 0, tview.NewTableCell(Clusters))
-	table.SetCell(1, 0, tview.NewTableCell(SchemaRegistries))
-	table.SetCell(2, 0, tview.NewTableCell(Nodes))
-	table.SetCell(3, 0, tview.NewTableCell(Topics))
-	table.SetCell(4, 0, tview.NewTableCell(ConsumerGroups))
-	table.SetCell(5, 0, tview.NewTableCell(Subjects))
+	var allResources []string
+	addResource := func(name string) {
+		table.SetCell(len(allResources), 0, tview.NewTableCell(name))
+		allResources = append(allResources, name)
+	}
+
+	addResource(Clusters)
+	if len(app.Config.Cinnamon.SchemaRegistries) > 0 {
+		addResource(SchemaRegistries)
+	}
+	if len(app.Config.Cinnamon.Connect) > 0 {
+		addResource(Connect)
+	}
+	addResource(Nodes)
+	addResource(Topics)
+	addResource(ConsumerGroups)
+	if len(app.Config.Cinnamon.SchemaRegistries) > 0 {
+		addResource(Subjects)
+	}
+	if len(app.Config.Cinnamon.Connect) > 0 {
+		addResource(Connectors)
+	}
 
 	table.SetSelectedStyle(
 		tcell.StyleDefault.Foreground(
@@ -118,20 +151,87 @@ func (app *App) NewResourcesPage() tview.Primitive {
 		),
 	)
 
+	searchInput := tview.NewInputField()
+	searchInput.SetLabel(" / ")
+	searchInput.SetLabelColor(tcell.GetColor(app.Colors.Cinnamon.Search.FgColor))
+	searchInput.SetFieldTextColor(tcell.GetColor(app.Colors.Cinnamon.Search.FgColor))
+	searchInput.SetFieldBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+	searchInput.SetBackgroundColor(tcell.GetColor(app.Colors.Cinnamon.Background))
+	app.ResourcesSearchInput = searchInput
+
+	searchInput.SetChangedFunc(func(text string) {
+		filterResourcesTable(table, allResources, text)
+	})
+
+	searchInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			searchInput.SetText("")
+			app.SetFocus(table)
+			return nil
+		case tcell.KeyEnter:
+			app.SetFocus(table)
+			return nil
+		}
+		return event
+	})
+
+	closeModal := func() {
+		searchInput.SetText("")
+		app.HideModalPage(Resources)
+	}
+
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		row, _ := table.GetSelection()
-		resource := table.GetCell(row, 0).Text
 		if event.Key() == tcell.KeyEnter {
-			app.HideModalPage(Resources)
+			if table.GetRowCount() == 0 {
+				return nil
+			}
+			row, _ := table.GetSelection()
+			resource := table.GetCell(row, 0).Text
+			closeModal()
 			Publish(ResourcesChannel, m[resource], Payload{})
+			return nil
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.HideModalPage(Resources)
+			closeModal()
+			return nil
+		}
+
+		if IsKey(event, ':') {
+			app.SetFocus(searchInput)
+			return nil
 		}
 
 		return event
 	})
 
-	return util.NewResourceModal(table)
+	container := tview.NewFlex().SetDirection(tview.FlexRow)
+	container.SetBorder(true).
+		SetTitle(" Resources ")
+	container.AddItem(searchInput, 1, 0, false)
+	container.AddItem(table, 0, 1, true)
+
+	// +2 for border, +1 for search row
+	height := len(allResources) + 3
+	return util.NewResourceModal(container, height)
+}
+
+// filterResourcesTable filters the resources table using fuzzy matching.
+// An empty filter restores all resources in their original order.
+func filterResourcesTable(table *tview.Table, allResources []string, filter string) {
+	table.Clear()
+	if filter == "" {
+		for i, name := range allResources {
+			table.SetCell(i, 0, tview.NewTableCell(name))
+		}
+	} else {
+		matches := fuzzy.Find(filter, allResources)
+		for i, match := range matches {
+			table.SetCell(i, 0, tview.NewTableCell(match.Str))
+		}
+	}
+	if table.GetRowCount() > 0 {
+		table.Select(0, 0)
+	}
 }

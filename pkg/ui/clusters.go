@@ -7,12 +7,14 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
 
 	"github.com/uraniumdawn/cinnamon/pkg/client"
+	"github.com/uraniumdawn/cinnamon/pkg/config"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
 )
 
@@ -66,26 +68,37 @@ func (app *App) Cluster() {
 			select {
 			case description := <-rCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(
-						util.BuildTitle(app.Selected.Cluster.Name, "info"),
-					)
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, "info")
+					title := util.BuildTitle(app.Selected.Cluster.Name, "info")
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(description.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(
-								ClustersChannel,
-								GetClusterEventType,
-								Payload{nil, true},
-							)
-						}
-						return event
-					})
-
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, "info"),
-						desc,
-						ClustersPageMenu, false,
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									ClustersChannel,
+									GetClusterEventType,
+									Payload{nil, true},
+								)
+							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										ClustersChannel,
+										GetClusterEventType,
+										Payload{nil, true},
+									)
+								})
+								return nil
+							}
+							return event
+						}),
 					)
+
+					app.AddToPagesRegistry(pageKey, desc, ClustersPageMenu, false)
 					ClearStatus()
 				})
 				cancel()
@@ -106,6 +119,15 @@ func (app *App) Cluster() {
 	}()
 }
 
+func addClustersTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("Name"))
+	table.SetCell(0, 1, mkHeader("Servers"))
+	table.SetCell(0, 2, mkHeader("Mode"))
+}
+
 func (app *App) NewClustersTable() *tview.Table {
 	table := tview.NewTable()
 	table.SetTitle(" Clusters ")
@@ -119,13 +141,22 @@ func (app *App) NewClustersTable() *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
+
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addClustersTableHeader(table, labelColor)
 
 	// Iterate over the config slice to preserve order from config file
-	row := 0
+	row := 1
 	for _, cluster := range app.Config.Cinnamon.Clusters {
+		modeText := cluster.Mode
+		if modeText == "" {
+			modeText = "regular"
+		}
 		table.
 			SetCell(row, 0, tview.NewTableCell(cluster.Name)).
-			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"]))
+			SetCell(row, 1, tview.NewTableCell(cluster.Properties["bootstrap.servers"])).
+			SetCell(row, 2, tview.NewTableCell(modeText))
 		row++
 	}
 	return table
@@ -142,7 +173,7 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 			ClearStatus()
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+		if IsKey(event, 'd') {
 			if !app.isClusterSelected(app.Selected) || app.Selected.Cluster.Name != clusterName {
 				SendStatusWithDefaultTTL("[red]to perform operation, select cluster")
 				return event
@@ -150,6 +181,52 @@ func (app *App) ClustersTableInputHandler(ct *tview.Table) {
 			Publish(ClustersChannel, GetClusterEventType, Payload{Force: true})
 		}
 
+		if event.Key() == tcell.KeyF12 {
+			app.ClusterConfigModal()
+			app.ShowModalPage(ClusterConfig)
+			return nil
+		}
+
 		return event
 	})
+}
+
+// ClusterConfigModal shows the raw contents of the user's config.yaml file.
+func (app *App) ClusterConfigModal() {
+	configPath, err := config.GetConfigPath()
+	var content string
+	if err != nil {
+		content = fmt.Sprintf("[red]error resolving config path: %s", err.Error())
+	} else {
+		data, readErr := os.ReadFile(configPath)
+		if readErr != nil {
+			content = fmt.Sprintf("[red]error reading config: %s", readErr.Error())
+		} else {
+			content = string(data)
+		}
+	}
+
+	view := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(content).
+		SetScrollable(true)
+	view.SetBorder(false).SetBorderPadding(0, 0, 1, 1)
+
+	view.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyF12 {
+			app.HideModalPage(ClusterConfig)
+			return nil
+		}
+		if IsKey(event, ':') {
+			return nil
+		}
+		return event
+	})
+
+	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(view, 0, 1, true)
+	mainFlex.SetTitle(" Cluster Config ")
+	mainFlex.SetBorder(true)
+
+	app.Layout.PagesRegistry.UI.Pages.AddPage(ClusterConfig, mainFlex, true, false)
 }

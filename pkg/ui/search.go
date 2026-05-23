@@ -53,19 +53,39 @@ func NewSearchModal(colors *config.ColorConfig) *Search {
 func NewInlineSearch(colors *config.ColorConfig) *tview.InputField {
 	search := tview.NewInputField()
 	search.SetTitleAlign(tview.AlignLeft)
-	search.SetLabel("Search: ")
-	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Label.FgColor))
-	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
-	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Background))
+	search.SetLabel(" / ")
+	search.SetLabelColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	search.SetFieldTextColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	search.SetFieldBackgroundColor(tcell.GetColor(colors.Cinnamon.Search.BgColor))
+	search.SetBackgroundColor(tcell.GetColor(colors.Cinnamon.Search.BgColor))
+	search.SetBorder(true)
+	search.SetBorderColor(tcell.GetColor(colors.Cinnamon.Search.FgColor))
+	search.SetBorderPadding(0, 0, 0, 0)
 	return search
 }
 
 func (app *App) AssignSearch(onSearch func(text string)) {
 	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
 	search := NewInlineSearch(app.Layout.Colors)
-	search.SetChangedFunc(onSearch)
+
+	// Wrap the onSearch callback to save filter state
+	wrappedOnSearch := func(text string) {
+		// Save current filter to app state
+		app.CurrentFilters[currentPage] = text
+
+		// Call the original filter function
+		onSearch(text)
+	}
+
+	search.SetChangedFunc(wrappedOnSearch)
 	app.SearchKeyHandler(search)
 	app.Layout.Search[currentPage] = search
+
+	// Restore previous filter if it exists
+	if filterText, exists := app.CurrentFilters[currentPage]; exists && filterText != "" {
+		search.SetText(filterText)
+		// SetText will trigger wrappedOnSearch automatically
+	}
 }
 
 func (app *App) IsSearchInFocus() bool {
@@ -75,6 +95,16 @@ func (app *App) IsSearchInFocus() bool {
 		}
 	}
 	return false
+}
+
+func (app *App) IsInputFieldInFocus() bool {
+	focused := app.GetFocus()
+	if focused == nil {
+		return false
+	}
+	_, isInputField := focused.(*tview.InputField)
+	_, isTextArea := focused.(*tview.TextArea)
+	return isInputField || isTextArea
 }
 
 func (l *Layout) ShowInlineSearch(currentPage string) {

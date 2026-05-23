@@ -13,9 +13,9 @@ import (
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog/log"
+	"github.com/sahilm/fuzzy"
 
 	"github.com/uraniumdawn/cinnamon/pkg/schemaregistry"
 	"github.com/uraniumdawn/cinnamon/pkg/util"
@@ -112,10 +112,15 @@ func (app *App) Subjects() {
 			select {
 			case subjects := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects)
 					table := app.NewSubjectsTable(subjects)
 					title := util.BuildTitle(Subjects,
 						"["+strconv.Itoa(len(subjects))+"]")
-					table.SetTitle(title)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						table.SetTitle(title + "[" + label + "]")
+					} else {
+						table.SetTitle(title)
+					}
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(
@@ -123,6 +128,16 @@ func (app *App) Subjects() {
 								GetSubjectsEventType,
 								Payload{nil, true},
 							)
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									SubjectsChannel,
+									GetSubjectsEventType,
+									Payload{nil, true},
+								)
+							})
+							return nil
 						}
 
 						if event.Key() == tcell.KeyEnter {
@@ -138,11 +153,7 @@ func (app *App) Subjects() {
 						return event
 					})
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.SchemaRegistry.Name, Subjects),
-						table,
-						SubjectsPageMenu, true,
-					)
+					app.AddToPagesRegistry(pageKey, table, SubjectsPageMenu, true)
 
 					app.AssignSearch(func(text string) {
 						filterSubjectsTable(table, subjects, text)
@@ -183,33 +194,39 @@ func (app *App) Versions(subject string) {
 			select {
 			case versions := <-resultCh:
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"versions",
+					)
 					table := app.NewVersionsTable(versions)
-					table.SetTitle(
-						util.BuildTitle(
-							subject,
-							"["+strconv.Itoa(len(versions))+"]",
-						),
-					)
+					title := util.BuildTitle(subject, "["+strconv.Itoa(len(versions))+"]")
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					table.SetTitle(title)
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(
-							app.Selected.SchemaRegistry.Name,
-							subject,
-							"versions",
-						),
-						table,
-						VersionsPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, table, VersionsPageMenu, false)
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
 							Publish(
 								SubjectsChannel,
 								GetVersionsEventType,
-								Payload{nil, true},
+								Payload{subject, true},
 							)
 						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									SubjectsChannel,
+									GetVersionsEventType,
+									Payload{subject, true},
+								)
+							})
+							return nil
+						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
 							version := table.GetCell(row, 0).Text
 
@@ -266,17 +283,40 @@ func (app *App) Schema(subject string, version int) {
 
 				app.QueueUpdateDraw(func() {
 					v := strconv.Itoa(version)
-					desc := app.NewDescription(
-						util.BuildTitle(subject, v),
+					pageKey := util.BuildPageKey(
+						app.Selected.SchemaRegistry.Name,
+						subject,
+						"version",
+						v,
 					)
+					title := util.BuildTitle(subject, v)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(SubjectsChannel, GetSchemaEventType,
-								Payload{SubjectVersionPair{subject, v}, true})
-						}
-						return event
-					})
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(SubjectsChannel, GetSchemaEventType,
+									Payload{SubjectVersionPair{subject, v}, true})
+							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										SubjectsChannel,
+										GetSchemaEventType,
+										Payload{
+											SubjectVersionPair{subject, v},
+											true,
+										},
+									)
+								})
+								return nil
+							}
+							return event
+						}),
+					)
 
 					writer := tview.ANSIWriter(desc)
 					_, err := writer.Write([]byte(formattedSchema))
@@ -284,16 +324,8 @@ func (app *App) Schema(subject string, version int) {
 						log.Error().Err(err).Msg("failed to write formatted schema")
 						SendStatusWithDefaultTTL("[red]failed to write formatted schema")
 					}
-					app.AddToPagesRegistry(
-						util.BuildPageKey(
-							app.Selected.SchemaRegistry.Name,
-							subject,
-							"version",
-							v,
-						),
-						desc,
-						FinalPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, desc, SubjectDecriptionPageMenu, false)
+					ClearStatus()
 				})
 				cancel()
 				return
@@ -329,6 +361,7 @@ func (app *App) NewSubjectsTable(subjects []string) *tview.Table {
 		)
 	}
 
+	sort.Strings(subjects)
 	for i, subject := range subjects {
 		table.SetCell(i, 0, tview.NewTableCell(subject))
 	}
@@ -364,14 +397,22 @@ func (app *App) NewVersionsTable(versions []int) *tview.Table {
 func filterSubjectsTable(table *tview.Table, subjects []string, filter string) {
 	table.Clear()
 
-	ranks := fuzzy.RankFind(filter, subjects)
-	sort.Slice(ranks, func(i, j int) bool {
-		return ranks[i].Distance < ranks[j].Distance
-	})
+	if filter == "" {
+		// Show all subjects sorted alphabetically when filter is empty
+		sort.Strings(subjects)
+		row := 0
+		for _, subject := range subjects {
+			table.SetCell(row, 0, tview.NewTableCell(subject))
+			row++
+		}
+		return
+	}
 
-	row := 1
-	for _, rank := range ranks {
-		table.SetCell(row, 0, tview.NewTableCell(rank.Target))
+	matches := fuzzy.Find(filter, subjects)
+
+	row := 0
+	for _, match := range matches {
+		table.SetCell(row, 0, tview.NewTableCell(match.Str))
 		row++
 	}
 }

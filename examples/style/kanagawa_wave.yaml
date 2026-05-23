@@ -1,0 +1,29 @@
+# Kanagawa Wave (dark) color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — blue (accent) + orange (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#DCD7BA"
+    bgColor: "#1F1F28"
+  status:
+    fgColor: "#727169"
+    bgColor: "#1F1F28"
+  label:
+    fgColor: "#FFA066"
+    bgColor: "#1F1F28"
+  keybinding:
+    key: "#7E9CD8"
+    value: "#DCD7BA"
+  search:
+    fgColor: "#DCD7BA"
+    bgColor: "#1F1F28"
+  selection:
+    fgColor: "#1F1F28"
+    bgColor: "#7E9CD8"
+  placeholder: "#717C7C"
+  title: "#7E9CD8"
+  border: "#7E9CD8"
+  background: "#1F1F28"
+  foreground: "#DCD7BA"

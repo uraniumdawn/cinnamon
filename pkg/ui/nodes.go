@@ -7,6 +7,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -87,13 +88,27 @@ func (app *App) Nodes() {
 			case description := <-resultCh:
 				nodes := description.Nodes
 				app.QueueUpdateDraw(func() {
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, Nodes)
 					table := app.NewNodesTable(nodes)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						table.SetTitle(table.GetTitle() + "[" + label + "]")
+					}
 					table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 						if event.Key() == tcell.KeyCtrlU {
-							Publish(SubjectsChannel, GetNodesEventType, Payload{nil, true})
+							Publish(NodesChannel, GetNodesEventType, Payload{nil, true})
+						}
+						if event.Key() == tcell.KeyCtrlG {
+							app.EnterAutoUpdateMode(pageKey, func() {
+								Publish(
+									NodesChannel,
+									GetNodesEventType,
+									Payload{nil, true},
+								)
+							})
+							return nil
 						}
 
-						if event.Key() == tcell.KeyRune && event.Rune() == 'd' {
+						if IsKey(event, 'd') {
 							row, _ := table.GetSelection()
 							nodeID := table.GetCell(row, 0).Text
 							url := table.GetCell(row, 1).Text
@@ -104,11 +119,7 @@ func (app *App) Nodes() {
 						return event
 					})
 
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, Nodes),
-						table,
-						NodesPageMenu, false,
-					)
+					app.AddToPagesRegistry(pageKey, table, NodesPageMenu, false)
 					ClearStatus()
 				})
 				cancel()
@@ -144,23 +155,36 @@ func (app *App) Node(id, url string) {
 			select {
 			case description := <-resultCh:
 				app.QueueUpdateDraw(func() {
-					desc := app.NewDescription(util.BuildTitle(Node, url, id))
+					pageKey := util.BuildPageKey(app.Selected.Cluster.Name, Node, id)
+					title := util.BuildTitle(Node, url, id)
+					if label := app.GetAutoUpdateLabel(pageKey); label != "" {
+						title = title + "[" + label + "]"
+					}
+					desc := app.NewDescription(title)
 					desc.SetText(description.String())
-					desc.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-						if event.Key() == tcell.KeyCtrlU {
-							Publish(
-								NodesChannel,
-								GetNodeEventType,
-								Payload{NodeIDURLPair{id, url}, true},
-							)
-						}
-						return event
-					})
-					app.AddToPagesRegistry(
-						util.BuildPageKey(app.Selected.Cluster.Name, Node, id),
-						desc,
-						FinalPageMenu, false,
+					desc.SetInputCapture(
+						app.WithHScroll(desc, func(event *tcell.EventKey) *tcell.EventKey {
+							if event.Key() == tcell.KeyCtrlU {
+								Publish(
+									NodesChannel,
+									GetNodeEventType,
+									Payload{NodeIDURLPair{id, url}, true},
+								)
+							}
+							if event.Key() == tcell.KeyCtrlG {
+								app.EnterAutoUpdateMode(pageKey, func() {
+									Publish(
+										NodesChannel,
+										GetNodeEventType,
+										Payload{NodeIDURLPair{id, url}, true},
+									)
+								})
+								return nil
+							}
+							return event
+						}),
 					)
+					app.AddToPagesRegistry(pageKey, desc, NodeDecriptionPageMenu, false)
 					ClearStatus()
 				})
 				cancel()
@@ -179,6 +203,15 @@ func (app *App) Node(id, url string) {
 	}()
 }
 
+// addNodesTableHeader adds a fixed header row (row 0) with label-coloured cells.
+func addNodesTableHeader(table *tview.Table, labelColor tcell.Color) {
+	mkHeader := func(text string) *tview.TableCell {
+		return tview.NewTableCell(text).SetSelectable(false).SetTextColor(labelColor)
+	}
+	table.SetCell(0, 0, mkHeader("ID"))
+	table.SetCell(0, 1, mkHeader("Host"))
+}
+
 // NewNodesTable creates a table displaying Kafka nodes.
 func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 	table := tview.NewTable()
@@ -192,10 +225,15 @@ func (app *App) NewNodesTable(nodes []kafka.Node) *tview.Table {
 			tcell.GetColor(app.Colors.Cinnamon.Selection.BgColor),
 		),
 	)
+	table.SetFixed(1, 0)
 
+	labelColor := tcell.GetColor(app.Colors.Cinnamon.Label.FgColor)
+	addNodesTableHeader(table, labelColor)
+
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
 	for i, node := range nodes {
-		table.SetCell(i, 0, tview.NewTableCell(strconv.Itoa(node.ID)))
-		table.SetCell(i, 1, tview.NewTableCell(node.Host))
+		table.SetCell(i+1, 0, tview.NewTableCell(strconv.Itoa(node.ID)))
+		table.SetCell(i+1, 1, tview.NewTableCell(node.Host))
 	}
 	table.SetTitle(
 		util.BuildTitle(Nodes,

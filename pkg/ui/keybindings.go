@@ -9,84 +9,131 @@ import (
 	"github.com/rivo/tview"
 )
 
-func (app *App) OpenPagesKeyHandler(table *tview.Table) {
-	table.SetSelectionChangedFunc(func(row, column int) {
-		if row >= 0 && row < table.GetRowCount() {
-			cell := table.GetCell(row, 1)
+// IsKey reports whether the event is a printable rune key matching r.
+func IsKey(event *tcell.EventKey, r rune) bool {
+	return event.Key() == tcell.KeyRune && event.Rune() == r
+}
+
+// IsCtrlEnter reports whether the event is Enter with the Ctrl modifier held.
+func IsCtrlEnter(event *tcell.EventKey) bool {
+	return event.Key() == tcell.KeyEnter && event.Modifiers()&tcell.ModCtrl != 0
+}
+
+func (app *App) OpenPagesKeyHandler(filteredTable *tview.Table) {
+	registry := app.Layout.PagesRegistry
+	searchInput := registry.UI.SearchInput
+
+	searchInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			searchInput.SetText("")
+			app.SetFocus(filteredTable)
+			return nil
+		case tcell.KeyEnter:
+			app.SetFocus(filteredTable)
+			return nil
+		}
+		return event
+	})
+
+	filteredTable.SetSelectionChangedFunc(func(row, column int) {
+		// Skip while the user is typing — Select(0,0) from RebuildFilteredPages would
+		// otherwise trigger ShowPage/SendToFront and steal focus from the search input.
+		if app.GetFocus() == searchInput {
+			return
+		}
+		if row >= 0 && row < filteredTable.GetRowCount() {
+			cell := filteredTable.GetCell(row, 1)
 			if cell != nil {
 				pageName := cell.Text
-				if _, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
-					// Keep menu as OpenedPagesMenu while browsing
-					app.Layout.Menu.SetMenu(OpenedPagesMenu)
-					app.Layout.PagesRegistry.UI.Pages.SwitchToPage(pageName)
-					// Keep the modal visible and in front
-					app.Layout.PagesRegistry.UI.Pages.ShowPage(OpenedPages)
-					app.Layout.PagesRegistry.UI.Pages.SendToFront(OpenedPages)
+				if menu, ok := registry.PageMenuMap[pageName]; ok {
+					app.Layout.Menu.SetMenu(menu)
+					registry.UI.Pages.SwitchToPage(pageName)
+					registry.UI.Pages.ShowPage(OpenedPages)
+					registry.UI.Pages.SendToFront(OpenedPages)
 				}
 			}
 		}
 	})
 
-	table.SetInputCapture(
-		func(event *tcell.EventKey) *tcell.EventKey {
-			if event.Key() == tcell.KeyEsc {
-				row, _ := table.GetSelection()
-				if row >= 0 && row < table.GetRowCount() {
-					cell := table.GetCell(row, 1)
-					if cell != nil {
-						pageName := cell.Text
-						if menu, ok := app.Layout.PagesRegistry.PageMenuMap[pageName]; ok {
-							app.Layout.Menu.SetMenu(menu)
-						}
+	filteredTable.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyEnter {
+			row, _ := filteredTable.GetSelection()
+			if row >= 0 && row < filteredTable.GetRowCount() {
+				cell := filteredTable.GetCell(row, 1)
+				if cell != nil {
+					app.SwitchToPage(cell.Text)
+				}
+			}
+			searchInput.SetText("")
+			app.HideModalPage(OpenedPages)
+			return nil
+		}
+
+		if IsKey(event, 'x') {
+			row, _ := filteredTable.GetSelection()
+			if row >= 0 && row < filteredTable.GetRowCount() {
+				cell := filteredTable.GetCell(row, 1)
+				if cell != nil {
+					pageName := cell.Text
+
+					if pageName == Clusters {
+						SendStatusWithDefaultTTL("Clusters page cannot be deleted")
+						return nil
+					}
+
+					app.RemoveFromPagesRegistry(pageName)
+					registry.RebuildFilteredPages(searchInput.GetText())
+
+					targetRow := row
+					if row > 0 {
+						targetRow = row - 1
+					}
+					if targetRow >= filteredTable.GetRowCount() {
+						targetRow = filteredTable.GetRowCount() - 1
+					}
+					if filteredTable.GetRowCount() > 0 {
+						filteredTable.Select(targetRow, 0)
 					}
 				}
-				app.HideModalPage(OpenedPages)
 			}
+			return nil
+		}
 
-			if event.Key() == tcell.KeyRune && event.Rune() == 'x' {
-				row, _ := table.GetSelection()
-				if row >= 0 && row < table.GetRowCount() {
-					cell := table.GetCell(row, 1)
-					if cell != nil {
-						pageName := cell.Text
+		if IsKey(event, '/') {
+			app.SetFocus(searchInput)
+			return nil
+		}
 
-						// Prevent deletion of Clusters page - it should always be present
-						if pageName == Clusters {
-							SendStatusWithDefaultTTL("Clusters page cannot be deleted")
-							return nil
-						}
-
-						app.RemoveFromPagesRegistry(pageName)
-
-						// Select the target row and keep modal open
-						// After deletion, try to select the previous row, or stay at 0
-						targetRow := row
-						if row > 0 {
-							targetRow = row - 1
-						}
-						if targetRow >= table.GetRowCount() {
-							targetRow = table.GetRowCount() - 1
-						}
-						table.Select(targetRow, 0)
-					}
-				}
-				return nil
-			}
-
-			return event
-		},
-	)
+		return event
+	})
 }
 
 func (app *App) MainOperationKeyHandler() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == ':' {
-			if !app.IsSearchInFocus() {
-				app.ShowModalPage(Resources)
+		if app.autoUpdateMode {
+			switch event.Key() {
+			case tcell.KeyTab:
+				app.CycleIntervalForCurrentPage()
+			case tcell.KeyEsc:
+				app.ExitAutoUpdateMode()
+			}
+			return nil
+		}
+
+		if IsKey(event, ':') {
+			if !app.IsSearchInFocus() && !app.IsInputFieldInFocus() {
+				currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+				if currentPage != Resources {
+					app.ShowModalPage(Resources)
+					return nil
+				}
+				// modal already open: fall through so table's SetInputCapture receives ':' and focuses
+				// search
 			}
 		}
 
-		if event.Key() == tcell.KeyRune && event.Rune() == '/' {
+		if IsKey(event, '/') {
 			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
 			for _, searchablePage := range app.Layout.PagesRegistry.SearchablePages {
 				if currentPage == searchablePage {
@@ -104,13 +151,30 @@ func (app *App) MainOperationKeyHandler() {
 			app.ShowModalPage(OpenedPages)
 		}
 
-		//if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
-		//	app.Backward()
-		//}
-		//
-		//if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
-		//	app.Forward()
-		//}
+		// if event.Key() == tcell.KeyEsc && !app.IsSearchInFocus() {
+		// 	currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+		// 	if app.Layout.PagesRegistry.IsPersistentPage(currentPage) {
+		// 		app.Backward()
+		// 		return nil
+		// 	}
+		// 	return event
+		// }
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'h' && !app.IsSearchInFocus() {
+			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+			if app.Layout.PagesRegistry.IsPersistentPage(currentPage) {
+				app.Backward()
+				return nil
+			}
+		}
+
+		if event.Key() == tcell.KeyRune && event.Rune() == 'l' && !app.IsSearchInFocus() {
+			currentPage, _ := app.Layout.PagesRegistry.UI.Pages.GetFrontPage()
+			if app.Layout.PagesRegistry.IsPersistentPage(currentPage) {
+				app.Forward()
+				return nil
+			}
+		}
 
 		return event
 	})

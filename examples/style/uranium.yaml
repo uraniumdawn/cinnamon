@@ -1,0 +1,29 @@
+# Uranium color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — uranium yellow-green (accent) + magenta (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#EBDBB2"
+    bgColor: "#272727"
+  status:
+    fgColor: "#6E6E6E"
+    bgColor: "#272727"
+  label:
+    fgColor: "#C9368C"
+    bgColor: "#272727"
+  keybinding:
+    key: "#73C936"
+    value: "#EBDBB2"
+  search:
+    fgColor: "#EBDBB2"
+    bgColor: "#272727"
+  selection:
+    fgColor: "#272727"
+    bgColor: "#73C936"
+  placeholder: "#505050"
+  title: "#73C936"
+  border: "#73C936"
+  background: "#272727"
+  foreground: "#EBDBB2"

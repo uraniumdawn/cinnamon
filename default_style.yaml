@@ -7,21 +7,24 @@
 cinnamon:
   cluster:
     fgColor: "white"
-    bgColor: "black"
+    bgColor: "default"
   status:
     fgColor: "grey"
-    bgColor: "black"
+    bgColor: "default"
   label:
     fgColor: "orange"
-    bgColor: "black"
+    bgColor: "default"
   keybinding:
     key: "grey"
     value: "grey"
+  search:
+    fgColor: "white"
+    bgColor: "default"
   selection:
     fgColor: "black"
     bgColor: "white"
   placeholder: "grey"
-  title: "orange"
+  title: "white"
   border: "white"
-  background: "black"
+  background: "default"
   foreground: "white"

@@ -1,0 +1,29 @@
+# Solarized Dark color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — blue (accent) + orange (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#839496"
+    bgColor: "#002B36"
+  status:
+    fgColor: "#657B83"
+    bgColor: "#002B36"
+  label:
+    fgColor: "#CB4B16"
+    bgColor: "#002B36"
+  keybinding:
+    key: "#268BD2"
+    value: "#839496"
+  search:
+    fgColor: "#839496"
+    bgColor: "#002B36"
+  selection:
+    fgColor: "#002B36"
+    bgColor: "#268BD2"
+  placeholder: "#586E75"
+  title: "#B58900"
+  border: "#586E75"
+  background: "#002B36"
+  foreground: "#839496"

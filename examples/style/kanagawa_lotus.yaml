@@ -1,0 +1,29 @@
+# Kanagawa Lotus (light) color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — blue (accent) + orange (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#545464"
+    bgColor: "#F2ECBC"
+  status:
+    fgColor: "#8A8980"
+    bgColor: "#F2ECBC"
+  label:
+    fgColor: "#CC6D00"
+    bgColor: "#F2ECBC"
+  keybinding:
+    key: "#4D699B"
+    value: "#545464"
+  search:
+    fgColor: "#545464"
+    bgColor: "#F2ECBC"
+  selection:
+    fgColor: "#F2ECBC"
+    bgColor: "#4D699B"
+  placeholder: "#A8A48D"
+  title: "#4D699B"
+  border: "#4D699B"
+  background: "#F2ECBC"
+  foreground: "#545464"

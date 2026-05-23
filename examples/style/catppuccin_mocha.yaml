@@ -1,0 +1,29 @@
+# Catppuccin Mocha (dark) color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — blue (accent) + peach (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#CDD6F4"
+    bgColor: "#1E1E2E"
+  status:
+    fgColor: "#7F849C"
+    bgColor: "#1E1E2E"
+  label:
+    fgColor: "#FAB387"
+    bgColor: "#1E1E2E"
+  keybinding:
+    key: "#89B4FA"
+    value: "#CDD6F4"
+  search:
+    fgColor: "#CDD6F4"
+    bgColor: "#1E1E2E"
+  selection:
+    fgColor: "#1E1E2E"
+    bgColor: "#89B4FA"
+  placeholder: "#585B70"
+  title: "#89B4FA"
+  border: "#89B4FA"
+  background: "#1E1E2E"
+  foreground: "#CDD6F4"

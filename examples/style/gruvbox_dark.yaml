@@ -1,0 +1,29 @@
+# Gruvbox Dark color configuration for Cinnamon UI
+# Color harmony based on Itten's color wheel — orange (accent) + blue (complementary)
+
+# See tcell source code for valid color names or provide RGB in format "#ffffff"
+# https://github.com/gdamore/tcell/blob/main/color.go
+cinnamon:
+  cluster:
+    fgColor: "#EBDBB2"
+    bgColor: "#282828"
+  status:
+    fgColor: "#928374"
+    bgColor: "#282828"
+  label:
+    fgColor: "#83A598"
+    bgColor: "#282828"
+  keybinding:
+    key: "#FE8019"
+    value: "#EBDBB2"
+  search:
+    fgColor: "#EBDBB2"
+    bgColor: "#282828"
+  selection:
+    fgColor: "#282828"
+    bgColor: "#FE8019"
+  placeholder: "#665C54"
+  title: "#FE8019"
+  border: "#FE8019"
+  background: "#282828"
+  foreground: "#EBDBB2"

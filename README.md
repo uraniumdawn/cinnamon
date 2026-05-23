@@ -21,25 +21,33 @@ A powerful Terminal UI (TUI) for Apache Kafka that provides an intuitive, keyboa
 ## Core Capabilities
 
 - **Multi-Cluster Management** - Connect and switch between multiple Kafka clusters seamlessly
-- **Topics Management** - Browse, create, edit, and delete Kafka topics with full configuration support
-- **Consumer Groups** - Monitor consumer groups, view lag, partition assignments, and member details
-- **Schema Registry Integration** - Browse subjects, view schema versions, and inspect Avro schemas
-- **Broker & Node Management** - View cluster node information, configurations, and health status
+- **Topics Management** - Browse, create, edit configs, increase partitions, and delete Kafka topics
+- **Consumer Groups** - Monitor consumer groups, view lag and partition assignments, reset offsets
+- **Schema Registry Integration** - Browse subjects, view schema versions, and inspect schemas
+- **Kafka Connect Management** - View, manage, and monitor Kafka Connect connectors
+- **Broker & Node Management** - View cluster node information and configurations
 - **CLI Command Templates** - Execute external tools (kcat, kafka-console-consumer) with auto-filled parameters
+- **Page History Navigation** - Forward/backward navigation through opened pages with dynamic menu keybindings
+- **Inline Search & Filtering** - Fuzzy search across topics, consumer groups, subjects, and connectors
+- **Column Sorting** - Sort table views by any column with ascending/descending toggle
+- **In-Memory Cache** - 5-minute TTL cache per resource; force-refresh any view with `Ctrl+U`
 
 
 ## Available Resources
 
-Access via `:` (colon) key:
+Access via `:` (colon) key. Schema Registry and Connect resources appear only when configured.
 
 | Resource | Description | Operations |
 |----------|-------------|------------|
-| **Clusters** | Kafka cluster management | Select, describe, view brokers |
-| **Schema-registries** | Schema Registry instances | Select, browse subjects |
-| **Topics** | Kafka topics | List, create, edit, delete, describe, search |
-| **Consumer groups** | Consumer groups | List, describe, view lag, search |
-| **Nodes** | Kafka brokers | List, view configuration |
+| **Clusters** | Kafka cluster management | Select, describe |
+| **Schema-registries** | Schema Registry instances | Select |
+| **Connect** | Kafka Connect instances | Select |
+| **Nodes** | Kafka brokers | List, describe |
+| **Topics** | Kafka topics | List, describe, create, edit configs, increase partitions, delete, search, sort, CLI templates |
+| **Consumer groups** | Consumer groups | List, describe, view lag, reset offsets, delete (Empty state only), find by topic, search, sort |
 | **Subjects** | Schema Registry subjects | List, view versions, inspect schemas, search |
+| **Connectors** | Kafka Connect connectors | List, describe, pause/resume/restart, delete, search, sort |
+
 
 ## Installation
 
@@ -83,7 +91,7 @@ mv cinnamon /usr/local/bin/
 Cinnamon requires at least one configuration file:
 
 - `~/.config/cinnamon/config.yaml` - Application and cluster configuration (required)
-- `~/.config/cinnamon/style.yaml` - UI color customization (optional)
+- Style file - UI color customization, path set via `cinnamon.style` in config.yaml (optional)
 
 ### 2. Run Cinnamon
 
@@ -94,7 +102,7 @@ cinnamon
 To check the version:
 
 ```bash
-cinnamon --version
+cinnamon -version
 ```
 
 ## Configuration
@@ -107,7 +115,11 @@ Create `~/.config/cinnamon/config.yaml` with your Kafka cluster and Schema Regis
 cinnamon:
   # API Configuration
   api:
-    timeout: 10  # API call timeout in seconds (default: 10)
+    timeout: 30       # API call timeout in seconds (default: 30)
+    max_concurrency: 10  # Max parallel Kafka API calls, e.g. for consumer group offset queries (default: 10)
+
+  # Style file path (optional) — see examples/style/ for ready-made themes
+  style: ~/.config/cinnamon/my_style.yaml
 
   # Define your Kafka clusters
   clusters:
@@ -122,6 +134,7 @@ cinnamon:
         # sasl.username: your-username
         # sasl.password: your-password
       selected: true  # Auto-select this cluster on startup
+      # mode: read-only  # Uncomment to prevent create/edit/delete operations on this cluster
 
     - name: dev
       properties:
@@ -133,28 +146,43 @@ cinnamon:
     - name: prod
       # Required: Schema Registry URL
       schema.registry.url: http://schema-registry-prod:8081
-      
+
       # Optional: Basic authentication for Schema Registry
       # schema.registry.sasl.username: registry-user
       # schema.registry.sasl.password: registry-pass
       selected: true  # Auto-select this registry on startup
-    
+
     - name: dev
       schema.registry.url: http://schema-registry-dev:8081
       selected: false
-    
+
+  # Kafka Connect configurations (optional)
+  connect:
+    - name: prod
+      # Required: Kafka Connect REST API URL
+      url: http://kafka-connect-prod:8083
+      selected: true  # Auto-select this connect cluster on startup
+      # mode: read-only  # Uncomment to prevent edit/delete/action operations on this instance
+
+    - name: dev
+      url: http://kafka-connect-dev:8083
+      selected: false
+
   # CLI Templates for external tool integration (optional)
-  # Use placeholders: {{bootstrap}} for broker address, {{topic}} for topic name
+  # Supported placeholders:
+  #   {{bootstrap}} — broker address(es) from the selected cluster
+  #   {{topic}}     — name of the selected topic
+  #   {{srURL}}     — Schema Registry URL from the selected registry
   cli_templates:
     # kcat example - consume from beginning with JSON formatting
     - kcat -b {{bootstrap}} -t {{topic}} -o beginning -f '{"Key":"%k","Value":%s,"Timestamp":%T,"Partition":%p,"Offset":%o,"Headers":"%h","Size":%S}\n' -u | jq .
-    
+
     # kcat example - consume from end (live)
     - kcat -b {{bootstrap}} -t {{topic}}
-    
+
     # kafka-console-consumer
     - kafka-console-consumer --bootstrap-server {{bootstrap}} --topic {{topic}} --from-beginning
-    
+
     # Custom script example
     - ./scripts/analyze-topic.sh {{bootstrap}} {{topic}}
 ```
@@ -175,133 +203,36 @@ sasl.password: ${KAFKA_PASSWORD}
 ```
 
 **Selected Flag:**
-- Only one cluster and one schema registry should have `selected: true`
+- Only one cluster, one schema registry, and one Kafka Connect instance should have `selected: true`
 - Selection is persisted when changed via UI
 
-**API Timeout:**
-- Controls timeout for all Kafka Admin API calls
-- Affects cluster describe, topic operations, consumer group queries
-- Default: 10 seconds if not specified
+**Default configuration (`default_config.yaml`):**
+- Cinnamon ships a `default_config.yaml` in its working directory that provides baseline values for the `api` section
+- Your `config.yaml` is merged on top — only the values you specify override the defaults
+- Mirrors the same pattern as `default_style.yaml`
 
-### style.yaml
+**API settings (`api:`):**
+- `timeout` — timeout in seconds for all Kafka Admin API calls (cluster describe, topic operations, consumer group queries). Default: 30
+- `max_concurrency` — maximum number of parallel Kafka API calls, used when querying consumer group offsets across many groups. Default: 10
 
-Create `~/.config/cinnamon/style.yaml` to customize the UI colors (optional):
+**Read-only mode:**
+- Set `mode: read-only` on a cluster or Kafka Connect instance to prevent any write operations (create, edit, delete, actions) via the UI
+- Useful for protecting production environments
+
+### Style
+
+Set the path to a style file via `cinnamon.style` in `config.yaml`:
 
 ```yaml
-# Color configuration for Cinnamon UI
-# You can use tcell color names or RGB hex values (e.g., "#ffffff")
-# Available color names: black, white, red, green, blue, yellow, orange, purple, 
-# pink, grey, brown, beige, cyan, etc.
-# Use "default" to inherit your terminal's default colors
-
 cinnamon:
-  # Cluster selector component colors
-  cluster:
-    # Text color for cluster names
-    fgColor: "white"
-    # Background color for cluster selector
-    bgColor: "black"
-
-  # Status bar colors (bottom bar showing current context)
-  status:
-    # Status bar text color
-    fgColor: "grey"
-    # Status bar background color
-    bgColor: "black"
-
-  # Label colors (field labels, form labels)
-  label:
-    # Label text color
-    fgColor: "orange"
-    # Label background color
-    bgColor: "black"
-
-  # Keybinding hints display
-  keybinding:
-    # Color for keyboard shortcut keys (e.g., ":", "Enter")
-    key: "grey"
-    # Color for keybinding descriptions
-    value: "grey"
-
-  # Selected/highlighted item colors
-  selection:
-    # Text color for selected items in lists
-    fgColor: "black"
-    # Background color for selected items
-    bgColor: "white"
-
-  # Placeholder text color (empty states, input hints)
-  placeholder: "grey"
-
-  # Title text color (page titles, modal headers)
-  title: "orange"
-
-  # Border color for panels and modals
-  border: "white"
-
-  # Global background color (main application background)
-  background: "black"
-
-  # Global foreground color (main application text)
-  foreground: "white"
+  style: ~/.config/cinnamon/my_style.yaml
+  clusters:
+    ...
 ```
 
-#### Alternative Color Schemes
+The style file is merged on top of `default_style.yaml`, so you only need to override the fields you want to change. Colors can be specified as tcell color names (`"white"`, `"grey"`) or RGB hex values (`"#1E1E1E"`). Use `"default"` to inherit your terminal's background or foreground color.
 
-**Dark Theme with Blue Accents:**
-```yaml
-cinnamon:
-  cluster:
-    fgColor: "#4A9EFF"
-    bgColor: "#1E1E1E"
-  selection:
-    fgColor: "#1E1E1E"
-    bgColor: "#4A9EFF"
-  title: "#4A9EFF"
-  border: "#4A9EFF"
-  background: "#1E1E1E"
-  foreground: "#D4D4D4"
-```
-
-**Solarized Dark:**
-```yaml
-cinnamon:
-  cluster:
-    fgColor: "#93A1A1"
-    bgColor: "#002B36"
-  selection:
-    fgColor: "#002B36"
-    bgColor: "#268BD2"
-  title: "#B58900"
-  border: "#586E75"
-  background: "#002B36"
-  foreground: "#839496"
-```
-
-**Gruvbox Dark:**
-```yaml
-cinnamon:
-  cluster:
-    fgColor: "#EBDBB2"
-    bgColor: "#282828"
-  status:
-    fgColor: "#928374"
-    bgColor: "#282828"
-  label:
-    fgColor: "#FE8019"
-    bgColor: "#282828"
-  keybinding:
-    key: "#928374"
-    value: "#A89984"
-  selection:
-    fgColor: "#282828"
-    bgColor: "#FABD2F"
-  placeholder: "#928374"
-  title: "#FE8019"
-  border: "#EBDBB2"
-  background: "#282828"
-  foreground: "#EBDBB2"
-```
+**Ready-made themes** — see [`examples/style/`](examples/style/):
 
 ## Development
 
@@ -321,20 +252,12 @@ cd cinnamon
 # Install dependencies
 go mod download
 
-# Build
-go build -o cinnamon
+# Build (CGO_ENABLED=1 required for confluent-kafka-go)
+CGO_ENABLED=1 go build -o cinnamon
 
 # Run
 ./cinnamon
 ```
-
-### Technical Architecture
-
-**Event-Driven Design:**
-- Each resource type has a dedicated event channel
-- Event handlers run in separate goroutines
-- Non-blocking operations for responsive UI
-- Timeout contexts prevent hanging operations
 
 ### Logging
 
@@ -377,7 +300,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Inspiration:**
 - `k9s` - Kubernetes terminal UI
-- `lazydocker` - Docker terminal UI  
+- `lazydocker` - Docker terminal UI
 
 
 
