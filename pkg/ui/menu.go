@@ -469,6 +469,7 @@ func NewMenu(colors *config.ColorConfig) *Menu {
 				"dsc",
 				"sort_3",
 				"actions",
+				"edit",
 				"delete_conn",
 				"search",
 				"opened",

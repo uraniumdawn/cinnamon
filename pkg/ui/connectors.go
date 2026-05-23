@@ -157,6 +157,18 @@ func (app *App) Connectors() {
 							app.ShowModalPage(ConnectorActions)
 						}
 
+						if IsKey(event, 'e') {
+							if app.IsCurrentConnectReadOnly() {
+								SendStatusWithDefaultTTL(
+									"[red]cluster is in read-only mode",
+								)
+								return event
+							}
+							row, _ := table.GetSelection()
+							connectorName := table.GetCell(row, 0).Text
+							app.EditConnectorConfig(connectorName)
+						}
+
 						if event.Key() == tcell.KeyCtrlD {
 							if app.IsCurrentConnectReadOnly() {
 								SendStatusWithDefaultTTL(
@@ -552,7 +564,7 @@ func (app *App) openEditorForConfig(name string, config map[string]interface{}) 
 		SendStatusWithDefaultTTL("[red]failed to marshal connector config")
 		return
 	}
-	oldHash := sha256.Sum256(oldJSON)
+	oldHash := sha256.Sum256(bytes.TrimRight(oldJSON, "\r\n\t "))
 
 	// Create temp file
 	tmpFile, err := os.CreateTemp("", "connector-config-*.json")
@@ -614,8 +626,8 @@ func (app *App) openEditorForConfig(name string, config map[string]interface{}) 
 		return
 	}
 
-	// Check if content changed
-	newHash := sha256.Sum256(newContent)
+	// Check if content changed (trim trailing whitespace so editor newline conventions don't matter)
+	newHash := sha256.Sum256(bytes.TrimRight(newContent, "\r\n\t "))
 	if bytes.Equal(oldHash[:], newHash[:]) {
 		SendStatusWithDefaultTTL("[yellow]no changes detected")
 		return
