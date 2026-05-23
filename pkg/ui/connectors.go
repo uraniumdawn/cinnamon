@@ -318,9 +318,9 @@ func (app *App) ConnectorDetail(name string) {
 								})
 								return nil
 							}
-							// if IsKey(event, 'e') {
-							// 	app.EditConnectorConfig(name)
-							// }
+							if IsKey(event, 'e') {
+								app.EditConnectorConfig(name)
+							}
 							return event
 						}),
 					)
@@ -530,7 +530,6 @@ func (app *App) EditConnectorConfig(name string) {
 		select {
 		case config := <-resultCh:
 			app.QueueUpdateDraw(func() {
-				SendStatusInfinite("opening editor...")
 				app.openEditorForConfig(name, config)
 			})
 		case err := <-errorCh:
@@ -585,13 +584,26 @@ func (app *App) openEditorForConfig(name string, config map[string]interface{}) 
 	// Parse editor command and arguments
 	parts := strings.Fields(editor)
 	cmd := exec.Command(parts[0], append(parts[1:], tmpPath)...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	// os.Stdin/Stdout/Stderr are redirected to the log file by InitLogger.
+	// Open /dev/tty directly so the editor gets the actual terminal.
+	tty, ttyErr := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if ttyErr == nil {
+		cmd.Stdin = tty
+		cmd.Stdout = tty
+		cmd.Stderr = tty
+	} else {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	// Temporarily stop the TUI so the editor can take over the terminal
 	app.Suspend(func() {
 		_ = cmd.Run()
+		if tty != nil {
+			_ = tty.Close()
+		}
 	})
 
 	// Read edited content
@@ -617,6 +629,7 @@ func (app *App) openEditorForConfig(name string, config map[string]interface{}) 
 	}
 
 	// Show confirmation modal
+	ClearStatus()
 	app.ConnectorConfigConfirm(name, newConfig)
 }
 
@@ -644,25 +657,19 @@ func (app *App) ConnectorConfigConfirm(name string, newConfig map[string]interfa
 				return nil
 			}
 			app.UpdateConnectorConfig(name, newConfig)
-			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
-			app.Layout.Menu.SetMenu(ConnectorDescriptionPageMenu)
+			app.RemoveFromPagesRegistry(ConnectorConfigConfirm)
 			return nil
 		}
 
 		if event.Key() == tcell.KeyEsc {
-			app.Layout.PagesRegistry.UI.Pages.HidePage(ConnectorConfigConfirm)
-			app.Layout.Menu.SetMenu(ConnectorDescriptionPageMenu)
+			app.RemoveFromPagesRegistry(ConnectorConfigConfirm)
 			return nil
 		}
 
 		return event
 	})
 
-	modal := util.NewConfirmationModal(messageText)
-	app.Layout.PagesRegistry.UI.Pages.AddPage(ConnectorConfigConfirm, modal, true, false)
-	app.Layout.PagesRegistry.UI.Pages.ShowPage(ConnectorConfigConfirm)
-	app.Layout.PagesRegistry.UI.Pages.SendToFront(ConnectorConfigConfirm)
-	app.Layout.Menu.SetMenu(ConnectorConfigEditPageMenu)
+	app.AddToPagesRegistry(ConnectorConfigConfirm, messageText, ConnectorConfigEditPageMenu, false)
 }
 
 // UpdateConnectorConfig applies the updated connector config.
